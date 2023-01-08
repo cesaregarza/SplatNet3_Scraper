@@ -1,0 +1,56 @@
+[tool.poetry]
+name = "s3s-express"
+version = "0.1.0"
+description = """s3s express is a python package that overhauls the existing\
+s3s package by prioritizing developer usability and performance.\
+"""
+authors = ["Cesar E Garza <cesar@cegarza.com>"]
+readme = "README.md"
+packages = [{include = "s3s_express"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.28.1"
+bs4 = "^0.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.12.0"
+mypy = "^0.991"
+flake8 = "^6.0.0"
+darglint = "^1.8.1"
+isort = "^5.11.4"
+types-requests = "^2.28.11.7"
+pytest = "^7.2.0"
+coverage = "^7.0.4"
+ipykernel = "^6.19.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 80
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 80
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+pretty = true
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+    "-v",
+    "--tb=auto",
+    "--showlocals",
+    "--color=yes",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "internet: marks tests as requiring internet access (deselect with '-m \"not internet\"')",
+]
