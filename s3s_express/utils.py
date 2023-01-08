@@ -1,5 +1,5 @@
 import time
-from typing import Callable, ParamSpec, TypeVar
+from typing import Callable, ParamSpec, TypeVar, Type
 
 from s3s_express import logger
 
@@ -8,8 +8,9 @@ P = ParamSpec("P")
 
 
 def retry(
-    times: int, exceptions: tuple[Exception, ...] | Exception = Exception
-) -> Callable[P, T]:
+    times: int,
+    exceptions: tuple[Type[Exception], ...] | Type[Exception] = Exception,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that retries a function a specified number of times if it
     raises a specific exception or tuple of exceptions.
 
@@ -41,12 +42,12 @@ def retry(
 
 
 def expiring_property(
-    *args: tuple,
+    *args: int | float | None,
     seconds: int | float | None = None,
     minutes: int | float | None = None,
     hours: int | float | None = None,
     days: int | float | None = None,
-) -> Callable[P, T]:
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that makes a property expire after a specific amount of time.
 
     Given a property, this decorator will make it expire after a user-specified
@@ -85,11 +86,11 @@ def expiring_property(
     if num_args == 0 and len(args) == 0:
         raise ValueError("expiring_property takes at least 1 argument.")
 
-    if len(args) == 1:
-        if num_args == 1:
-            raise ValueError(
-                "Positional and keyword arguments cannot be used together."
-            )
+    if len(args) == 1 and num_args == 1:
+        raise ValueError(
+            "Positional and keyword arguments cannot be used together."
+        )
+    elif len(args) == 1 and args[0] is not None:
         expiration = args[0]
     elif seconds is not None:
         expiration = seconds
@@ -99,9 +100,12 @@ def expiring_property(
         expiration = hours * 60 * 60
     elif days is not None:
         expiration = days * 60 * 60 * 24
+    else:
+        raise ValueError("Unknown error. (This should never happen.)")
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         metadata = {"expiration": expiration, "timestamp": time.time()}
+        timestamp = time.time()
 
         @property
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
