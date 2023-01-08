@@ -104,12 +104,12 @@ def expiring_property(
         raise ValueError("Unknown error. (This should never happen.)")
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
-        metadata = {"expiration": expiration, "timestamp": time.time()}
+        # metadata = {"expiration": expiration, "timestamp": time.time()}
         timestamp = time.time()
 
         @property
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            if time.time() - metadata["timestamp"] < metadata["expiration"]:
+            if time.time() - timestamp < expiration:
                 return func(*args, **kwargs)
             else:
                 raise TimeoutError("Property has expired.")

@@ -6,6 +6,7 @@ per-file-ignores =
     tests\*:DAR101, DAR201, F401
 exclude = 
     test.py
+    .venv
 [darglint]
 docstring_style = google
 strictness = full
