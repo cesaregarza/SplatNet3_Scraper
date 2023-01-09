@@ -11,6 +11,9 @@ from s3s_express.constants import DEFAULT_USER_AGENT, IOS_APP_URL
 class NSO:
     def __init__(self, session: requests.Session) -> None:
         self.session = session
+        self._state: bytes | None = None
+        self._verifier: bytes | None = None
+        self._version: str | None = None
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -19,12 +22,16 @@ class NSO:
 
     @property
     def version(self) -> str:
-        if not hasattr(self, "_version"):
+        if self._version is None:
             self._version = self.get_version()
         return self._version
 
     def get_version(self) -> str:
-        """Get the version of the SplatNet API."""
+        """Gets the current version of the NSO app. Necessary to access the API.
+
+        Returns:
+            str: The current version of the NSO app.
+        """
         response = self.session.get(IOS_APP_URL)
         soup = BeautifulSoup(response.text, "html.parser")
         version = (
@@ -41,6 +48,16 @@ class NSO:
         Returns:
             bytes: The auth state.
         """
+        if self._state is None:
+            self._state = self.generate_new_state()
+        return self._state
+
+    def generate_new_state(self) -> bytes:
+        """Generates a new state.
+
+        Returns:
+            bytes: The auth state.
+        """
         return base64.urlsafe_b64encode(os.urandom(36))
 
     @property
@@ -52,10 +69,28 @@ class NSO:
         Returns:
             bytes: The code verifier, without padding.
         """
-        return base64.urlsafe_b64encode(os.urandom(32)).replace(b"=", b"")
+        if self._verifier is None:
+            self._verifier = self.generate_new_verifier()
+        return self._verifier
+
+    def generate_new_verifier(self) -> bytes:
+        """Generates a new verifier without padding.
+
+        Returns:
+            bytes: The code verifier, without padding.
+        """
+        verifier_ = base64.urlsafe_b64encode(os.urandom(32))
+        return verifier_.replace(b"=", b"")
 
     def header(self, user_agent: str) -> dict[str, str]:
-        """Returns the headers for the session."""
+        """Returns the headers for the session.
+
+        Args:
+            user_agent (str): The user agent to use.
+
+        Returns:
+            dict[str, str]: The headers.
+        """
         return {
             "Host": "accounts.nintendo.com",
             "Connection": "keep-alive",
@@ -78,7 +113,8 @@ class NSO:
         """Log in to a Nintendo account and returns a session token.
 
         Args:
-            session (requests.Session): The session to use.
+            user_agent (str): The user agent to use. Defaults to the default
+                user agent found in constants.py.
 
         Returns:
             str: The session token.
@@ -119,3 +155,31 @@ class NSO:
             str: The session token code.
         """
         return uri.split("&")[1][len("session_token_code=") :]
+
+    def get_session_token(self, session_token_code: str) -> str:
+        """Gets the session token from the session token code.
+
+        Args:
+            session_token_code (str): The session token code.
+
+        Returns:
+            str: The session token.
+        """
+        header = {
+            "User-Agent": f"OnlineLounge/{self.version} NASDKAPI Android",
+            "Accept-Language": "en-US",
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Length": "540",
+            "Host": "accounts.nintendo.com",
+            "Connection": "Keep-Alive",
+            "Accept-Encoding": "gzip",
+        }
+        params = {
+            "client_id": "71b963c1b7b6d119",
+            "session_token_code": session_token_code,
+            "session_token_code_verifier": self.verifier,
+        }
+        uri = "https://accounts.nintendo.com/connect/1.0.0/api/session_token"
+        response = self.session.post(uri, headers=header, data=params)
+        return response.json()["session_token"]

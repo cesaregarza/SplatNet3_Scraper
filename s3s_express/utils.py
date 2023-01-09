@@ -1,5 +1,6 @@
 import time
-from typing import Callable, ParamSpec, TypeVar, Type
+import warnings
+from typing import Callable, ParamSpec, Type, TypeVar
 
 from s3s_express import logger
 
@@ -17,11 +18,11 @@ def retry(
     Args:
         times (int): Max number of times to retry the function before raising
             the exception.
-        exceptions (tuple[Exception, ...] | Exception, optional): Exception or
-            tuple of exceptions to catch. Defaults to Exception.
+        exceptions (tuple[Type[Exception], ...] | Type[Exception]): Exception
+            or tuple of exceptions to catch. Defaults to Exception.
 
     Returns:
-        Callable[P, T]: Decorated function.
+        Callable[[Callable[P, T]], Callable[P, T]]: Decorator.
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
@@ -47,12 +48,19 @@ def expiring_property(
     minutes: int | float | None = None,
     hours: int | float | None = None,
     days: int | float | None = None,
+    behavior: str = "raise",
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that makes a property expire after a specific amount of time.
+    Only accepts one positional argument which will be interpreted as seconds.
 
     Given a property, this decorator will make it expire after a user-specified
-    amount of time. The property will raise a TimeoutError if it is accessed
-    after the expiration time has passed.
+    amount of time. The behavior of the property after it expires can be
+    specified by the user. The following behaviors are available:
+        raise (default): Raises a TimeoutError
+        return: Returns None
+        warn: Raises a warning
+        log: Logs a message and returns None
+        ignore: Does nothing, functionally equivalent to "return"
 
     Args:
         seconds (int | float | None): Number of seconds before timeout
@@ -63,43 +71,54 @@ def expiring_property(
             Defaults to None.
         days (int | float | None): Number of days before timeout occurs.
             Defaults to None.
+        behavior (str): Behavior when the property is accessed after the
+            expiration time. Defaults to "raise". Other options are "return",
+            "warn", "log", and "ignore".
 
     Raises:
         ValueError: If more than one positional argument is passed.
-        ValueError: If more than one keyword argument is passed.
         ValueError: If no arguments are passed.
         ValueError: If both positional and keyword arguments are passed.
-        TimeoutError: If the property is accessed after the expiration time.
+        ValueError: Unforeseen error, this should never happen but is here
+            to help debug if it does.
 
     Returns:
-        Callable[P, T]: Decorated property.
+        Callable[[Callable[P, T]], Callable[P, T]: Decorator.
     """
+
+    behavior = behavior.lower()
+    if behavior not in ("return", "warn", "log", "raise", "ignore"):
+        raise ValueError(
+            "behavior must be one of 'return', 'warn', 'log', 'raise', or"
+            " 'ignore'."
+        )
     if len(args) > 1:
         raise ValueError(
             "expiring_property takes at most 1 positional argument."
         )
 
     num_args = 4 - (seconds, minutes, hours, days).count(None)
-    if num_args > 1:
-        raise ValueError("expiring_property takes at most 1 keyword argument.")
 
     if num_args == 0 and len(args) == 0:
         raise ValueError("expiring_property takes at least 1 argument.")
 
-    if len(args) == 1 and num_args == 1:
+    if len(args) == 1 and num_args >= 1:
         raise ValueError(
             "Positional and keyword arguments cannot be used together."
         )
     elif len(args) == 1 and args[0] is not None:
         expiration = args[0]
-    elif seconds is not None:
-        expiration = seconds
-    elif minutes is not None:
-        expiration = minutes * 60
-    elif hours is not None:
-        expiration = hours * 60 * 60
-    elif days is not None:
-        expiration = days * 60 * 60 * 24
+    elif num_args >= 1:
+        time_mults: list[tuple[int | float | None, int]] = [
+            (seconds, 1),
+            (minutes, 60),
+            (hours, 60 * 60),
+            (days, 60 * 60 * 24),
+        ]
+        expiration = 0
+        for arg, mult in time_mults:
+            if arg is not None:
+                expiration += arg * mult
     else:
         raise ValueError("Unknown error. (This should never happen.)")
 
@@ -112,7 +131,17 @@ def expiring_property(
             if time.time() - timestamp < expiration:
                 return func(*args, **kwargs)
             else:
-                raise TimeoutError("Property has expired.")
+                msg = f"Property {func.__name__} has expired."
+                if behavior == "return":
+                    return None
+                elif behavior == "warn":
+                    warnings.warn(msg)
+                elif behavior == "log":
+                    logger.log(msg)
+                elif behavior == "raise":
+                    raise TimeoutError(msg)
+                elif behavior == "ignore":
+                    pass
 
         return wrapper
 
