@@ -32,8 +32,8 @@ def retry(
                     return func(*args, **kwargs)
                 except exceptions:
                     logger.log(
-                        f"{func.__name__} failed on attempt {i + 1} of {times},"
-                        " retrying."
+                        f"{func.__name__} failed on attempt {i + 1} of "
+                        f"{times + 1}, retrying."
                     )
             return func(*args, **kwargs)
 
