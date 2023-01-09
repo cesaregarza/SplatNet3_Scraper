@@ -2,12 +2,18 @@ import base64
 import hashlib
 import json
 import os
+import re
 
 import requests
 from bs4 import BeautifulSoup
 
-from s3s_express import __version__
-from s3s_express.constants import DEFAULT_USER_AGENT, IOS_APP_URL
+from s3s_express import __version__, logger
+from s3s_express.constants import (
+    DEFAULT_USER_AGENT,
+    IOS_APP_URL,
+    SPLATNET_URL,
+    WEB_VIEW_VERSION_FALLBACK,
+)
 from s3s_express.utils import retry
 
 
@@ -23,12 +29,19 @@ class IminkException(Exception):
     pass
 
 
+class SplatnetException(Exception):
+    """Base class for all Splatnet exceptions."""
+
+    pass
+
+
 class NSO:
     def __init__(self, session: requests.Session) -> None:
         self.session = session
         self._state: bytes | None = None
         self._verifier: bytes | None = None
         self._version: str | None = None
+        self._web_view_version: str | None = None
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -295,7 +308,8 @@ class NSO:
         id_token = splatoon_response.json()["result"]["webApiServerCredential"][
             "accessToken"
         ]
-        return id_token
+        gtoken = self.f_token_generation_step_2(id_token, f_token_url)
+        return gtoken
 
     def get_ftoken(
         self, f_token_url: str, id_token: str, step: int
@@ -384,6 +398,49 @@ class NSO:
         ]
         return splatoon_response
 
+    @retry(times=1, exceptions=(IminkException, NintendoException, KeyError))
+    def f_token_generation_step_2(
+        self,
+        id_token: str,
+        f_token_url: str,
+    ) -> requests.Response:
+        """Final step of gtoken generation. This step is retried once if it
+        fails.
+
+        Args:
+            id_token (str): splatoon id token
+            f_token_url (str): The url to get the f token from.
+
+        Returns:
+            requests.Response: The gtoken from the response.
+        """
+        f_token, request_id, timestamp = self.get_ftoken(
+            f_token_url, id_token, 2
+        )
+
+        header = {
+            "X-Platform": "Android",
+            "X-ProductVersion": self.version,
+            "Authorization": f"Bearer {id_token}",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "391",
+            "Accept-Encoding": "gzip",
+            "User-Agent": f"com.nintendo.znca/{self.version}(Android/7.1.2)",
+        }
+        body = {
+            "parameter": {
+                "f": f_token,
+                "id": 4834290508791808,
+                "registrationToken": id_token,
+                "requestId": request_id,
+                "timestamp": timestamp,
+            }
+        }
+        url = "https://api-lp1.znc.srv.nintendo.net/v2/Game/GetWebServiceToken"
+        response = self.session.post(url, headers=header, json=body).json()
+        gtoken = response["result"]["accessToken"]
+        return gtoken
+
     def get_splatoon_token(self, body: dict) -> requests.Response:
         f_token = body["parameter"]["f"]
         header = {
@@ -399,3 +456,115 @@ class NSO:
         }
         url = "https://api-lp1.znc.srv.nintendo.net/v3/Account/Login"
         return self.session.post(url, headers=header, json=body)
+
+    def get_bullet_token(
+        self, gtoken: str, user_info: dict, user_agent: str
+    ) -> str:
+        header = {
+            "Content-Length": "0",
+            "Content-Type": "application/json",
+            "Accept-Language": user_info["language"],
+            "User-Agent": user_agent,
+            "X-Web-View-Ver": self.splatnet_web_version,
+            "X-NACOUNTRY": user_info["country"],
+            "Accept": "*/*",
+            "Origin": SPLATNET_URL,
+            "X-Requested-With": "com.nintendo.znca",
+        }
+        cookies = {
+            "_gtoken": gtoken,
+            "_dnt": "1",
+        }
+        url = SPLATNET_URL + "/api/bullet_tokens"
+        response = self.session.post(url, headers=header, cookies=cookies)
+
+        if response.status_code == 401:
+            raise SplatnetException("Invalid gtoken")
+        elif response.status_code == 403:
+            raise SplatnetException("Obsolete Version")
+        elif response.status_code == 204:
+            raise SplatnetException("No Content")
+        
+        try:
+            return response.json()["bulletToken"]
+        except KeyError:
+            raise NintendoException("Invalid response from Nintendo")
+
+    @property
+    def splatnet_web_version(self) -> str:
+        try:
+            web_version = self.get_splatnet_web_version()
+            self._web_view_version = web_version
+            return web_version
+        except SplatnetException as e:
+            logger.log(str(e), "warning")
+            logger.log("Using fallback web view version", "warning")
+            return WEB_VIEW_VERSION_FALLBACK
+
+    def get_splatnet_web_version(
+        self, bullet_header: dict = {}, gtoken: str | None = None
+    ) -> str:
+
+        if self._web_view_version is not None:
+            return self._web_view_version
+
+        base_header = {
+            "Upgrade-Insecure-Requests": "1",
+            "Accept": "*/*",
+            "DNT": "1",
+            "X-AppColorScheme": "DARK",
+            "X-Requested-With": "com.nintendo.znca",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-User": "?1",
+            "Sec-Fetch-Dest": "document",
+        }
+        cookies = {"_dnt": "1"}
+
+        if len(bullet_header) > 0:
+            base_header.update(bullet_header)
+        if gtoken is not None:
+            cookies["_gtoken"] = gtoken
+
+        home_response = self.session.get(
+            SPLATNET_URL, headers=base_header, cookies=cookies
+        )
+        if home_response.status_code != 200:
+            raise SplatnetException("Failed to get splatnet home page")
+
+        soup = BeautifulSoup(home_response.text, "html.parser")
+        main_js = soup.select_one("script[src*='static']")
+
+        if main_js is None:
+            raise SplatnetException("Failed to find main js URL in home page")
+
+        main_js_url = SPLATNET_URL + main_js.attrs["src"]
+
+        header = {
+            "Accept": "*/*",
+            "X-Requested-With": "com.nintendo.znca",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Dest": "script",
+            "Referer": SPLATNET_URL,
+        }
+        if len(bullet_header) > 0:
+            header.update(bullet_header)
+
+        main_js_body = self.session.get(
+            main_js_url, headers=header, cookies=cookies
+        )
+        if main_js_body.status_code != 200:
+            raise SplatnetException("Failed to get main js file")
+
+        revision_re = re.compile(r"[0-9a-f]{40}")
+        version_re = re.compile(r"(?<=xX=\`)\d+\.\d+\.\d+")
+        try:
+            version = version_re.findall(main_js_body.text)[0]
+            revision = revision_re.findall(main_js_body.text)[0]
+        except IndexError:
+            raise SplatnetException("Failed to find version or revision")
+        
+        version_string = f"{version}-{revision[:8]}"
+        return version_string
+

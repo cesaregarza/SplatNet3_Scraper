@@ -9,3 +9,4 @@ DEFAULT_USER_AGENT = (
     + "Chrome/94.0.4606.61 "
     + "Mobile Safari/537.36"
 )
+WEB_VIEW_VERSION_FALLBACK = "2.0.0-bd36a652"
