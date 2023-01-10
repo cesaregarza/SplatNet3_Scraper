@@ -10,3 +10,8 @@ DEFAULT_USER_AGENT = (
     + "Mobile Safari/537.36"
 )
 WEB_VIEW_VERSION_FALLBACK = "2.0.0-bd36a652"
+TOKEN_EXPIRATIONS = {
+    "session_token": "inf",
+    "gtoken": (60 * 60 * 6) + (60 * 30),
+    "bullet_token": (60 * 60 * 2),
+}

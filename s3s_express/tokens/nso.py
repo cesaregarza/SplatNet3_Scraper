@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+from typing import cast
 
 import requests
 from bs4 import BeautifulSoup
@@ -10,6 +11,7 @@ from bs4 import BeautifulSoup
 from s3s_express import __version__, logger
 from s3s_express.constants import (
     DEFAULT_USER_AGENT,
+    IMINK_URL,
     IOS_APP_URL,
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
@@ -36,12 +38,52 @@ class SplatnetException(Exception):
 
 
 class NSO:
+    """The NSO class contains all the logic to proceed through the login flow.
+    This class also holds various properties that are used to make requests to
+    the Nintendo Switch Online API. Login flow is roughly as follows:
+        1.  Initialize a requests session and store it.
+        2.  Generate a random state and S256 code challenge that will be used
+                to obtain the "session_token". Store them for later use.
+        3.  Generate a login URL using the state and code challenge that the
+                user will open in their browser. The user will then copy a link
+                and feed it back to the program.
+        4.  Parse the URI to obtain the session token code, then use it
+                alongside the code challenge to obtain the "session_token".
+                Store it for later use. The session token is valid for 2 years
+                and can be revoked by the user.
+        5.  Use the session token to obtain a user access response. Store it for
+                later use. The user access response contains two tokens: an "id"
+                token and a "user access" token.
+        6.  Use the user access token to obtain the user information. This is
+                required to obtain the "f" token. Store it for later use.
+        7.  Use the user information to obtain an "f" token using the first
+                hashing method. This will also return a request ID and a
+                timestamp. These do not need to be stored.
+        8.  Use the "f" token, user information, and the id token to obtain a
+                splatoon token. This token will contain a new "id" token.
+        9.  Use the new "id" token to obtain the g token using the second
+                hashing method. Store it for later use. The g token is valid for
+                6 hours and 30 minutes.
+        10. Use the g token and user information to obtain a bullet token. This
+                token is valid for 2 hours.
+
+    Once the login flow is complete, the NSO class contains all the necessary
+    values to regenerate the tokens. To minimize the number of objects to track,
+    the NSO class only stores the tokens in memory. The TokenManager class
+    handles the persistence of the tokens to disk.
+    """
+
     def __init__(self, session: requests.Session) -> None:
         self.session = session
         self._state: bytes | None = None
         self._verifier: bytes | None = None
         self._version: str | None = None
         self._web_view_version: str | None = None
+        self._session_token: str | None = None
+        self._user_access_token: str | None = None
+        self._id_token: str | None = None
+        self._gtoken: str | None = None
+        self._user_info: dict[str, str] | None = None
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -125,6 +167,12 @@ class NSO:
         """
         verifier_ = base64.urlsafe_b64encode(os.urandom(32))
         return verifier_.replace(b"=", b"")
+
+    @property
+    def session_token(self) -> str:
+        if self._session_token is None:
+            raise ValueError("Session token is not set.")
+        return self._session_token
 
     def header(self, user_agent: str) -> dict[str, str]:
         """Returns the headers for the session.
@@ -226,7 +274,9 @@ class NSO:
         }
         uri = "https://accounts.nintendo.com/connect/1.0.0/api/session_token"
         response = self.session.post(uri, headers=header, data=params)
-        return response.json()["session_token"]
+        session_token = response.json()["session_token"]
+        self._session_token = session_token
+        return session_token
 
     def get_user_access_token(self, session_token: str) -> requests.Response:
         """Gets the user access token from the session token.
@@ -279,29 +329,38 @@ class NSO:
         response = self.session.get(url, headers=header)
         return response.json()
 
-    def get_gtoken(self, f_token_url: str, session_token: str) -> str:
+    def get_gtoken(
+        self, session_token: str, f_token_url: str | None = None
+    ) -> str:
         """Gets the gtoken from the user access token.
 
         Args:
             f_token_url (str): The url to get the user access token from.
             session_token (str): The session token.
 
+        Raises:
+            NintendoException: If the user access token could not be retrieved.
+
         Returns:
             str: The gtoken.
         """
+        f_token_url = f_token_url if f_token_url is not None else IMINK_URL
         # Get user access token
         user_access_response = self.get_user_access_token(session_token)
         user_access_json = user_access_response.json()
         try:
-            user_access_token = user_access_json["access_token"]
-            id_token = user_access_json["id_token"]
+            self._user_access_token = cast(
+                str, user_access_json["access_token"]
+            )
+            self._id_token = user_access_json["id_token"]
         except (KeyError, TypeError, AttributeError):
             raise NintendoException(
                 "Failed to get user access token. "
                 + f"Response: {user_access_json}"
             )
 
-        user_info = self.get_user_info(user_access_token)
+        user_info = self.get_user_info(self._user_access_token)
+        self._user_info = user_info
         splatoon_response = self.f_token_generation_step_1(
             user_access_response, user_info, f_token_url
         )
@@ -309,6 +368,7 @@ class NSO:
             "accessToken"
         ]
         gtoken = self.f_token_generation_step_2(id_token, f_token_url)
+        self._gtoken = gtoken
         return gtoken
 
     def get_ftoken(
@@ -369,9 +429,6 @@ class NSO:
             user_info (dict[str, str]): The user information.
             f_token_url (str): The url to get the f token from.
 
-        Raises:
-            IminkException: If the f token cannot be retrieved.
-
         Returns:
             requests.Response: The response.
         """
@@ -403,7 +460,7 @@ class NSO:
         self,
         id_token: str,
         f_token_url: str,
-    ) -> requests.Response:
+    ) -> str:
         """Final step of gtoken generation. This step is retried once if it
         fails.
 
@@ -412,7 +469,7 @@ class NSO:
             f_token_url (str): The url to get the f token from.
 
         Returns:
-            requests.Response: The gtoken from the response.
+            str: The gtoken from the response.
         """
         f_token, request_id, timestamp = self.get_ftoken(
             f_token_url, id_token, 2
@@ -438,7 +495,7 @@ class NSO:
         }
         url = "https://api-lp1.znc.srv.nintendo.net/v2/Game/GetWebServiceToken"
         response = self.session.post(url, headers=header, json=body).json()
-        gtoken = response["result"]["accessToken"]
+        gtoken = cast(str, response["result"]["accessToken"])
         return gtoken
 
     def get_splatoon_token(self, body: dict) -> requests.Response:
@@ -458,8 +515,34 @@ class NSO:
         return self.session.post(url, headers=header, json=body)
 
     def get_bullet_token(
-        self, gtoken: str, user_info: dict, user_agent: str
+        self,
+        gtoken: str,
+        user_info: dict,
+        user_agent: str | None = None,
     ) -> str:
+        """Given the gtoken and user information, returns the bullet token.
+
+        Bullet token is given by Splatnet and is required to access Splatnet.
+
+        Args:
+            gtoken (str): GameWebToken, also known as gtoken. Given by Nintendo.
+            user_info (dict): User information. Given by Nintendo.
+            user_agent (str | None): User agent. If None, the default user agent
+                will be used. Defaults to None.
+
+        Raises:
+            SplatnetException: If the provided gtoken is invalid.
+            SplatnetException: If the version of Splatnet is obsolete.
+            SplatnetException: If no content is returned, indicating that the
+                user has not accessed online services before.
+            NintendoException: If Nintendo returns an invalid response.
+
+        Returns:
+            str: The bullet token.
+        """
+        user_agent = (
+            user_agent if user_agent is not None else DEFAULT_USER_AGENT
+        )
         header = {
             "Content-Length": "0",
             "Content-Type": "application/json",
@@ -484,7 +567,7 @@ class NSO:
             raise SplatnetException("Obsolete Version")
         elif response.status_code == 204:
             raise SplatnetException("No Content")
-        
+
         try:
             return response.json()["bulletToken"]
         except KeyError:
@@ -504,6 +587,29 @@ class NSO:
     def get_splatnet_web_version(
         self, bullet_header: dict = {}, gtoken: str | None = None
     ) -> str:
+        """Gets the web view version from splatnet, this is used to get the
+        bullet token.
+
+        Args:
+            bullet_header (dict): Additional fields to add to the header. By
+                default this is empty. Acceptable fields are:
+                    "User-Agent": str
+                    "Accept-Encoding": str
+                    "Accept-Language": str
+                Fefaults to {}.
+            gtoken (str | None): The gtoken to use. If None, the gtoken will
+                not be added to the cookies. Defaults to None.
+
+        Raises:
+            SplatnetException: Failed to get splatnet home page
+            SplatnetException: Failed to find main.js URL in home page
+            SplatnetException: Failed to get main.js
+            SplatnetException: Failed to find version or revision number in
+                main.js
+
+        Returns:
+            str: The web view version
+        """
 
         if self._web_view_version is not None:
             return self._web_view_version
@@ -564,7 +670,6 @@ class NSO:
             revision = revision_re.findall(main_js_body.text)[0]
         except IndexError:
             raise SplatnetException("Failed to find version or revision")
-        
+
         version_string = f"{version}-{revision[:8]}"
         return version_string
-
