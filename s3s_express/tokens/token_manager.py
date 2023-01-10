@@ -76,7 +76,7 @@ class TokenManager:
     def __init__(self, nso: NSO | None = None) -> None:
         nso = nso if nso is not None else NSO.new_instance()
         self.nso = nso
-        self._tokens = {}
+        self._tokens: dict[str, Token] = {}
 
     def add_token(
         self,
@@ -190,17 +190,15 @@ class TokenManager:
         """
         config = configparser.ConfigParser()
         config.read(path)
-        # Get the tokens from the config
-        tokens = config.get("tokens", "tokens")
-        # Create a new NSO object and assign the appropriate tokens
         nso = NSO.new_instance()
         tokenmanager = TokenManager(nso)
-        for token in tokens:
-            if token == TOKENS.SESSION_TOKEN:
-                tokenmanager.nso._session_token = tokens[token]
-            elif token == TOKENS.GTOKEN:
-                tokenmanager.nso._gtoken = tokens[token]
-            tokenmanager.add_token(tokens[token], token)
+        for option in config.options("tokens"):
+            token = config.get("tokens", option)
+            if option == TOKENS.SESSION_TOKEN:
+                nso._session_token = token
+            elif option == TOKENS.GTOKEN:
+                nso._gtoken = token
+            tokenmanager.add_token(token, option)
         return tokenmanager
 
     @staticmethod
@@ -230,7 +228,10 @@ class TokenManager:
             path (str): The path to the config file.
         """
         config = configparser.ConfigParser()
-        config["tokens"] = {"tokens": self._tokens}
+        out_tokens = {}
+        for token_name, token in self._tokens.items():
+            out_tokens[token_name] = token.token
+        config["tokens"] = out_tokens
         if path is None:
             path = ".s3s_express"
         with open(path, "w") as configfile:
