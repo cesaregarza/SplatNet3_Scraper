@@ -1,6 +1,7 @@
 import configparser
 import os
 import time
+from typing import cast
 
 from s3s_express.constants import ENV_VAR_NAMES, TOKEN_EXPIRATIONS, TOKENS
 from s3s_express.tokens.nso import NSO
@@ -147,7 +148,7 @@ class TokenManager:
         if TOKENS.GTOKEN not in self._tokens:
             self.generate_gtoken()
         bullet_token = self.nso.get_bullet_token(
-            self.nso._gtoken, self.nso._user_info
+            cast(str, self.nso._gtoken), cast(dict, self.nso._user_info)
         )
         self.add_token(bullet_token, TOKENS.BULLET_TOKEN)
 
