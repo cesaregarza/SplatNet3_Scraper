@@ -78,6 +78,7 @@ class TokenManager:
         nso = nso if nso is not None else NSO.new_instance()
         self.nso = nso
         self._tokens: dict[str, Token] = {}
+        self._data: dict[str, str] = {}
 
     def add_token(
         self,
@@ -109,6 +110,18 @@ class TokenManager:
             timestamp = time.time()
         self._tokens[token_type] = Token(token, token_type, timestamp)
 
+    def get(self, token_type: str) -> Token | None:
+        return self._tokens.get(token_type)
+
+    @property
+    def data(self) -> dict[str, str]:
+        """Returns the data stored in the manager.
+
+        Returns:
+            dict[str, str]: The data stored in the manager.
+        """
+        return self._data
+
     def add_session_token(self, token: str) -> None:
         """Adds a session token to the manager.
 
@@ -131,6 +144,11 @@ class TokenManager:
             )
         gtoken = self.nso.get_gtoken(self.nso.session_token)
         self.add_token(gtoken, TOKENS.GTOKEN)
+        user_info = self.nso._user_info
+        country = user_info["country"]
+        language = user_info["language"]
+        self._data["country"] = country
+        self._data["language"] = language
 
     def generate_bullet_token(self) -> None:
         """Generates a bullet token from the NSO class and adds it to the
@@ -200,6 +218,8 @@ class TokenManager:
             elif option == TOKENS.GTOKEN:
                 nso._gtoken = token
             tokenmanager.add_token(token, option)
+        for option in config.options("data"):
+            tokenmanager._data[option] = config.get("data", option)
         return tokenmanager
 
     @staticmethod
@@ -233,6 +253,7 @@ class TokenManager:
         for token_name, token in self._tokens.items():
             out_tokens[token_name] = token.token
         config["tokens"] = out_tokens
+        config["data"] = self._data
         if path is None:
             path = ".s3s_express"
         with open(path, "w") as configfile:

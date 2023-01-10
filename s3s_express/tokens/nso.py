@@ -17,7 +17,7 @@ from s3s_express.constants import (
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
-from s3s_express.utils import retry
+from s3s_express.utils import retry, get_splatnet_web_version
 
 
 class NintendoException(Exception):
@@ -577,23 +577,10 @@ class NSO:
     @property
     def splatnet_web_version(self) -> str:
         try:
-            web_version = self.get_splatnet_web_version()
+            web_version = get_splatnet_web_version()
             self._web_view_version = web_version
             return web_version
         except SplatnetException as e:
             logger.log(str(e), "warning")
             logger.log("Using fallback web view version", "warning")
             return WEB_VIEW_VERSION_FALLBACK
-
-    def get_splatnet_web_version(self) -> str:
-        """Gets the web view version from the GraphQL reference.
-
-        Returns:
-            str: The web view version.
-        """
-
-        if self._web_view_version is not None:
-            return self._web_view_version
-
-        response = self.session.get(GRAPH_QL_REFERENCE_URL)
-        return response.json()["version"]

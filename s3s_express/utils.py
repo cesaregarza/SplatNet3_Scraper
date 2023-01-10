@@ -1,6 +1,10 @@
 from typing import Callable, ParamSpec, Type, TypeVar
 
+import requests
+from functools import cache
+
 from s3s_express import logger
+from s3s_express.constants import GRAPH_QL_REFERENCE_URL
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -38,3 +42,14 @@ def retry(
         return wrapper
 
     return decorator
+
+
+@cache
+def get_splatnet_web_version() -> str:
+    """Gets the web view version from the GraphQL reference.
+
+    Returns:
+        str: The web view version.
+    """
+    response = requests.get(GRAPH_QL_REFERENCE_URL)
+    return response.json()["version"]
