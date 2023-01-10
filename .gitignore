@@ -152,3 +152,7 @@ input_files
 *.json
 !tests/input_files/*.json
 *.html
+
+# s3s_express files
+.s3s_express
+tokens.ini
