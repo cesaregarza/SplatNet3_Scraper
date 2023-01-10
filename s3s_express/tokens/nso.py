@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from s3s_express import __version__, logger
 from s3s_express.constants import (
     DEFAULT_USER_AGENT,
+    GRAPH_QL_REFERENCE_URL,
     IMINK_URL,
     IOS_APP_URL,
     SPLATNET_URL,
@@ -584,92 +585,15 @@ class NSO:
             logger.log("Using fallback web view version", "warning")
             return WEB_VIEW_VERSION_FALLBACK
 
-    def get_splatnet_web_version(
-        self, bullet_header: dict = {}, gtoken: str | None = None
-    ) -> str:
-        """Gets the web view version from splatnet, this is used to get the
-        bullet token.
-
-        Args:
-            bullet_header (dict): Additional fields to add to the header. By
-                default this is empty. Acceptable fields are:
-                    "User-Agent": str
-                    "Accept-Encoding": str
-                    "Accept-Language": str
-                Fefaults to {}.
-            gtoken (str | None): The gtoken to use. If None, the gtoken will
-                not be added to the cookies. Defaults to None.
-
-        Raises:
-            SplatnetException: Failed to get splatnet home page
-            SplatnetException: Failed to find main.js URL in home page
-            SplatnetException: Failed to get main.js
-            SplatnetException: Failed to find version or revision number in
-                main.js
+    def get_splatnet_web_version(self) -> str:
+        """Gets the web view version from the GraphQL reference.
 
         Returns:
-            str: The web view version
+            str: The web view version.
         """
 
         if self._web_view_version is not None:
             return self._web_view_version
 
-        base_header = {
-            "Upgrade-Insecure-Requests": "1",
-            "Accept": "*/*",
-            "DNT": "1",
-            "X-AppColorScheme": "DARK",
-            "X-Requested-With": "com.nintendo.znca",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-User": "?1",
-            "Sec-Fetch-Dest": "document",
-        }
-        cookies = {"_dnt": "1"}
-
-        if len(bullet_header) > 0:
-            base_header.update(bullet_header)
-        if gtoken is not None:
-            cookies["_gtoken"] = gtoken
-
-        home_response = self.session.get(
-            SPLATNET_URL, headers=base_header, cookies=cookies
-        )
-        if home_response.status_code != 200:
-            raise SplatnetException("Failed to get splatnet home page")
-
-        soup = BeautifulSoup(home_response.text, "html.parser")
-        main_js = soup.select_one("script[src*='static']")
-
-        if main_js is None:
-            raise SplatnetException("Failed to find main js URL in home page")
-
-        main_js_url = SPLATNET_URL + main_js.attrs["src"]
-
-        header = {
-            "Accept": "*/*",
-            "X-Requested-With": "com.nintendo.znca",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "no-cors",
-            "Sec-Fetch-Dest": "script",
-            "Referer": SPLATNET_URL,
-        }
-        if len(bullet_header) > 0:
-            header.update(bullet_header)
-
-        main_js_body = self.session.get(
-            main_js_url, headers=header, cookies=cookies
-        )
-        if main_js_body.status_code != 200:
-            raise SplatnetException("Failed to get main js file")
-
-        revision_re = re.compile(r"[0-9a-f]{40}")
-        version_re = re.compile(r"(?<=xX=\`)\d+\.\d+\.\d+")
-        try:
-            version = version_re.findall(main_js_body.text)[0]
-            revision = revision_re.findall(main_js_body.text)[0]
-        except IndexError:
-            raise SplatnetException("Failed to find version or revision")
-
-        version_string = f"{version}-{revision[:8]}"
-        return version_string
+        response = self.session.get(GRAPH_QL_REFERENCE_URL)
+        return response.json()["version"]

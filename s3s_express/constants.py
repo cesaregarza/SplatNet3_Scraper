@@ -1,4 +1,9 @@
 SPLATNET_URL = "https://api.lp1.av5ja.srv.nintendo.net"
+GRAPHQL_URL = SPLATNET_URL + "/api/graphql"
+GRAPH_QL_REFERENCE_URL = (
+    "https://raw.githubusercontent.com"
+    "/imink-app/SplatNet3/master/Data/splatnet3_webview_data.json"
+)
 IOS_APP_URL = (
     "https://apps.apple.com/us/app/nintendo-switch-online/id1234806557"
 )
