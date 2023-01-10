@@ -10,8 +10,20 @@ DEFAULT_USER_AGENT = (
     + "Mobile Safari/537.36"
 )
 WEB_VIEW_VERSION_FALLBACK = "2.0.0-bd36a652"
+
+
+class TOKENS:
+    SESSION_TOKEN = "session_token"
+    GTOKEN = "gtoken"
+    BULLET_TOKEN = "bullet_token"
+
+
 TOKEN_EXPIRATIONS = {
-    "session_token": "inf",
-    "gtoken": (60 * 60 * 6) + (60 * 30),
-    "bullet_token": (60 * 60 * 2),
+    TOKENS.GTOKEN: (60 * 60 * 6) + (60 * 30),
+    TOKENS.BULLET_TOKEN: (60 * 60 * 2),
+}
+ENV_VAR_NAMES = {
+    TOKENS.SESSION_TOKEN: "S3S_SESSION_TOKEN",
+    TOKENS.GTOKEN: "S3S_GTOKEN",
+    TOKENS.BULLET_TOKEN: "S3S_BULLET_TOKEN",
 }

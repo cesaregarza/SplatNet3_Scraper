@@ -1,6 +1,8 @@
+import configparser
+import os
 import time
 
-from s3s_express.constants import TOKEN_EXPIRATIONS
+from s3s_express.constants import ENV_VAR_NAMES, TOKEN_EXPIRATIONS, TOKENS
 from s3s_express.tokens.nso import NSO
 
 
@@ -70,21 +72,58 @@ class TokenManager:
         self._tokens[token_type] = Token(token, token_type, timestamp)
 
     def generate_gtoken(self) -> None:
-        if "session_token" not in self._tokens:
+        if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
                 "Session token must be set before generating a gtoken."
             )
         gtoken = self.nso.get_gtoken(self.nso.session_token)
-        self.add_token(gtoken, "gtoken")
+        self.add_token(gtoken, TOKENS.GTOKEN)
 
     def generate_bullet_token(self) -> None:
-        if "session_token" not in self._tokens:
+        if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
                 "Session token must be set before generating a bullet token."
             )
-        if "gtoken" not in self._tokens:
+        if TOKENS.GTOKEN not in self._tokens:
             self.generate_gtoken()
         bullet_token = self.nso.get_bullet_token(self.nso.session_token)
-        self.add_token(bullet_token, "bullet_token")
+        self.add_token(bullet_token, TOKENS.BULLET_TOKEN)
 
-    
+    @staticmethod
+    def load() -> "TokenManager":
+        pass
+
+    @staticmethod
+    def from_path(path: str) -> "TokenManager":
+        config = configparser.ConfigParser()
+        config.read(path)
+        # Get the tokens from the config
+        tokens = config.get("tokens", "tokens")
+        # Create a new NSO object and assign the appropriate tokens
+        nso = NSO.new_instance()
+        tokenmanager = TokenManager(nso)
+        for token in tokens:
+            if token == TOKENS.SESSION_TOKEN:
+                tokenmanager.nso._session_token = tokens[token]
+            elif token == TOKENS.GTOKEN:
+                tokenmanager.nso._gtoken = tokens[token]
+            tokenmanager.add_token(tokens[token], token)
+        return tokenmanager
+
+    @staticmethod
+    def from_env() -> "TokenManager":
+        nso = NSO.new_instance()
+        tokenmanager = TokenManager(nso)
+        for token in ENV_VAR_NAMES:
+            token_env = os.environ.get(ENV_VAR_NAMES[token])
+            if token_env is None:
+                continue
+            if token == TOKENS.SESSION_TOKEN:
+                tokenmanager.nso._session_token = token_env
+            elif token == TOKENS.GTOKEN:
+                tokenmanager.nso._gtoken = token_env
+            tokenmanager.add_token(token_env, token)
+        return tokenmanager
+
+    def save(self, path: str) -> None:
+        pass
