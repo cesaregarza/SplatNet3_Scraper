@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING
 
 import requests
 
-from s3s_express.constants import GRAPH_QL_REFERENCE_URL, SPLATNET_URL, GRAPHQL_URL
+from s3s_express.constants import (
+    DEFAULT_USER_AGENT,
+    GRAPH_QL_REFERENCE_URL,
+    GRAPHQL_URL,
+    SPLATNET_URL,
+)
 
 if TYPE_CHECKING:
     # Prevent circular imports since this is only used for type hints.
@@ -51,7 +56,7 @@ class GraphQLQueries:
     def query_header(
         self,
         token_manager: TokenManager,
-        config: Config,
+        config: Config | None = None,
         override: dict[str, str] = {},
     ) -> dict[str, str]:
         """Gets the headers for the GraphQL queries.
@@ -67,10 +72,16 @@ class GraphQLQueries:
             language = override["language"]
         else:
             language = token_manager.data["language"]
+
+        if config is None:
+            user_agent = DEFAULT_USER_AGENT
+        else:
+            user_agent = config.get("user_agent")
+
         headers = {
             "Authorization": f"Bearer {token_manager.get('bullet_token')}",
             "Accept-Language": language,
-            "User-Agent": config.get("user_agent"),
+            "User-Agent": user_agent,
             "X-Web-View-Ver": get_splatnet_web_version(),
             "Content-Type": "application/json",
             "Accept": "*/*",
@@ -109,18 +120,25 @@ class GraphQLQueries:
             "variables": variables,
         }
         return json.dumps(out)
-    
+
     def query(
-        self, query_name: str, token_manager: TokenManager, config: Config,
-        variables: dict[str, str] = {}, override: dict[str, str] = {}
+        self,
+        query_name: str,
+        token_manager: TokenManager,
+        config: Config | None = None,
+        variables: dict[str, str] = {},
+        override: dict[str, str] = {},
     ) -> requests.Response:
         """Makes a GraphQL query.
 
         Args:
             query_name (str): The name of the query.
             token_manager (TokenManager): The token manager.
-            variables (dict[str, str]): The variables for the query.
-            override (dict[str, str]): The headers to override.
+            config (Config): The config for the query. Defaults to None.
+            variables (dict[str, str]): The variables for the query. Defaults to
+                an empty dictionary.
+            override (dict[str, str]): The headers to override. Defaults to an
+                empty dictionary.
 
         Returns:
             requests.Response: The response from the query.
