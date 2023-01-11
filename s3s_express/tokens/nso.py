@@ -232,7 +232,7 @@ class NSO:
         }
         login_url = "https://accounts.nintendo.com/connect/1.0.0/authorize"
         response = self.session.get(
-            login_url, headers=header, params=params # type: ignore
+            login_url, headers=header, params=params  # type: ignore
         )
         return response.url
 

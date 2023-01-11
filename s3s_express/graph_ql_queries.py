@@ -114,7 +114,7 @@ class GraphQLQueries:
             variables (dict[str, str]): The variables for the query.
 
         Returns:
-            dict[str, str]: The body for the GraphQL queries.
+            str: The body for the GraphQL queries, as a string.
         """
         out = {
             "extensions": {

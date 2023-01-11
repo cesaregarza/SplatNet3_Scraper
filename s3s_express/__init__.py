@@ -10,6 +10,6 @@ self_path = pathlib.Path(__file__).parent.parent
 toml_path = self_path / "pyproject.toml"
 with open(toml_path, "rb") as f:
     lines = f.readlines()
-version_line = [line for line in lines if "version" in line][0]
+version_line = [str(line) for line in lines if "version" in str(line)][0]
 version = re.search(r"\d+\.\d+\.\d+", version_line).group(0)
 __version__ = version

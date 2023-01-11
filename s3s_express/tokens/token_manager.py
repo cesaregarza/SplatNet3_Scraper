@@ -2,7 +2,7 @@ import configparser
 import os
 import re
 import time
-from typing import cast, Literal, overload
+from typing import Literal, cast, overload
 
 import requests
 
@@ -128,20 +128,18 @@ class TokenManager:
         self._tokens[token_type] = Token(token, token_type, timestamp)
 
     @overload
-    def get(self, token_type: str, full_token: Literal[False]) -> str | None:
+    def get(self, token_type: str, full_token: Literal[False] = ...) -> str:
         ...
 
     @overload
-    def get(self, token_type: str, full_token: Literal[True]) -> Token | None:
+    def get(self, token_type: str, full_token: Literal[True]) -> Token:
         ...
 
     @overload
-    def get(self, token_type: str, full_token: bool) -> str | Token | None:
+    def get(self, token_type: str, full_token: bool) -> str | Token:
         ...
 
-    def get(
-        self, token_type: str, full_token: bool = False
-    ) -> str | Token | None:
+    def get(self, token_type: str, full_token: bool = False) -> str | Token:
         """Gets a token from the manager. If full_token is True, the Token
         object will be returned. Otherwise, the token string will be returned.
 
@@ -150,13 +148,15 @@ class TokenManager:
             full_token (bool): Whether to return the full Token object or just
                 the token string.
 
+        Raises:
+            ValueError: If the token type is not found.
+
         Returns:
-            str | Token | None: The token or Token object, or None if the
-                token does not exist.
+            str | Token: The token or Token object.
         """
         token_obj = self._tokens.get(token_type, None)
         if token_obj is None:
-            return None
+            raise ValueError(f"Token of type {token_type} not found.")
         if full_token:
             return token_obj
         return token_obj.token
