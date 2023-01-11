@@ -78,6 +78,9 @@ class Config:
         Args:
             key (str): The name of the option.
 
+        Raises:
+            KeyError: If the option is not valid.
+
         Returns:
             str: The value of the option.
         """

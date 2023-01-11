@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import requests
 
@@ -56,14 +56,18 @@ class GraphQLQueries:
     def query_header(
         self,
         token_manager: TokenManager,
-        config: Config | None = None,
+        config: Config | str | None = None,
         override: dict[str, str] = {},
     ) -> dict[str, str]:
         """Gets the headers for the GraphQL queries.
 
         Args:
             token_manager (TokenManager): The token manager.
-            override (dict[str, str]): The headers to override.
+            config (Config, str): The config file or a string containing the
+                desired user agent. If None, the default user agent will be
+                used. Defaults to None.
+            override (dict[str, str]): The headers to override. Defaults to an
+                empty dictionary.
 
         Returns:
             dict[str, str]: The headers for the GraphQL queries.
@@ -75,8 +79,10 @@ class GraphQLQueries:
 
         if config is None:
             user_agent = DEFAULT_USER_AGENT
-        else:
+        elif isinstance(config, Config):
             user_agent = config.get("user_agent")
+        else:
+            user_agent = config
 
         headers = {
             "Authorization": f"Bearer {token_manager.get('bullet_token')}",
@@ -100,8 +106,8 @@ class GraphQLQueries:
 
     def query_body(
         self, query_name: str, variables: dict[str, str] = {}
-    ) -> dict[str, str]:
-        """Gets the body for the GraphQL queries.
+    ) -> str:
+        """Gets the body for the GraphQL queries, as a string.
 
         Args:
             query_name (str): The name of the query.
@@ -146,7 +152,7 @@ class GraphQLQueries:
         header = self.query_header(token_manager, config, override)
         body = self.query_body(query_name, variables)
         cookies = {
-            "_gtoken": token_manager.get("gtoken"),
+            "_gtoken": cast(str, token_manager.get("gtoken")),
         }
         response = requests.post(
             GRAPHQL_URL, headers=header, data=body, cookies=cookies

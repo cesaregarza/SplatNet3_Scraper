@@ -2,7 +2,6 @@ import base64
 import hashlib
 import json
 import os
-import re
 from typing import cast
 
 import requests
@@ -11,7 +10,6 @@ from bs4 import BeautifulSoup
 from s3s_express import __version__, logger
 from s3s_express.constants import (
     DEFAULT_USER_AGENT,
-    GRAPH_QL_REFERENCE_URL,
     IMINK_URL,
     IOS_APP_URL,
     SPLATNET_URL,

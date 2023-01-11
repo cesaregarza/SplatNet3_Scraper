@@ -2,7 +2,7 @@ import configparser
 import os
 import re
 import time
-from typing import cast
+from typing import cast, Literal, overload
 
 import requests
 
@@ -127,6 +127,20 @@ class TokenManager:
             timestamp = time.time()
         self._tokens[token_type] = Token(token, token_type, timestamp)
 
+    @overload
+    def get(
+        self, token_type: str, full_token: Literal[False] = ...
+    ) -> str | None:
+        ...
+
+    @overload
+    def get(self, token_type: str, full_token: Literal[True]) -> Token | None:
+        ...
+
+    @overload
+    def get(self, token_type: str, full_token: bool) -> str | Token | None:
+        ...
+
     def get(
         self, token_type: str, full_token: bool = False
     ) -> str | Token | None:
@@ -137,9 +151,10 @@ class TokenManager:
             token_type (str): The type of token to get.
             full_token (bool): Whether to return the full Token object or just
                 the token string.
+
         Returns:
-            str | Token | None: The token or Token object, or None if the token
-                does not exist.
+            str | Token | None: The token or Token object, or None if the
+                token does not exist.
         """
         token_obj = self._tokens.get(token_type, None)
         if token_obj is None:
@@ -179,7 +194,7 @@ class TokenManager:
             )
         gtoken = self.nso.get_gtoken(self.nso.session_token)
         self.add_token(gtoken, TOKENS.GTOKEN)
-        user_info = self.nso._user_info
+        user_info = cast(dict[str, str], self.nso._user_info)
         country = user_info["country"]
         language = user_info["language"]
         self._data["country"] = country
@@ -194,6 +209,7 @@ class TokenManager:
 
         Raises:
             ValueError: If the session token has not been set.
+            SplatnetException: If the bullet token was unable to be generated.
         """
         if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
@@ -205,7 +221,8 @@ class TokenManager:
             cast(str, self.nso._gtoken), cast(dict, self.nso._user_info)
         )
         self.add_token(bullet_token, TOKENS.BULLET_TOKEN)
-        if not self.get(TOKENS.BULLET_TOKEN, full_token=True).is_valid:
+        bullet = self.get(TOKENS.BULLET_TOKEN, full_token=True)
+        if (bullet is not None) and bullet.is_valid:
             raise SplatnetException(
                 "Bullet token was unable to be generated. This is likely due "
                 "to SplatNet 3 being down. Please try again later."
@@ -214,9 +231,6 @@ class TokenManager:
     def generate_all_tokens(self) -> None:
         """Generates all tokens from the NSO class and adds them to the
         manager. Requires a session token to already be set.
-
-        Raises:
-            ValueError: If the session token has not been set.
         """
         self.generate_gtoken()
         self.generate_bullet_token()
@@ -254,6 +268,9 @@ class TokenManager:
 
         Args:
             path (str): The path to the config file.
+
+        Raises:
+            ValueError: If the config file does not have a 'tokens' section.
 
         Returns:
             TokenManager: The token manager with the tokens loaded.
@@ -376,7 +393,7 @@ class TokenManager:
             GRAPH_QL_REFERENCE_URL,
             data=queries.query_body("HomeQuery"),
             headers=queries.query_header(self, config),
-            cookies={"_gtoken": self.get(TOKENS.GTOKEN)},
+            cookies={"_gtoken": cast(str, self.get(TOKENS.GTOKEN))},
         )
         if response.status_code != 200:
             self.generate_all_tokens()
