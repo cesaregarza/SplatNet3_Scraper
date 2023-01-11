@@ -6,15 +6,15 @@ from typing import Literal, cast, overload
 
 import requests
 
-from s3s_express.config import Config
+from s3s_express import __version__
+from s3s_express.base.graph_ql_queries import queries
+from s3s_express.base.tokens.nso import NSO, SplatnetException
 from s3s_express.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
     TOKEN_EXPIRATIONS,
     TOKENS,
 )
-from s3s_express.graph_ql_queries import queries
-from s3s_express.tokens.nso import NSO, SplatnetException
 from s3s_express.utils import retry
 
 text_config_re = re.compile(r"\s*=*\s*")
@@ -233,8 +233,8 @@ class TokenManager:
         self.generate_gtoken()
         self.generate_bullet_token()
 
-    @staticmethod
-    def load() -> "TokenManager":
+    @classmethod
+    def load(cls) -> "TokenManager":
         """Loads tokens from a config file or environment variables.
 
         Checks for appropriate tokens in the following order:
@@ -249,19 +249,19 @@ class TokenManager:
             TokenManager: The token manager with the tokens loaded.
         """
         if os.path.exists(".s3s_express"):
-            return TokenManager.from_config_file(".s3s_express")
+            return cls.from_config_file(".s3s_express")
         elif any([os.environ.get(var) for var in ENV_VAR_NAMES.values()]):
-            return TokenManager.from_env()
+            return cls.from_env()
         elif os.path.exists("tokens.ini"):
-            return TokenManager.from_config_file("tokens.ini")
+            return cls.from_config_file("tokens.ini")
         else:
             raise ValueError(
                 "No tokens found. Please create a .s3s_express file, set "
                 "environment variables, or create a tokens.ini file."
             )
 
-    @staticmethod
-    def from_config_file(path: str) -> "TokenManager":
+    @classmethod
+    def from_config_file(cls, path: str) -> "TokenManager":
         """Loads tokens from a config file.
 
         Args:
@@ -276,7 +276,8 @@ class TokenManager:
         config = configparser.ConfigParser()
         config.read(path)
         nso = NSO.new_instance()
-        tokenmanager = TokenManager(nso)
+        tokenmanager = cls(nso)
+
         if not config.has_section("tokens"):
             raise ValueError("Config file does not have a 'tokens' section.")
         for option in config.options("tokens"):
@@ -286,6 +287,7 @@ class TokenManager:
             elif option == TOKENS.GTOKEN:
                 nso._gtoken = token
             tokenmanager.add_token(token, option)
+
         if not config.has_section("data"):
             tokenmanager.generate_all_tokens()
             return tokenmanager
@@ -293,8 +295,8 @@ class TokenManager:
             tokenmanager._data[option] = config.get("data", option)
         return tokenmanager
 
-    @staticmethod
-    def from_text_file(path: str) -> "TokenManager":
+    @classmethod
+    def from_text_file(cls, path: str) -> "TokenManager":
         """Loads tokens from a text file. Not recommended, but here for
         compatability with s3s config files.
 
@@ -304,7 +306,7 @@ class TokenManager:
         Returns:
             TokenManager: The token manager with the tokens loaded.
         """
-        token_manager = TokenManager()
+        token_manager = cls()
         with open(path, "r") as f:
             lines = f.readlines()
         # Clean up the lines
@@ -317,15 +319,15 @@ class TokenManager:
                 token_manager.add_token(token, token_name)
         return token_manager
 
-    @staticmethod
-    def from_env() -> "TokenManager":
+    @classmethod
+    def from_env(cls) -> "TokenManager":
         """Loads tokens from environment variables.
 
         Returns:
             TokenManager: The token manager with the tokens loaded.
         """
         nso = NSO.new_instance()
-        tokenmanager = TokenManager(nso)
+        tokenmanager = cls(nso)
         for token in ENV_VAR_NAMES:
             token_env = os.environ.get(ENV_VAR_NAMES[token])
             if token_env is None:
@@ -349,6 +351,10 @@ class TokenManager:
             out_tokens[token_name] = token.token
         config["tokens"] = out_tokens
         config["data"] = self._data
+        config["metadata"] = {
+            "version": __version__,
+            "class": self.__class__.__name__,
+        }
         if path is None:
             path = ".s3s_express"
         with open(path, "w") as configfile:
@@ -368,12 +374,12 @@ class TokenManager:
             return False
         return token.is_valid
 
-    def test_tokens(self, config: Config) -> None:
+    def test_tokens(self, user_agent: str | None = None) -> None:
         """Tests the tokens by making a request to the GraphQL endpoint and
         regenerate tokens if they are invalid.
 
         Args:
-            config (Config): The config object.
+            user_agent (str): The user agent to use for the request.
 
         Raises:
             ValueError: If the session token is not set.
@@ -387,10 +393,14 @@ class TokenManager:
         if self.token_is_valid(TOKENS.BULLET_TOKEN) is False:
             self.generate_bullet_token()
 
+        header = queries.query_header(
+            self.get(TOKENS.BULLET_TOKEN), self._data["language"], user_agent
+        )
+
         response = requests.post(
             GRAPH_QL_REFERENCE_URL,
             data=queries.query_body("HomeQuery"),
-            headers=queries.query_header(self, config),
+            headers=header,
             cookies={"_gtoken": cast(str, self.get(TOKENS.GTOKEN))},
         )
         if response.status_code != 200:
