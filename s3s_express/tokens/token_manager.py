@@ -128,9 +128,7 @@ class TokenManager:
         self._tokens[token_type] = Token(token, token_type, timestamp)
 
     @overload
-    def get(
-        self, token_type: str, full_token: Literal[False] = ...
-    ) -> str | None:
+    def get(self, token_type: str, full_token: Literal[False]) -> str | None:
         ...
 
     @overload

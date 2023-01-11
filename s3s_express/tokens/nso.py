@@ -231,7 +231,9 @@ class NSO:
             "theme": "login_form",
         }
         login_url = "https://accounts.nintendo.com/connect/1.0.0/authorize"
-        response = self.session.get(login_url, headers=header, params=params)
+        response = self.session.get(
+            login_url, headers=header, params=params # type: ignore
+        )
         return response.url
 
     def parse_npf_uri(self, uri: str) -> str:
