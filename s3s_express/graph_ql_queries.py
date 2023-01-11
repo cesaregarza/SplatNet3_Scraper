@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import requests
 
-from s3s_express.constants import GRAPH_QL_REFERENCE_URL, SPLATNET_URL
+from s3s_express.constants import GRAPH_QL_REFERENCE_URL, SPLATNET_URL, GRAPHQL_URL
 
 if TYPE_CHECKING:
     # Prevent circular imports since this is only used for type hints.
@@ -109,6 +109,31 @@ class GraphQLQueries:
             "variables": variables,
         }
         return json.dumps(out)
+    
+    def query(
+        self, query_name: str, token_manager: TokenManager, config: Config,
+        variables: dict[str, str] = {}, override: dict[str, str] = {}
+    ) -> requests.Response:
+        """Makes a GraphQL query.
+
+        Args:
+            query_name (str): The name of the query.
+            token_manager (TokenManager): The token manager.
+            variables (dict[str, str]): The variables for the query.
+            override (dict[str, str]): The headers to override.
+
+        Returns:
+            requests.Response: The response from the query.
+        """
+        header = self.query_header(token_manager, config, override)
+        body = self.query_body(query_name, variables)
+        cookies = {
+            "_gtoken": token_manager.get("gtoken"),
+        }
+        response = requests.post(
+            GRAPHQL_URL, headers=header, data=body, cookies=cookies
+        )
+        return response
 
 
 queries = GraphQLQueries()
