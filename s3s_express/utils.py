@@ -1,7 +1,7 @@
+from functools import cache
 from typing import Callable, ParamSpec, Type, TypeVar
 
 import requests
-from functools import cache
 
 from s3s_express import logger
 from s3s_express.constants import GRAPH_QL_REFERENCE_URL

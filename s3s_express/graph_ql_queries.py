@@ -1,7 +1,16 @@
+from __future__ import annotations
+
+import json
+from typing import TYPE_CHECKING
+
 import requests
 
 from s3s_express.constants import GRAPH_QL_REFERENCE_URL, SPLATNET_URL
-from s3s_express.tokens import NSO, TokenManager
+
+if TYPE_CHECKING:
+    # Prevent circular imports since this is only used for type hints.
+    from s3s_express.tokens import TokenManager
+
 from s3s_express.config import Config
 from s3s_express.utils import get_splatnet_web_version
 
@@ -77,3 +86,29 @@ class GraphQLQueries:
         }
         headers.update(override)
         return headers
+
+    def query_body(
+        self, query_name: str, variables: dict[str, str] = {}
+    ) -> dict[str, str]:
+        """Gets the body for the GraphQL queries.
+
+        Args:
+            query_name (str): The name of the query.
+            variables (dict[str, str]): The variables for the query.
+
+        Returns:
+            dict[str, str]: The body for the GraphQL queries.
+        """
+        out = {
+            "extensions": {
+                "persistedQuery": {
+                    "sha256Hash": self.get_query(query_name),
+                    "version": 1,
+                }
+            },
+            "variables": variables,
+        }
+        return json.dumps(out)
+
+
+queries = GraphQLQueries()

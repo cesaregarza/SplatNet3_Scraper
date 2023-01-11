@@ -17,7 +17,7 @@ from s3s_express.constants import (
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
-from s3s_express.utils import retry, get_splatnet_web_version
+from s3s_express.utils import get_splatnet_web_version, retry
 
 
 class NintendoException(Exception):
