@@ -97,6 +97,21 @@ class TokenManager:
         self._tokens: dict[str, Token] = {}
         self._data: dict[str, str] = {}
 
+    def flag_origin(self, origin: str, data: str | None = None) -> None:
+        """Flags the origin of the token manager. This is used to determine
+        whether the token manager was loaded from a config file or environment
+        variables.
+
+        Args:
+            origin (str): The origin of the token manager.
+            data (str | None): Additional data about the origin. For example,
+                if the token manager was loaded from a config file, this would
+                be the path to the config file. On the other hand, if the token
+                manager was loaded from environment variables, this would be
+                None.
+        """
+        self._origin = {"origin": origin, "data": data}
+
     def add_token(
         self,
         token: str | Token,
@@ -277,6 +292,7 @@ class TokenManager:
         config.read(path)
         nso = NSO.new_instance()
         tokenmanager = cls(nso)
+        tokenmanager.flag_origin("config_file", path)
 
         if not config.has_section("tokens"):
             raise ValueError("Config file does not have a 'tokens' section.")
@@ -317,6 +333,7 @@ class TokenManager:
                 token_manager.add_session_token(token)
             else:
                 token_manager.add_token(token, token_name)
+        token_manager.flag_origin("text_file", path)
         return token_manager
 
     @classmethod
@@ -330,13 +347,18 @@ class TokenManager:
         tokenmanager = cls(nso)
         for token in ENV_VAR_NAMES:
             token_env = os.environ.get(ENV_VAR_NAMES[token])
-            if token_env is None:
-                continue
             if token == TOKENS.SESSION_TOKEN:
+                if token_env is None:
+                    raise ValueError(
+                        "Session token environment variable not set."
+                    )
                 tokenmanager.nso._session_token = token_env
+            elif token_env is None:
+                continue
             elif token == TOKENS.GTOKEN:
                 tokenmanager.nso._gtoken = token_env
             tokenmanager.add_token(token_env, token)
+        tokenmanager.flag_origin("env")
         return tokenmanager
 
     def save(self, path: str | None = None) -> None:

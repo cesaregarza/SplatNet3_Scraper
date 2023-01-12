@@ -1,10 +1,33 @@
 import configparser
 
+from s3s_express.base.tokens import TokenManager
 from s3s_express.constants import DEFAULT_USER_AGENT, IMINK_URL
 
 
 class Config:
-    def __init__(self, config_path: str) -> None:
+    """Class that can access the token manager as well as additional options."""
+
+    def __init__(self, config_path: str | None = None) -> None:
+        """Initializes the class.
+
+        Token manager will look for tokens in the following order:
+            1. the config_path argument
+            2. check the current working directory for ".s3s_express"
+            3. check for environment variables for defined tokens
+            4. check the current working directory for "tokens.ini"
+
+        If none of these are found, an exception will be raised.
+
+        Args:
+            config_path (str | None): The path to the config file. If None, it
+                will look for ".s3s_express" in the current working directory.
+        """
+        if config_path is not None:
+            self.token_manager = TokenManager.from_config_file(config_path)
+        # cgarza: A little bit of redundancy here, need better method.
+        else:
+            self.token_manager = TokenManager.load()
+
         self.config_path = config_path
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
@@ -13,8 +36,38 @@ class Config:
         except configparser.NoSectionError:
             self.config.add_section("options")
         self.manage_options()
-        # save changes
+
+        self.config_path = config_path
+
         with open(config_path, "w") as configfile:
+            self.config.write(configfile)
+
+    def save(
+        self, path: str | None = None, include_tokens: bool = True
+    ) -> None:
+        """Saves the config file to the given path.
+
+        Args:
+            path (str | None): The path to save the config file to. If the token
+                manager is using environment variables, the tokens section will
+                be removed from the config file. If None, it will save to the
+                path given in the constructor or ".s3s_express" in the current
+                working directory.
+            include_tokens (bool): Whether or not to include the tokens in the
+                config file. If False, the tokens will be removed from the
+                config file.
+        """
+        # Check if the user has the tokens in a separate file
+        origin = self.token_manager._origin["origin"]
+        if (origin == "env") or (not include_tokens):
+            # Remove the token manager from the config file
+            self.config.remove_section("tokens")
+        if path is None and self.config_path is not None:
+            path = self.config_path
+        elif path is None and self.config_path is None:
+            path = ".s3s_express"
+
+        with open(path, "w") as configfile:
             self.config.write(configfile)
 
     def manage_options(self) -> None:
