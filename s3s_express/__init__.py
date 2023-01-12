@@ -2,6 +2,7 @@ import pathlib
 import re
 
 from s3s_express.logs import Logger
+from s3s_express.express import S3S_Express
 
 logger = Logger("s3s_express.log")
 
