@@ -7,15 +7,16 @@ from typing import cast
 import requests
 from bs4 import BeautifulSoup
 
-from s3s_express import __version__, logger
-from s3s_express.constants import (
+from splatnet3_scraper import __version__
+from splatnet3_scraper.logs import logger
+from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
     IMINK_URL,
     IOS_APP_URL,
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
-from s3s_express.utils import get_splatnet_web_version, retry
+from splatnet3_scraper.utils import get_splatnet_web_version, retry
 
 
 class NintendoException(Exception):
@@ -401,7 +402,7 @@ class NSO:
                 str: The timestamp.
         """
         header = {
-            "User-Agent": f"s3s_express/{__version__}",
+            "User-Agent": f"splatnet3_scraper/{__version__}",
             "Content-Type": "application/json; charset=utf-8",
         }
         body = {

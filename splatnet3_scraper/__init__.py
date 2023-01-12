@@ -1,11 +1,6 @@
 import pathlib
 import re
 
-from s3s_express.logs import Logger
-from s3s_express.express import S3S_Express
-
-logger = Logger("s3s_express.log")
-
 # Read version number from TOML
 self_path = pathlib.Path(__file__).parent.parent
 toml_path = self_path / "pyproject.toml"
@@ -14,3 +9,5 @@ with open(toml_path, "rb") as f:
 version_line = [str(line) for line in lines if "version" in str(line)][0]
 version = re.search(r"\d+\.\d+\.\d+", version_line).group(0)
 __version__ = version
+
+from splatnet3_scraper.scraper import SplatNet3_Scraper

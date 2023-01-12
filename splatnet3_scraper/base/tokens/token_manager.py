@@ -6,16 +6,16 @@ from typing import Literal, cast, overload
 
 import requests
 
-from s3s_express import __version__
-from s3s_express.base.graph_ql_queries import queries
-from s3s_express.base.tokens.nso import NSO, SplatnetException
-from s3s_express.constants import (
+from splatnet3_scraper import __version__
+from splatnet3_scraper.base.graph_ql_queries import queries
+from splatnet3_scraper.base.tokens.nso import NSO, SplatnetException
+from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
     TOKEN_EXPIRATIONS,
     TOKENS,
 )
-from s3s_express.utils import retry
+from splatnet3_scraper.utils import retry
 
 text_config_re = re.compile(r"\s*=*\s*")
 
@@ -268,7 +268,7 @@ class TokenManager:
         """Loads tokens from a config file or environment variables.
 
         Checks for appropriate tokens in the following order:
-            1. .s3s_express file
+            1. .splatnet3_scraper file
             2. Environment variables
             3. tokens.ini file
 
@@ -278,15 +278,15 @@ class TokenManager:
         Returns:
             TokenManager: The token manager with the tokens loaded.
         """
-        if os.path.exists(".s3s_express"):
-            return cls.from_config_file(".s3s_express")
+        if os.path.exists(".splatnet3_scraper"):
+            return cls.from_config_file(".splatnet3_scraper")
         elif any([os.environ.get(var) for var in ENV_VAR_NAMES.values()]):
             return cls.from_env()
         elif os.path.exists("tokens.ini"):
             return cls.from_config_file("tokens.ini")
         else:
             raise ValueError(
-                "No tokens found. Please create a .s3s_express file, set "
+                "No tokens found. Please create a .splatnet3_scraper file, set "
                 "environment variables, or create a tokens.ini file."
             )
 
@@ -399,7 +399,7 @@ class TokenManager:
             "class": self.__class__.__name__,
         }
         if path is None:
-            path = ".s3s_express"
+            path = ".splatnet3_scraper"
         with open(path, "w") as configfile:
             config.write(configfile)
 

@@ -4,17 +4,17 @@ import json
 
 import requests
 
-from s3s_express.constants import (
+from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
     GRAPH_QL_REFERENCE_URL,
     GRAPHQL_URL,
     SPLATNET_URL,
 )
-from s3s_express.utils import get_splatnet_web_version
+from splatnet3_scraper.utils import get_splatnet_web_version
 
 
 class GraphQLQueries:
-    """Class that contains the GraphQL queries used by s3s_express.
+    """Class that contains the GraphQL queries used by splatnet3_scraper.
 
     Attributes:
         hash_map (dict[str, str]): The hashes for the GraphQL queries.

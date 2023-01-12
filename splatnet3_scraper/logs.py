@@ -7,3 +7,5 @@ class Logger:
 
     def log(self, message: str, *args) -> None:
         print(message)
+
+logger = Logger("splatnet3_scraper.log")

@@ -1,12 +1,10 @@
 [tool.poetry]
-name = "s3s-express"
+name = "splatnet3_scraper"
 version = "0.2.0"
-description = """s3s express is a python package that overhauls the existing\
-s3s package by prioritizing developer usability and performance.\
-"""
+description = "Scraper for SplatNet 3 for Splatoon 3"
 authors = ["Cesar E Garza <cesar@cegarza.com>"]
 readme = "README.md"
-packages = [{include = "s3s_express"}]
+packages = [{include = "splatnet3_scraper"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"

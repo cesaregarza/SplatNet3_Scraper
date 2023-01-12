@@ -1,0 +1,1 @@
+from splatnet3_scraper.scraper.main import SplatNet3_Scraper

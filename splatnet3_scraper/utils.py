@@ -3,8 +3,8 @@ from typing import Callable, ParamSpec, Type, TypeVar
 
 import requests
 
-from s3s_express import logger
-from s3s_express.constants import GRAPH_QL_REFERENCE_URL
+from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
+from splatnet3_scraper.logs import logger
 
 T = TypeVar("T")
 P = ParamSpec("P")

@@ -1,8 +1,8 @@
 import configparser
 from typing import Literal, overload
 
-from s3s_express.base.tokens import Token, TokenManager
-from s3s_express.constants import DEFAULT_USER_AGENT, IMINK_URL
+from splatnet3_scraper.base.tokens import Token, TokenManager
+from splatnet3_scraper.constants import DEFAULT_USER_AGENT, IMINK_URL
 
 
 class Config:
@@ -19,7 +19,7 @@ class Config:
 
         Token manager will look for tokens in the following order:
             1. the config_path argument
-            2. check the current working directory for ".s3s_express"
+            2. check the current working directory for ".splatnet3_scraper"
             3. check for environment variables for defined tokens
             4. check the current working directory for "tokens.ini"
 
@@ -27,8 +27,8 @@ class Config:
 
         Args:
             config_path (str | None): The path to the config file. If None, it
-                will look for ".s3s_express" in the current working directory.
-                Defaults to None.
+                will look for ".splatnet3_scraper" in the current working 
+                directory. Defaults to None.
             *args: These are ignored.
             token_manager (TokenManager | None): The token manager to use.
                 Keyword argument. If given, it will skip the post-init method.
@@ -49,7 +49,8 @@ class Config:
 
         Args:
             config_path (str | None): The path to the config file. If None, it
-                will look for ".s3s_express" in the current working directory.
+                will look for ".splatnet3_scraper" in the current working
+                directory.
         """
         if config_path is not None:
             self.token_manager = TokenManager.from_config_file(config_path)
@@ -57,7 +58,7 @@ class Config:
         else:
             self.token_manager = TokenManager.load()
 
-        config_path = ".s3s_express"
+        config_path = ".splatnet3_scraper"
 
         self.config_path = config_path
         self.config = configparser.ConfigParser()
@@ -81,7 +82,7 @@ class Config:
             path (str | None): The path to save the config file to. If the token
                 manager is using environment variables, the tokens section will
                 be removed from the config file. If None, it will save to the
-                path given in the constructor or ".s3s_express" in the current
+                path given in the constructor or ".splatnet3_scraper" in the current
                 working directory.
             include_tokens (bool): Whether or not to include the tokens in the
                 config file. If False, the tokens will be removed from the
@@ -95,7 +96,7 @@ class Config:
         if path is None and self.config_path is not None:
             path = self.config_path
         elif path is None and self.config_path is None:
-            path = ".s3s_express"
+            path = ".splatnet3_scraper"
 
         with open(path, "w") as configfile:
             self.config.write(configfile)

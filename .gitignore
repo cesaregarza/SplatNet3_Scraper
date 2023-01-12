@@ -153,6 +153,6 @@ input_files
 !tests/input_files/*.json
 *.html
 
-# s3s_express files
-.s3s_express
+# splatnet3_scraper files
+.splatnet3_scraper
 tokens.ini

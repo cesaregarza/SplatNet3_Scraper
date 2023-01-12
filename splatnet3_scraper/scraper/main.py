@@ -1,9 +1,9 @@
 import requests
 
-from s3s_express.base.graph_ql_queries import queries
-from s3s_express.base.tokens import NSO, TokenManager
-from s3s_express.constants import TOKENS
-from s3s_express.express.config import Config
+from splatnet3_scraper.base.graph_ql_queries import queries
+from splatnet3_scraper.base.tokens import NSO, TokenManager
+from splatnet3_scraper.constants import TOKENS
+from splatnet3_scraper.scraper.config import Config
 
 
 class QueryMap:
@@ -19,11 +19,11 @@ class QueryMap:
     TURF = REGULAR
 
 
-class S3S_Express:
+class SplatNet3_Scraper:
     """This class implements all of the classes and functions defined in the
-    s3s_express.base module and can be seen as an example of how to put them
-    together. While the class has a method to create the session token, a full
-    implementation with a CLI is outside the scope of this project.
+    splatnet3_scraper.base module and can be seen as an example of how to put
+    them together. While the class has a method to create the session token, a
+    full implementation with a CLI is outside the scope of this project.
     """
 
     def __init__(self, config: Config) -> None:
@@ -37,10 +37,10 @@ class S3S_Express:
         self.config = config
 
     @staticmethod
-    def from_config_file(config_file: str | None = None) -> "S3S_Express":
+    def from_config_file(config_file: str | None = None) -> "SplatNet3_Scraper":
         """Creates a new instance of the class using a configuration file. If
         no configuration file is provided, the default configuration file,
-        .s3s_express, will be used.
+        .splatnet3_scraper, will be used.
 
         Args:
             config_file (str | None): The path to the configuration file. If
@@ -48,10 +48,10 @@ class S3S_Express:
                 None.
 
         Returns:
-            S3S_Express: A new instance of the class.
+            SplatNet3_Scraper: A new instance of the class.
         """
         config = Config(config_file)
-        return S3S_Express(config)
+        return SplatNet3_Scraper(config)
 
     @staticmethod
     def generate_session_token_url(
@@ -74,19 +74,19 @@ class S3S_Express:
         return url, nso.state, nso.verifier
 
     @staticmethod
-    def from_session_token(session_token: str) -> "S3S_Express":
+    def from_session_token(session_token: str) -> "SplatNet3_Scraper":
         """Creates a new instance of the class using a session token.
 
         Args:
             session_token (str): The session token.
 
         Returns:
-            S3S_Express: A new instance of the class.
+            SplatNet3_Scraper: A new instance of the class.
         """
         token_manager = TokenManager.from_session_token(session_token)
         token_manager.generate_all_tokens()
         config = Config(token_manager=token_manager)
-        return S3S_Express(config)
+        return SplatNet3_Scraper(config)
 
     def __query(self, query_name: str) -> requests.Response:
         """Internal method to query Splatnet 3, it does all of the heavy lifting
