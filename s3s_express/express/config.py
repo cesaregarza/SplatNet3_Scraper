@@ -7,8 +7,14 @@ from s3s_express.constants import DEFAULT_USER_AGENT, IMINK_URL
 class Config:
     """Class that can access the token manager as well as additional options."""
 
-    def __init__(self, config_path: str | None = None) -> None:
-        """Initializes the class.
+    def __init__(
+        self,
+        config_path: str | None = None,
+        *args,
+        token_manager: TokenManager | None = None,
+    ) -> None:
+        """Initializes the class. If token_manager is given, it will assume that
+        this is a first time initialization and has not been setup yet.
 
         Token manager will look for tokens in the following order:
             1. the config_path argument
@@ -21,12 +27,36 @@ class Config:
         Args:
             config_path (str | None): The path to the config file. If None, it
                 will look for ".s3s_express" in the current working directory.
+                Defaults to None.
+
+        Keyword Args:
+            token_manager (TokenManager): The token manager to use. If given, it
+                will skip the post-init method. Defaults to None.
+        """
+        if token_manager is None:
+            self.__post_init__(config_path)
+            return
+
+        self.token_manager = token_manager
+        self.config = configparser.ConfigParser()
+        self.config.add_section("options")
+
+    def __post_init__(self, config_path: str | None = None) -> None:
+        """This function is called after the __init__ method and is used to
+        allow the Config class to be initialized with a TokenManager instance,
+        which is useful for initial setup.
+
+        Args:
+            config_path (str | None): The path to the config file. If None, it
+                will look for ".s3s_express" in the current working directory.
         """
         if config_path is not None:
             self.token_manager = TokenManager.from_config_file(config_path)
         # cgarza: A little bit of redundancy here, need better method.
         else:
             self.token_manager = TokenManager.load()
+        
+        config_path = ".s3s_express"
 
         self.config_path = config_path
         self.config = configparser.ConfigParser()
@@ -35,9 +65,8 @@ class Config:
             self.options = self.config.options("options")
         except configparser.NoSectionError:
             self.config.add_section("options")
+            self.options = self.config.options("options")
         self.manage_options()
-
-        self.config_path = config_path
 
         with open(config_path, "w") as configfile:
             self.config.write(configfile)

@@ -228,7 +228,7 @@ class TokenManager:
             raise ValueError(
                 "Session token must be set before generating a bullet token."
             )
-        if TOKENS.GTOKEN not in self._tokens:
+        if (TOKENS.GTOKEN not in self._tokens) or (self.nso._user_info is None):
             self.generate_gtoken()
         bullet_token = self.nso.get_bullet_token(
             cast(str, self.nso._gtoken), cast(dict, self.nso._user_info)
@@ -247,6 +247,21 @@ class TokenManager:
         """
         self.generate_gtoken()
         self.generate_bullet_token()
+
+    @classmethod
+    def from_session_token(cls, session_token: str) -> "TokenManager":
+        """Creates a token manager from a session token.
+
+        Args:
+            session_token (str): The session token to use.
+
+        Returns:
+            TokenManager: The token manager with the session token added.
+        """
+        manager = cls()
+        manager.add_session_token(session_token)
+        cls.flag_origin(cls, "session_token")
+        return manager
 
     @classmethod
     def load(cls) -> "TokenManager":
