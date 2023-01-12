@@ -111,8 +111,14 @@ class NSO:
             self._version = self.get_version()
         return self._version
 
+    @retry(times=2, exceptions=ValueError)
     def get_version(self) -> str:
         """Gets the current version of the NSO app. Necessary to access the API.
+        Retries twice if the version cannot be obtained, in case the ios app
+        store site is down or slow.
+
+        Raises:
+            ValueError: Failed to get version.
 
         Returns:
             str: The current version of the NSO app.
@@ -124,6 +130,8 @@ class NSO:
             .get_text()[7:]
             .strip()
         )
+        if version is None:
+            raise ValueError("Failed to get version")
         return version
 
     @property
