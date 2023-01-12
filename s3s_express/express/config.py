@@ -1,6 +1,7 @@
 import configparser
+from typing import Literal, overload
 
-from s3s_express.base.tokens import TokenManager
+from s3s_express.base.tokens import Token, TokenManager
 from s3s_express.constants import DEFAULT_USER_AGENT, IMINK_URL
 
 
@@ -28,10 +29,10 @@ class Config:
             config_path (str | None): The path to the config file. If None, it
                 will look for ".s3s_express" in the current working directory.
                 Defaults to None.
-
-        Keyword Args:
-            token_manager (TokenManager): The token manager to use. If given, it
-                will skip the post-init method. Defaults to None.
+            *args: These are ignored.
+            token_manager (TokenManager | None): The token manager to use.
+                Keyword argument. If given, it will skip the post-init method.
+                Defaults to None.
         """
         if token_manager is None:
             self.__post_init__(config_path)
@@ -55,7 +56,7 @@ class Config:
         # cgarza: A little bit of redundancy here, need better method.
         else:
             self.token_manager = TokenManager.load()
-        
+
         config_path = ".s3s_express"
 
         self.config_path = config_path
@@ -161,6 +162,7 @@ class Config:
             key (str): The name of the option.
 
         Raises:
+            KeyError: If the option is valid, but not set and has no default.
             KeyError: If the option is not valid.
 
         Returns:
@@ -169,7 +171,37 @@ class Config:
         if key in self.ACCEPTED_OPTIONS:
             if key in self.config["options"]:
                 return self.config["options"][key]
-            else:
+            elif key in self.DEFAULT_OPTIONS:
                 return self.DEFAULT_OPTIONS[key]
+            else:
+                raise KeyError(f"Option not set and has no default: {key}")
         else:
             raise KeyError(f"Invalid option: {key}")
+
+    def get_data(self, key: str) -> str:
+        return self.config["data"][key]
+
+    @overload
+    def get_token(self, key: str, full_token: Literal[False] = ...) -> str:
+        ...
+
+    @overload
+    def get_token(self, key: str, full_token: Literal[True]) -> Token:
+        ...
+
+    @overload
+    def get_token(self, key: str, full_token: bool) -> str | Token:
+        ...
+
+    def get_token(self, key: str, full_token: bool = False) -> str:
+        """Get the value of a token.
+
+        Args:
+            key (str): The name of the token.
+            full_token (bool): Whether or not to return the full token. If
+                False, only the token value will be returned.
+
+        Returns:
+            str: The value of the token.
+        """
+        return self.token_manager.get(key, full_token)

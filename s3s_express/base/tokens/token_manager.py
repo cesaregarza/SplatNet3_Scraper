@@ -235,7 +235,7 @@ class TokenManager:
         )
         self.add_token(bullet_token, TOKENS.BULLET_TOKEN)
         bullet = self.get(TOKENS.BULLET_TOKEN, full_token=True)
-        if (bullet is not None) and bullet.is_valid:
+        if (bullet is not None) and not bullet.is_valid:
             raise SplatnetException(
                 "Bullet token was unable to be generated. This is likely due "
                 "to SplatNet 3 being down. Please try again later."
@@ -260,7 +260,7 @@ class TokenManager:
         """
         manager = cls()
         manager.add_session_token(session_token)
-        cls.flag_origin(cls, "session_token")
+        manager.flag_origin("session_token")
         return manager
 
     @classmethod
@@ -324,6 +324,7 @@ class TokenManager:
             return tokenmanager
         for option in config.options("data"):
             tokenmanager._data[option] = config.get("data", option)
+        tokenmanager.test_tokens()
         return tokenmanager
 
     @classmethod
@@ -349,11 +350,15 @@ class TokenManager:
             else:
                 token_manager.add_token(token, token_name)
         token_manager.flag_origin("text_file", path)
+        token_manager.test_tokens()
         return token_manager
 
     @classmethod
     def from_env(cls) -> "TokenManager":
         """Loads tokens from environment variables.
+
+        Raises:
+            ValueError: If the session token environment variable is not set.
 
         Returns:
             TokenManager: The token manager with the tokens loaded.
@@ -374,6 +379,7 @@ class TokenManager:
                 tokenmanager.nso._gtoken = token_env
             tokenmanager.add_token(token_env, token)
         tokenmanager.flag_origin("env")
+        tokenmanager.test_tokens()
         return tokenmanager
 
     def save(self, path: str | None = None) -> None:

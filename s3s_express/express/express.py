@@ -1,6 +1,22 @@
-from s3s_express.base.graph_ql_queries import GraphQLQueries, queries
+import requests
+
+from s3s_express.base.graph_ql_queries import queries
 from s3s_express.base.tokens import NSO, TokenManager
+from s3s_express.constants import TOKENS
 from s3s_express.express.config import Config
+
+
+class QueryMap:
+    ANARCHY = "BankaraBattleHistoriesQuery"
+    REGULAR = "RegularBattleHistoriesQuery"
+    X = "XBattleHistoriesQuery"
+    PRIVATE = "PrivateBattleHistoriesQuery"
+    LATEST = "LatestBattleHistoriesQuery"
+    SALMON = "CoopHistoryQuery"
+
+    # Aliases
+    BATTLE = ANARCHY
+    TURF = REGULAR
 
 
 class S3S_Express:
@@ -12,7 +28,11 @@ class S3S_Express:
 
     def __init__(self, config: Config) -> None:
         """Initializes the class, it is not meant to be instantiated directly,
-        but rather through one of the available factory methods.
+        but rather through one of the available factory methods. Still, it can
+        be instantiated directly if the user wants to use a custom Config class.
+
+        Args:
+            config (Config): The configuration to use.
         """
         self.config = config
 
@@ -46,11 +66,12 @@ class S3S_Express:
         Returns:
             tuple:
                 str: The URL to use to get the session token.
-                bytes: The session ID
-                bytes: The challenge solution
+                bytes: The state ID.
+                bytes: The challenge solution.
         """
         nso = NSO.new_instance()
-        return nso.generate_login_url(user_agent)
+        url = nso.generate_login_url(user_agent)
+        return url, nso.state, nso.verifier
 
     @staticmethod
     def from_session_token(session_token: str) -> "S3S_Express":
@@ -63,3 +84,88 @@ class S3S_Express:
             S3S_Express: A new instance of the class.
         """
         token_manager = TokenManager.from_session_token(session_token)
+        token_manager.generate_all_tokens()
+        config = Config(token_manager=token_manager)
+        return S3S_Express(config)
+
+    def __query(self, query_name: str) -> requests.Response:
+        """Internal method to query Splatnet 3, it does all of the heavy lifting
+        and is used by the other methods to get the data.
+
+        Args:
+            query_name (str): The name of the query to use.
+
+        Returns:
+            requests.Response: The response from the query.
+        """
+        return queries.query(
+            query_name,
+            self.config.get_token(TOKENS.BULLET_TOKEN),
+            self.config.get_token(TOKENS.GTOKEN),
+            self.config.get_data("language"),
+            self.config.get("user_agent"),
+        )
+
+    def __get_query(self, query_name: str) -> dict:
+        """Internal method to get the data from a query. If the query fails, it
+        will try to generate all of the tokens and only once more. Not
+        recommended to wrap this method in the retry decorator generator.
+
+        Args:
+            query_name (str): The name of the query to use.
+
+        Returns:
+            dict: The data from the query.
+        """
+        response = self.__query(query_name)
+        if response.status_code != 200:
+            self.config.token_manager.generate_all_tokens()
+        return self.__query(query_name).json()["data"]
+
+    def get_anarchy(self) -> dict:
+        """Gets the battle queries.
+
+        Returns:
+            dict: The battle queries.
+        """
+        return self.__get_query(QueryMap.ANARCHY)
+
+    def get_regular(self) -> dict:
+        """Gets the turf queries.
+
+        Returns:
+            dict: The turf queries.
+        """
+        return self.__get_query(QueryMap.REGULAR)
+
+    def get_x(self) -> dict:
+        """Gets the X queries.
+
+        Returns:
+            dict: The X queries.
+        """
+        return self.__get_query(QueryMap.X)
+
+    def get_private(self) -> dict:
+        """Gets the private queries.
+
+        Returns:
+            dict: The private queries.
+        """
+        return self.__get_query(QueryMap.PRIVATE)
+
+    def get_latest(self) -> dict:
+        """Gets the latest queries.
+
+        Returns:
+            dict: The latest queries.
+        """
+        return self.__get_query(QueryMap.LATEST)
+
+    def get_salmon(self) -> dict:
+        """Gets the salmon queries.
+
+        Returns:
+            dict: The salmon queries.
+        """
+        return self.__get_query(QueryMap.SALMON)
