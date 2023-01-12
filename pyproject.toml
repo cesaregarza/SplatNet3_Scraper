@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "s3s-express"
-version = "0.1.0"
+version = "0.2.0"
 description = """s3s express is a python package that overhauls the existing\
 s3s package by prioritizing developer usability and performance.\
 """
