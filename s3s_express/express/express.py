@@ -120,7 +120,8 @@ class S3S_Express:
         response = self.__query(query_name)
         if response.status_code != 200:
             self.config.token_manager.generate_all_tokens()
-        return self.__query(query_name).json()["data"]
+            response = self.__query(query_name)
+        return response.json()["data"]
 
     def get_anarchy(self) -> dict:
         """Gets the battle queries.
