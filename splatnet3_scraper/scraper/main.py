@@ -13,6 +13,8 @@ class QueryMap:
     PRIVATE = "PrivateBattleHistoriesQuery"
     LATEST = "LatestBattleHistoriesQuery"
     SALMON = "CoopHistoryQuery"
+    VS_DETAIL = "VsHistoryDetailQuery"
+    SALMON_DETAIL = "CoopHistoryDetailQuery"
 
     # Aliases
     BATTLE = ANARCHY
@@ -88,12 +90,13 @@ class SplatNet3_Scraper:
         config = Config(token_manager=token_manager)
         return SplatNet3_Scraper(config)
 
-    def __query(self, query_name: str) -> requests.Response:
+    def __query(self, query_name: str, variables: dict = {}) -> requests.Response:
         """Internal method to query Splatnet 3, it does all of the heavy lifting
         and is used by the other methods to get the data.
 
         Args:
-            query_name (str): The name of the query to use.
+            query_name (str): The name of the query to use.\
+            variables (dict): The variables to use in the query. Defaults to {}.
 
         Returns:
             requests.Response: The response from the query.
@@ -104,6 +107,7 @@ class SplatNet3_Scraper:
             self.config.get_token(TOKENS.GTOKEN),
             self.config.get_data("language"),
             self.config.get("user_agent"),
+            variables=variables,
         )
 
     def __get_query(self, query_name: str) -> dict:
@@ -121,6 +125,27 @@ class SplatNet3_Scraper:
         if response.status_code != 200:
             self.config.token_manager.generate_all_tokens()
             response = self.__query(query_name)
+        return response.json()["data"]
+    
+    def __get_detailed_query(self, game_id: str, versus: bool = True) -> dict:
+        """Internal method to get the data from a detailed query. If the query
+        fails, it will try to generate all of the tokens and only once more.
+        Not recommended to wrap this method in the retry decorator generator.
+
+        Args:
+            game_id (str): The ID of the game to get the details from.
+            versus (bool): Whether the game is a versus game or not. Defaults
+                to True.
+
+        Returns:
+            dict: The data from the query.
+        """        
+        name = QueryMap.VS_DETAIL if versus else QueryMap.SALMON_DETAIL
+        variable_name = "vsResultId" if versus else "coopHistoryDetailId"
+        response = self.__query(name, variables={variable_name: game_id})
+        if response.status_code != 200:
+            self.config.token_manager.generate_all_tokens()
+            response = self.__query(name, variables={variable_name: game_id})
         return response.json()["data"]
 
     def get_anarchy(self) -> dict:

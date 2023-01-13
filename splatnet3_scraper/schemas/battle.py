@@ -216,6 +216,8 @@ class teamSchema(JSONDataClass):
     result: resultSchema = None
     tricolorRole: str = None
     festTeamName: str = None
+    festUniformBonusRate: int = None
+    festUniformName: str = None
 
     @property
     def is_my_team(self) -> bool:

@@ -71,7 +71,11 @@ class JSONDataClass:
                     setattr(self, key, attrset)
             except Exception as e:
                 if not isinstance(e, SecondaryException):
-                    raise SecondaryException from e
+                    raise SecondaryException(
+                        "Error loading. Did you unpack the dict into the "
+                        "init method? i.e. Schema(**dict) instead of "
+                        f"Schema(dict). {e}"
+                    )
                 else:
                     raise e
 

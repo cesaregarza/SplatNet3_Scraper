@@ -421,6 +421,17 @@ pycodestyle = ">=2.10.0,<2.11.0"
 pyflakes = ">=3.0.0,<3.1.0"
 
 [[package]]
+name = "genson"
+version = "1.2.2"
+description = "GenSON is a powerful, user-friendly JSON Schema generator."
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "genson-1.2.2.tar.gz", hash = "sha256:8caf69aa10af7aee0e1a1351d1d06801f4696e005f06cedef438635384346a16"},
+]
+
+[[package]]
 name = "idna"
 version = "3.4"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -1258,4 +1269,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "e7b561929c18e7bfb438dc5e45b0162e8cf084530cc1d699af5c0f279e8873e5"
+content-hash = "cf8f143eb4ceb300bd4cd394c096b470c6c21805bfe66ad7d3815003a50fdb9e"
