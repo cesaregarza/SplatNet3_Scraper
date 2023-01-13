@@ -2,13 +2,12 @@ import base64
 import hashlib
 import json
 import os
-from typing import cast
 import re
+from typing import cast
 
 import requests
 
 from splatnet3_scraper import __version__
-from splatnet3_scraper.logs import logger
 from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
     IMINK_URL,
@@ -16,12 +15,13 @@ from splatnet3_scraper.constants import (
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
+from splatnet3_scraper.logs import logger
 from splatnet3_scraper.utils import get_splatnet_web_version, retry
-
 
 version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
 )
+
 
 class NintendoException(Exception):
     """Base class for all Nintendo exceptions."""
@@ -29,7 +29,7 @@ class NintendoException(Exception):
     pass
 
 
-class IminkException(Exception):
+class FTokenException(Exception):
     """Base class for all Imink exceptions."""
 
     pass
@@ -392,7 +392,7 @@ class NSO:
             step (int): Step number, 1 or 2.
 
         Raises:
-            IminkException: If the f token cannot be retrieved.
+            FTokenException: If the f token cannot be retrieved.
 
         Returns:
             tuple:
@@ -416,12 +416,12 @@ class NSO:
             request_id = response_json["request_id"]
             timestamp = response_json["timestamp"]
         except (KeyError, TypeError, AttributeError):
-            raise IminkException(
+            raise FTokenException(
                 "Failed to get f token. " + f"Response: {response_json}"
             )
         return (f_token, request_id, timestamp)
 
-    @retry(times=1, exceptions=(IminkException, NintendoException, KeyError))
+    @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
     def f_token_generation_step_1(
         self,
         user_access_response: requests.Response,
@@ -464,7 +464,7 @@ class NSO:
         ]
         return splatoon_response
 
-    @retry(times=1, exceptions=(IminkException, NintendoException, KeyError))
+    @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
     def f_token_generation_step_2(
         self,
         id_token: str,

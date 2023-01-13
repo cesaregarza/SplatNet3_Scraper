@@ -27,7 +27,7 @@ class Config:
 
         Args:
             config_path (str | None): The path to the config file. If None, it
-                will look for ".splatnet3_scraper" in the current working 
+                will look for ".splatnet3_scraper" in the current working
                 directory. Defaults to None.
             *args: These are ignored.
             token_manager (TokenManager | None): The token manager to use.
