@@ -3,9 +3,9 @@ import hashlib
 import json
 import os
 from typing import cast
+import re
 
 import requests
-from bs4 import BeautifulSoup
 
 from splatnet3_scraper import __version__
 from splatnet3_scraper.logs import logger
@@ -18,6 +18,10 @@ from splatnet3_scraper.constants import (
 )
 from splatnet3_scraper.utils import get_splatnet_web_version, retry
 
+
+version_re = re.compile(
+    r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
+)
 
 class NintendoException(Exception):
     """Base class for all Nintendo exceptions."""
@@ -125,15 +129,10 @@ class NSO:
             str: The current version of the NSO app.
         """
         response = self.session.get(IOS_APP_URL)
-        soup = BeautifulSoup(response.text, "html.parser")
-        version = (
-            soup.find("p", class_="whats-new__latest__version")
-            .get_text()[7:]
-            .strip()
-        )
+        version = version_re.search(response.text)
         if version is None:
             raise ValueError("Failed to get version")
-        return version
+        return version.group(0).strip()
 
     @property
     def state(self) -> bytes:
