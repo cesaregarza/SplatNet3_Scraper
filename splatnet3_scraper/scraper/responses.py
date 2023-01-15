@@ -7,14 +7,16 @@ class QueryResponse:
     """
 
     def __init__(
-        self, data: dict[str, Any], detailed: list[dict[str, Any]] | None = None
+        self,
+        summary: dict[str, Any],
+        detailed: list[dict[str, Any]] | None = None,
     ) -> None:
         """Initializes a QueryResponse.
 
         Args:
-            data (dict[str, Any]): The data from the response.
+            summary (dict[str, Any]): The summary data from the response.
             detailed (list[dict[str, Any]] | None): The detailed data from the
                 response. Defaults to None.
         """
-        self.data = data
+        self.summary = summary
         self.detailed = detailed

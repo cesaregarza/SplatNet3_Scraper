@@ -9,6 +9,7 @@ import requests
 
 from splatnet3_scraper import __version__
 from splatnet3_scraper.constants import (
+    APP_VERSION_FALLBACK,
     DEFAULT_USER_AGENT,
     IMINK_URL,
     IOS_APP_URL,
@@ -131,7 +132,8 @@ class NSO:
         response = self.session.get(IOS_APP_URL)
         version = version_re.search(response.text)
         if version is None:
-            raise ValueError("Failed to get version")
+            logger.log("Failed to get version from app store, using fallback")
+            return APP_VERSION_FALLBACK
         return version.group(0).strip()
 
     @property
