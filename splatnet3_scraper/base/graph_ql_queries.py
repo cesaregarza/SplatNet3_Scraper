@@ -22,16 +22,16 @@ class GraphQLQueries:
 
     def __init__(self) -> None:
         """Initializes the class."""
+        self.session = requests.Session()
         self.hash_map = self.get_hashes()
 
-    @staticmethod
-    def get_hashes() -> dict[str, str]:
+    def get_hashes(self) -> dict[str, str]:
         """Gets the hashes for the GraphQL queries.
 
         Returns:
             dict[str, str]: The hashes for the GraphQL queries.
         """
-        response = requests.get(GRAPH_QL_REFERENCE_URL)
+        response = self.session.get(GRAPH_QL_REFERENCE_URL)
         hash_map = response.json()["graphql"]["hash_map"]
         return hash_map
 
@@ -145,7 +145,7 @@ class GraphQLQueries:
         cookies = {
             "_gtoken": gtoken,
         }
-        response = requests.post(
+        response = self.session.post(
             GRAPHQL_URL, headers=header, data=body, cookies=cookies
         )
         return response
