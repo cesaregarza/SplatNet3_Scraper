@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "splatnet3_scraper"
-version = "0.2.0"
+version = "0.3.0"
 description = "Scraper for SplatNet 3 for Splatoon 3"
 authors = ["Cesar E Garza <cesar@cegarza.com>"]
 readme = "README.md"
@@ -9,8 +9,10 @@ packages = [{include = "splatnet3_scraper"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 requests = "^2.28.1"
-bs4 = "^0.0.1"
+pyarrow = {version = "^10.0.1", optional = true, extras = ["parquet"]}
 
+[tool.poetry.extras]
+parquet = ["pyarrow"]
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"
@@ -22,6 +24,8 @@ types-requests = "^2.28.11.7"
 pytest = "^7.2.0"
 coverage = "^7.0.4"
 ipykernel = "^6.19.4"
+genson = "^1.2.2"
+line-profiler = "^4.0.2"
 
 [build-system]
 requires = ["poetry-core"]

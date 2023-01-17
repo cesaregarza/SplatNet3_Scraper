@@ -27,7 +27,7 @@ class Config:
 
         Args:
             config_path (str | None): The path to the config file. If None, it
-                will look for ".splatnet3_scraper" in the current working 
+                will look for ".splatnet3_scraper" in the current working
                 directory. Defaults to None.
             *args: These are ignored.
             token_manager (TokenManager | None): The token manager to use.
@@ -82,8 +82,8 @@ class Config:
             path (str | None): The path to save the config file to. If the token
                 manager is using environment variables, the tokens section will
                 be removed from the config file. If None, it will save to the
-                path given in the constructor or ".splatnet3_scraper" in the current
-                working directory.
+                path given in the constructor or ".splatnet3_scraper" in the
+                current working directory.
             include_tokens (bool): Whether or not to include the tokens in the
                 config file. If False, the tokens will be removed from the
                 config file.
@@ -194,7 +194,7 @@ class Config:
     def get_token(self, key: str, full_token: bool) -> str | Token:
         ...
 
-    def get_token(self, key: str, full_token: bool = False) -> str:
+    def get_token(self, key: str, full_token: bool = False) -> str | Token:
         """Get the value of a token.
 
         Args:

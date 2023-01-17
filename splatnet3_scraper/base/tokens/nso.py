@@ -2,21 +2,26 @@ import base64
 import hashlib
 import json
 import os
+import re
 from typing import cast
 
 import requests
-from bs4 import BeautifulSoup
 
 from splatnet3_scraper import __version__
-from splatnet3_scraper.logs import logger
 from splatnet3_scraper.constants import (
+    APP_VERSION_FALLBACK,
     DEFAULT_USER_AGENT,
     IMINK_URL,
     IOS_APP_URL,
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
+from splatnet3_scraper.logs import logger
 from splatnet3_scraper.utils import get_splatnet_web_version, retry
+
+version_re = re.compile(
+    r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
+)
 
 
 class NintendoException(Exception):
@@ -25,7 +30,7 @@ class NintendoException(Exception):
     pass
 
 
-class IminkException(Exception):
+class FTokenException(Exception):
     """Base class for all Imink exceptions."""
 
     pass
@@ -118,22 +123,15 @@ class NSO:
         Retries twice if the version cannot be obtained, in case the ios app
         store site is down or slow.
 
-        Raises:
-            ValueError: Failed to get version.
-
         Returns:
             str: The current version of the NSO app.
         """
         response = self.session.get(IOS_APP_URL)
-        soup = BeautifulSoup(response.text, "html.parser")
-        version = (
-            soup.find("p", class_="whats-new__latest__version")
-            .get_text()[7:]
-            .strip()
-        )
+        version = version_re.search(response.text)
         if version is None:
-            raise ValueError("Failed to get version")
-        return version
+            logger.log("Failed to get version from app store, using fallback")
+            return APP_VERSION_FALLBACK
+        return version.group(0).strip()
 
     @property
     def state(self) -> bytes:
@@ -393,7 +391,7 @@ class NSO:
             step (int): Step number, 1 or 2.
 
         Raises:
-            IminkException: If the f token cannot be retrieved.
+            FTokenException: If the f token cannot be retrieved.
 
         Returns:
             tuple:
@@ -417,12 +415,12 @@ class NSO:
             request_id = response_json["request_id"]
             timestamp = response_json["timestamp"]
         except (KeyError, TypeError, AttributeError):
-            raise IminkException(
+            raise FTokenException(
                 "Failed to get f token. " + f"Response: {response_json}"
             )
         return (f_token, request_id, timestamp)
 
-    @retry(times=1, exceptions=(IminkException, NintendoException, KeyError))
+    @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
     def f_token_generation_step_1(
         self,
         user_access_response: requests.Response,
@@ -465,7 +463,7 @@ class NSO:
         ]
         return splatoon_response
 
-    @retry(times=1, exceptions=(IminkException, NintendoException, KeyError))
+    @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
     def f_token_generation_step_2(
         self,
         id_token: str,
