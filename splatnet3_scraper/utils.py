@@ -98,11 +98,13 @@ def linearize_json(
             values.append(value)
 
     # Turn the keys into an immutable tuple so it can be hashed
-    keys = tuple(keys)
-    return keys, values
+    out_keys = tuple(keys)
+    return out_keys, values
 
 
-def delinearize_json(keys: list[str], values: list[Any]) -> dict[str, Any]:
+def delinearize_json(
+    keys: list[str] | tuple[str, ...], values: list[Any]
+) -> dict[str, Any]:
     """Delinearizes a JSON object.
 
     Args:
@@ -143,14 +145,16 @@ def delinearize_json(keys: list[str], values: list[Any]) -> dict[str, Any]:
                 if subkeys[i] in current:
                     current = current[subkeys[i]]
                     continue
-            new_obj = {} if (splitter == ".") else []
+            new_obj: dict | list = {} if (splitter == ".") else []
 
             # If the current object is a list, append the new object to it.
             if isinstance(current, list):
                 current.append(new_obj)
-            else:
+            elif isinstance(current, dict):
                 current[subkeys[i]] = new_obj
-            current = new_obj
+            # Mypy doesn't like that this is dynamically typed, so we have to
+            # ignore it
+            current = new_obj  # type: ignore
         if isinstance(current, list):
             current.append(value)
         else:

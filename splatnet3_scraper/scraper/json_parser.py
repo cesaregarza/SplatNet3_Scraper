@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import json
 from typing import Any, Literal, overload
@@ -8,7 +9,9 @@ from splatnet3_scraper.utils import delinearize_json, linearize_json
 class LinearJSON:
     """Class containing methods for linearized JSON objects."""
 
-    def __init__(self, header: list[str], data: list[list]) -> None:
+    def __init__(
+        self, header: list[str] | tuple[str, ...], data: list[list] | list
+    ) -> None:
         """Initializes a LinearJSON.
 
         Args:
@@ -16,7 +19,7 @@ class LinearJSON:
             data (list[Any]): The data of the JSON object.
         """
         self.header = header
-        self.data = data
+        self.data = data if isinstance(data[0], list) else [data]
         self.__validate()
 
     @staticmethod
@@ -33,8 +36,11 @@ class LinearJSON:
         return LinearJSON(header, [data])
 
     @staticmethod
-    def hash(obj: list[str]) -> str:
+    def hash(obj: list[str] | tuple[str, ...]) -> str:
         """Returns the hash of the header.
+
+        Args:
+            obj (list[str] | tuple[str, ...]): The header to hash.
 
         Returns:
             str: The hash of the header.
@@ -58,18 +64,10 @@ class LinearJSON:
         Returns:
             dict[str, list[dict[str, Any]]]: The big JSON object.
         """
-        out = {"data": []}
+        out: dict[str, list[dict[str, Any]]] = {"data": []}
         for row in self.data:
             out["data"].append(delinearize_json(self.header, row))
         return out
-
-    def __hash__(self) -> int:
-        """Returns the hash of the header.
-
-        Returns:
-            int: The hash of the header.
-        """
-        return self.hash(self.header)
 
     def __eq__(self, other: object) -> bool:
         """Returns whether the other object is equal to this object.
@@ -87,7 +85,11 @@ class LinearJSON:
         return False
 
     def __validate(self) -> None:
-        """Validates the LinearJSON object."""
+        """Validates the header and data of the LinearJSON object.
+
+        Raises:
+            ValueError: If the header and data are not the same length.
+        """
         for row in self.data:
             try:
                 assert len(row) == len(self.header)
@@ -109,7 +111,7 @@ class LinearJSON:
             return
         new_data = []
         for row in self.data:
-            new_row = []
+            new_row: list[Any] = []
             for i, col in enumerate(new_header):
                 if col in new_headers:
                     new_row.append(None)
@@ -132,19 +134,18 @@ class LinearJSON:
         Returns:
             list[str]: The new header.
         """
-        new_header = set(self.header).union(set(other.header))
+        new_header_set = set(self.header).union(set(other.header))
+        new_header = list(new_header_set)
         new_header = sorted(new_header, key=lambda x: (len(x), x))
         return new_header
 
     def append(self, other: "LinearJSON") -> None:
-        """Appends a LinearJSON object to this one.
+        """Appends a LinearJSON object to this one. If the headers are not the
+        same, the headers will be merged and the data will be standardized to
+        the new header.
 
         Args:
             other (LinearJSON): The other LinearJSON object to append.
-
-        Raises:
-            ValueError: The other LinearJSON object does not have the same
-                header.
         """
         if self.header != other.header:
             new_header = self.__merge_headers(other)
@@ -157,28 +158,27 @@ class LinearJSON:
         self.data.extend(other.data)
 
     def transpose(self) -> list[list[Any]]:
-        """Transposes the data of the LinearJSON object."""
+        """Transposes the data.
+
+        Returns:
+            list[list[Any]]: The transposed data.
+        """
         return [list(x) for x in zip(*self.data)]
 
     @overload
-    def stringify(
-        self, transpose: bool, include_header: Literal[True] = ...
-    ) -> tuple[str, str]:
+    def stringify(self, include_header: Literal[True] = ...) -> tuple[str, str]:
         ...
 
     @overload
-    def stringify(self, transpose: bool, include_header: Literal[False]) -> str:
+    def stringify(self, include_header: Literal[False]) -> str:
         ...
 
     @overload
-    def stringify(
-        self, transpose: bool, include_header: bool
-    ) -> str | tuple[str, str]:
+    def stringify(self, include_header: bool) -> str | tuple[str, str]:
         ...
 
     def stringify(
         self,
-        transpose: bool = False,
         include_header: bool = True,
     ) -> str | tuple[str, str]:
         """Stringifies the LinearJSON object. If include_header is True, then
@@ -193,7 +193,7 @@ class LinearJSON:
             str | tuple[str, str]: The header and data as a string, or just the
                 data as a string.
         """
-        data = self.data if not transpose else self.transpose()
+        data = self.data
         data_str = []
         for row in data:
             data_str.append(",".join([str(x) for x in row]))
@@ -217,30 +217,18 @@ class JSONParser:
             data = [data]
         self.data = data
 
-    @staticmethod
-    def stringify(object: dict[str, Any]) -> tuple[str, str]:
-        """Helper method to linearize a JSON object and turn it into a string
-        that can be written to a CSV file.
-
-        Args:
-            object (dict[str, Any]): JSON object to convert.
-
-        Returns:
-            tuple[str, str]: The header and data as a string.
-        """
-        header, data = linearize_json(object)
-        header = ",".join(header)
-        data = ",".join([str(x) for x in data])
-        return header, data
-
-    def __to_linear_json(self) -> LinearJSON:
+    def _to_linear_json(self) -> LinearJSON:
         """Converts the JSON object to a LinearJSON object.
 
         Returns:
             LinearJSON: The LinearJSON object.
         """
-        header, data = linearize_json(self.data)
-        return LinearJSON(header, data)
+        header, data = linearize_json(self.data[0])
+        out = LinearJSON(header, data)
+        for row in self.data[1:]:
+            header, data = linearize_json(row)
+            out.append(LinearJSON(header, data))
+        return out
 
     def to_csv(self, path: str) -> None:
         """Saves the JSON object to a CSV file.
@@ -267,10 +255,8 @@ class JSONParser:
 
         Args:
             path (str): The path to save the CSV file to.
-            columnar (bool): Whether to save the data in columnar format.
-                Defaults to False.
         """
-        linear_json = self.__to_linear_json()
+        linear_json = self._to_linear_json()
         with open(path, "w") as f:
             header, data = linear_json.stringify()
             f.write(header + "\n")
@@ -282,10 +268,24 @@ class JSONParser:
 
         Args:
             path (str): The path to save the JSON file to.
+            **kwargs: Keyword arguments to pass to the json.dump method.
         """
-        default_kwargs = {"indent": 4}
+        default_kwargs: dict[str, Any] = {"indent": 4}
         default_kwargs.update(kwargs)
         with open(path, "w") as f:
+            json.dump(self.data, f, **default_kwargs)
+
+    def to_gzipped_json(self, path: str, **kwargs) -> None:
+        """Saves the JSON object to a gzipped JSON file. Any keyword arguments
+        are passed to the json.dump method.
+
+        Args:
+            path (str): The path to save the gzipped JSON file to.
+            **kwargs: Keyword arguments to pass to the json.dump method.
+        """
+        default_kwargs: dict[str, Any] = {"indent": 4}
+        default_kwargs.update(kwargs)
+        with gzip.open(path, "wt") as f:
             json.dump(self.data, f, **default_kwargs)
 
     def to_parquet(self, path: str, **kwargs) -> None:
@@ -294,6 +294,10 @@ class JSONParser:
 
         Args:
             path (str): The path to save the Parquet file to.
+            **kwargs: Keyword arguments to pass to the pq.write_table method.
+
+        Raises:
+            ImportError: If the parquet extra is not installed.
         """
         try:
             import numpy as np
@@ -305,7 +309,7 @@ class JSONParser:
                 'Try "pip install splatnet3_scraper[parquet]" or "poetry '
                 'install --extras parquet" if you are developing.'
             )
-        linear_json = self.__to_linear_json()
+        linear_json = self._to_linear_json()
         numpy_data = np.array(linear_json.data)
         arrays = [pa.array(data) for data in numpy_data.T]
         del numpy_data

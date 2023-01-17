@@ -118,7 +118,7 @@ class SplatNet3_Scraper:
         and is used by the other methods to get the data.
 
         Args:
-            query_name (str): The name of the query to use.\
+            query_name (str): The name of the query to use.
             variables (dict): The variables to use in the query. Defaults to {}.
 
         Returns:
@@ -186,6 +186,9 @@ class SplatNet3_Scraper:
             detailed_limit (int | None): The maximum number of detailed
                 matches to get. If None, all of the matches will be returned.
 
+        Raises:
+            ValueError: If the mode is invalid.
+
         Returns:
             QueryResponse: The summary for the mode.
         """
@@ -234,6 +237,8 @@ class SplatNet3_Scraper:
 
         Args:
             query_name (str): The name of the query to use.
+            limit (int | None): The maximum number of detailed matches to get.
+                If None, all of the matches will be returned. Defaults to None.
 
         Returns:
             tuple:
@@ -247,12 +252,12 @@ class SplatNet3_Scraper:
         # key so we can just get the first one.
         key = list(data.keys())[0]
         base = data[key]["historyGroups"]["nodes"]
-        out = []
+        out: list[dict] = []
         idx = 0
         for group in base:
             for game in group["historyDetails"]["nodes"]:
                 if idx == limit:
-                    return out
+                    return data, out
                 idx += 1
                 game_id = game["id"]
                 detailed_game = self.get_vs_detail(game_id)
