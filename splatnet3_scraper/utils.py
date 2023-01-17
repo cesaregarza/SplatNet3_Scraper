@@ -116,8 +116,10 @@ def delinearize_json(
     """
     json_data = {}
 
-    # Sort the keys alphanumerically and keep values in the same order
-    keys, values = zip(*sorted(zip(keys, values)))
+    # Sort the keys by depth
+    depths = [len(json_splitter_re.split(key)) for key in keys]
+    keys, values, depths = zip(*sorted(zip(keys, values, depths), key=lambda x: x[0]))
+    keys, values, depths = zip(*sorted(zip(keys, values, depths), key=lambda x: x[2]))
 
     # Delinearize
     for key, value in zip(keys, values):
@@ -139,12 +141,17 @@ def delinearize_json(
             # If the key already exists, move on to the next key
             if isinstance(current, list):
                 if len(current) > subkeys[i]:
-                    current = current[subkeys[i]]
-                    continue
+                    next_obj = current[subkeys[i]]
+                    # Overwrite Nones with new objects
+                    if next_obj is not None:
+                        current = current[subkeys[i]]
+                        continue
             elif isinstance(current, dict):
                 if subkeys[i] in current:
-                    current = current[subkeys[i]]
-                    continue
+                    next_obj = current[subkeys[i]]
+                    if next_obj is not None:
+                        current = current[subkeys[i]]
+                        continue
             new_obj: dict | list = {} if (splitter == ".") else []
 
             # If the current object is a list, append the new object to it.

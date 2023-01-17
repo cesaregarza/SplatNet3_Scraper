@@ -105,22 +105,23 @@ class LinearJSON:
         Args:
             new_header (list[str]): The new header.
         """
-        new_headers = [x for x in new_header if x not in self.header]
-        removed_headers = [x for x in self.header if x not in new_header]
-        if (not new_headers) and (not removed_headers):
+        new_header_columns = [x for x in new_header if x not in self.header]
+        removed_header_columns = [x for x in self.header if x not in new_header]
+        if (not new_header_columns) and (not removed_header_columns):
             return
         new_data = []
         for row in self.data:
             new_row: list[Any] = []
-            for i, col in enumerate(new_header):
-                if col in new_headers:
+            for col in new_header:
+                if col in new_header_columns:
                     new_row.append(None)
-                elif col in removed_headers:
+                elif col in removed_header_columns:
                     # Shouldn't happen, but making the logic explicit
                     continue
                 else:
-                    new_index = self.header.index(col)
-                    new_row.append(row[new_index])
+                    original_index = self.header.index(col)
+                    new_row.append(row[original_index])
+
             new_data.append(new_row)
         self.header = new_header
         self.data = new_data
@@ -202,6 +203,20 @@ class LinearJSON:
             header_str = ",".join(self.header)
             return header_str, data_str_out
         return data_str_out
+    
+    def remove_columns(self, columns: list[str]) -> None:
+        """Removes columns from the LinearJSON object.
+
+        Args:
+            columns (list[str]): The columns to remove.
+        """
+        new_header = [x for x in self.header if x not in columns]
+        self.__standardize_new_header(new_header)
+    
+    def remove_url_columns(self) -> None:
+        """Removes columns that are URLs from the LinearJSON object."""
+        url_columns = [x for x in self.header if x.endswith("Url")]
+        self.remove_columns(url_columns)
 
 
 class JSONParser:
@@ -216,8 +231,14 @@ class JSONParser:
         if isinstance(data, dict):
             data = [data]
         self.data = data
+    
+    def __len__(self) -> int:
+        return len(self.data)
+    
+    def __repr__(self) -> str:
+        return f"JSONParser({len(self)} battles)"
 
-    def _to_linear_json(self) -> LinearJSON:
+    def __to_linear_json(self) -> LinearJSON:
         """Converts the JSON object to a LinearJSON object.
 
         Returns:
@@ -229,6 +250,22 @@ class JSONParser:
             header, data = linearize_json(row)
             out.append(LinearJSON(header, data))
         return out
+    
+    def remove_columns(self, columns: list[str]) -> None:
+        """Removes columns from the data.
+
+        Args:
+            columns (list[str]): The columns to remove.
+        """
+        linear_json = self.__to_linear_json()
+        linear_json.remove_columns(columns)
+        self.data = linear_json.delinearize()["data"]
+    
+    def remove_url_columns(self) -> None:
+        """Removes URL columns from the data."""
+        linear_json = self.__to_linear_json()
+        linear_json.remove_url_columns()
+        self.data = linear_json.delinearize()["data"]
 
     def to_csv(self, path: str) -> None:
         """Saves the JSON object to a CSV file.
@@ -256,8 +293,8 @@ class JSONParser:
         Args:
             path (str): The path to save the CSV file to.
         """
-        linear_json = self._to_linear_json()
-        with open(path, "w") as f:
+        linear_json = self.__to_linear_json()
+        with open(path, "w", encoding="utf-8") as f:
             header, data = linear_json.stringify()
             f.write(header + "\n")
             f.write(data)
@@ -272,7 +309,7 @@ class JSONParser:
         """
         default_kwargs: dict[str, Any] = {"indent": 4}
         default_kwargs.update(kwargs)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.data, f, **default_kwargs)
 
     def to_gzipped_json(self, path: str, **kwargs) -> None:
@@ -285,7 +322,7 @@ class JSONParser:
         """
         default_kwargs: dict[str, Any] = {"indent": 4}
         default_kwargs.update(kwargs)
-        with gzip.open(path, "wt") as f:
+        with gzip.open(path, "wt", encoding="utf-8") as f:
             json.dump(self.data, f, **default_kwargs)
 
     def to_parquet(self, path: str, **kwargs) -> None:
@@ -309,7 +346,7 @@ class JSONParser:
                 'Try "pip install splatnet3_scraper[parquet]" or "poetry '
                 'install --extras parquet" if you are developing.'
             )
-        linear_json = self._to_linear_json()
+        linear_json = self.__to_linear_json()
         numpy_data = np.array(linear_json.data)
         arrays = [pa.array(data) for data in numpy_data.T]
         del numpy_data
