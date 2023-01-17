@@ -4,8 +4,8 @@ from splatnet3_scraper.scraper.json_parser import JSONParser
 
 
 class QueryResponse:
-    """Represents a response from the API. Contains the raw response as well as
-    some methods to help parse the data.
+    """Represents a response from the API. This is a thin wrapper around the
+    JSONParser class.
     """
 
     def __init__(
@@ -46,3 +46,7 @@ class QueryResponse:
         if self._detailed is None:
             raise AttributeError("No detailed data")
         return self._detailed
+    
+    def __repr__(self) -> str:
+        detail_str = "Detailed" if self._detailed is not None else ""
+        return f"QueryResponse({detail_str})"
