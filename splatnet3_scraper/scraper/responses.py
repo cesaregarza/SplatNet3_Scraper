@@ -1,5 +1,6 @@
-from typing import Any
 import json
+from typing import Any
+
 from splatnet3_scraper.utils import linearize_json
 
 
