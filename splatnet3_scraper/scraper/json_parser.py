@@ -315,3 +315,74 @@ class JSONParser:
         del numpy_data
         table = pa.Table.from_arrays(arrays, names=linear_json.header)
         pq.write_table(table, path, **kwargs)
+
+    @classmethod
+    def from_csv(cls, path: str) -> "JSONParser":
+        """Loads a JSON object from a CSV file.
+
+        Args:
+            path (str): The path to load the CSV file from.
+
+        Returns:
+            JSONParser: The JSONParser object.
+        """
+        with open(path, "r") as f:
+            header = f.readline().strip().split(",")
+            data = []
+            for line in f:
+                data.append(line.strip().split(","))
+        return cls(delinearize_json(header, data))
+
+    @classmethod
+    def from_json(cls, path: str) -> "JSONParser":
+        """Loads a JSON object from a JSON file.
+
+        Args:
+            path (str): The path to load the JSON file from.
+
+        Returns:
+            JSONParser: The JSONParser object.
+        """
+        with open(path, "r") as f:
+            return cls(json.load(f))
+
+    @classmethod
+    def from_gzipped_json(cls, path: str) -> "JSONParser":
+        """Loads a JSON object from a gzipped JSON file.
+
+        Args:
+            path (str): The path to load the gzipped JSON file from.
+
+        Returns:
+            JSONParser: The JSONParser object.
+        """
+        with gzip.open(path, "rt") as f:
+            return cls(json.load(f))
+
+    @classmethod
+    def from_parquet(cls, path: str) -> "JSONParser":
+        """Loads a JSON object from a Parquet file.
+
+        Args:
+            path (str): The path to load the Parquet file from.
+
+        Raises:
+            ImportError: If the parquet extra is not installed.
+
+        Returns:
+            JSONParser: The JSONParser object.
+        """
+        try:
+            import numpy as np
+            import pyarrow.parquet as pq
+        except ImportError:
+            raise ImportError(
+                "parquet format requires the [parquet] extra to be installed. "
+                'Try "pip install splatnet3_scraper[parquet]" or "poetry '
+                'install --extras parquet" if you are developing.'
+            )
+        table = pq.read_table(path)
+        data = [table.column(i).to_numpy() for i in range(len(table.columns))]
+        out_data = np.array(data).T
+        header = [field.name for field in table.schema]
+        return cls(delinearize_json(header, out_data.tolist()))
