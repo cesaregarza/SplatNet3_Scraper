@@ -215,7 +215,7 @@ class LinearJSON:
     
     def remove_url_columns(self) -> None:
         """Removes columns that are URLs from the LinearJSON object."""
-        url_columns = [x for x in self.header if x.endswith("Url")]
+        url_columns = [x for x in self.header if x.lower().endswith("url")]
         self.remove_columns(url_columns)
 
 

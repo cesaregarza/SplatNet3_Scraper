@@ -139,6 +139,7 @@ def delinearize_json(
         current = json_data
         for i, splitter in enumerate(splitters):
             # If the key already exists, move on to the next key
+            # TODO: way too messy, needs to be cleaned up
             if isinstance(current, list):
                 if len(current) > subkeys[i]:
                     next_obj = current[subkeys[i]]
