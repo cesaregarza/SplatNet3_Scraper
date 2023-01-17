@@ -156,3 +156,4 @@ input_files
 # splatnet3_scraper files
 .splatnet3_scraper
 tokens.ini
+headers.csv
