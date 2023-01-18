@@ -1,6 +1,5 @@
 import re
 from functools import cache
-from operator import itemgetter
 from typing import Any, Callable, ParamSpec, Type, TypeVar
 
 import requests
