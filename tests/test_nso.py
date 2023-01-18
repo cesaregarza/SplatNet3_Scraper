@@ -1,3 +1,4 @@
+import os
 from unittest import mock
 
 import pytest
@@ -91,9 +92,42 @@ class TestNSO:
         # Test short circuit
         def mock_get(*args, **kwargs):
             raise Exception
+
         monkeypatch.setattr(requests.Session, "get", mock_get)
         version = nso.version
         assert version == "5.0.0"
         assert nso._version == "5.0.0"
 
-    
+    def test_generate_new_state(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_urandom(*args, **kwargs):
+            return (
+                b"\xe1\t%\x8c\x15\x7f`\xd9\xc6@\xb59\xea1\n\x93\xdf\x9c\xaa1"
+                b"\x17\xaf\x19f|\xe8\xa0l\xce\xef\x9f\xea\xe8\xc3\xfb\xcb"
+            )
+
+        monkeypatch.setattr(os, "urandom", mock_urandom)
+        nso = NSO.new_instance()
+        encoded_str = b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-row_vL"
+        assert nso.generate_new_state() == encoded_str
+
+    def test_state_property(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_urandom(*args, **kwargs):
+            return (
+                b"\xe1\t%\x8c\x15\x7f`\xd9\xc6@\xb59\xea1\n\x93\xdf\x9c\xaa1"
+                b"\x17\xaf\x19f|\xe8\xa0l\xce\xef\x9f\xea\xe8\xc3\xfb\xcb"
+            )
+
+        monkeypatch.setattr(os, "urandom", mock_urandom)
+        nso = NSO.new_instance()
+        assert nso._state is None
+        encoded_str = b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-row_vL"
+        assert nso.state == encoded_str
+        assert nso._state == encoded_str
+
+        # Test short circuit
+        def mock_urandom(*args, **kwargs):
+            raise Exception
+
+        monkeypatch.setattr(os, "urandom", mock_urandom)
+        assert nso.state == encoded_str
+        assert nso._state == encoded_str
