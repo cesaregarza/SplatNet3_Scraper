@@ -34,8 +34,10 @@ Roadmap
 | Feature | Status |
 | ------- | ------ |
 | Support for the SplatNet 3 API | :white_check_mark: |
+| Full support for the SplatNet 3 API | :white_large_square: |
 | Support for the SplatNet 2 API | :x: |
 | Obtaining session tokens | :white_check_mark: |
+| Full documentation | :white_large_square: |
 | Full unit test coverage | :construction: |
 | Columnar data format support | :construction: |
 | CLI interface | :x: |
