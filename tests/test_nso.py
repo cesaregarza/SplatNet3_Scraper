@@ -98,31 +98,33 @@ class TestNSO:
         assert version == "5.0.0"
         assert nso._version == "5.0.0"
 
-    def test_generate_new_state(self, monkeypatch: pytest.MonkeyPatch):
+    def test_generate_new_state(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        urand36: bytes,
+        urand36_expected: bytes,
+    ):
         def mock_urandom(*args, **kwargs):
-            # DO NOT USE THIS FOR ANYTHING OTHER THAN TESTING. IT IS NOT SECURE
-            return (
-                b"\xe1\t%\x8c\x15\x7f`\xd9\xc6@\xb59\xea1\n\x93\xdf\x9c\xaa1"
-                b"\x17\xaf\x19f|\xe8\xa0l\xce\xef\x9f\xea\xe8\xc3\xfb\xcb"
-            )
+            return urand36
 
         monkeypatch.setattr(os, "urandom", mock_urandom)
         nso = NSO.new_instance()
-        encoded_str = b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-row_vL"
+        encoded_str = urand36_expected
         assert nso.generate_new_state() == encoded_str
 
-    def test_state_property(self, monkeypatch: pytest.MonkeyPatch):
+    def test_state_property(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        urand36: bytes,
+        urand36_expected: bytes,
+    ):
         def mock_urandom(*args, **kwargs):
-            # DO NOT USE THIS FOR ANYTHING OTHER THAN TESTING. IT IS NOT SECURE
-            return (
-                b"\xe1\t%\x8c\x15\x7f`\xd9\xc6@\xb59\xea1\n\x93\xdf\x9c\xaa1"
-                b"\x17\xaf\x19f|\xe8\xa0l\xce\xef\x9f\xea\xe8\xc3\xfb\xcb"
-            )
+            return urand36
 
         monkeypatch.setattr(os, "urandom", mock_urandom)
         nso = NSO.new_instance()
         assert nso._state is None
-        encoded_str = b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-row_vL"
+        encoded_str = urand36_expected
         assert nso.state == encoded_str
         assert nso._state == encoded_str
 
