@@ -18,6 +18,11 @@ Features
   * csv
   * parquet (by installing `splatnet3_scraper[parquet]` or the `pyarrow` library)
 
+Installation
+------------
+
+**SplatNet3_Scraper** is currently under active development and is not yet available on PyPI. No wheels are currently available. If you would like to use this early version, you can install it from source by cloning this repository and running `pip install .` in the root directory.
+
 Symbols
 -------
 
@@ -42,6 +47,9 @@ Roadmap
 | Columnar data format support | :construction: |
 | CLI interface | :x: |
 | Integration with stats.ink | :x: |
+| PyPI package | :white_large_square: |
+| Docker image | :white_large_square: |
+| Executable binary | :x: |
 
 Docker Note
 -----------
