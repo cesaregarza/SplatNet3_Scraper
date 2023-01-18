@@ -1,6 +1,6 @@
+import hashlib
 import os
 from unittest import mock
-import hashlib
 
 import pytest
 import requests
