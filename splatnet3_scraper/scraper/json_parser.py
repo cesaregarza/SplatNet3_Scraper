@@ -126,16 +126,18 @@ class LinearJSON:
         self.header = new_header
         self.data = new_data
 
-    def __merge_headers(self, other: "LinearJSON") -> list[str]:
-        """Merges the headers of this object and the other object.
+    @staticmethod
+    def merge_headers(left: "LinearJSON", right: "LinearJSON") -> list[str]:
+        """Merges the headers of the two given LinearJSON objects.
 
         Args:
-            other (LinearJSON): The other object to merge with.
+            left (LinearJSON): The left LinearJSON object to merge.
+            right (LinearJSON): The right LinearJSON object to merge.
 
         Returns:
             list[str]: The new header.
         """
-        new_header_set = set(self.header).union(set(other.header))
+        new_header_set = set(left.header).union(set(right.header))
         new_header = list(new_header_set)
         new_header = sorted(new_header, key=lambda x: (len(x), x))
         return new_header
@@ -149,7 +151,7 @@ class LinearJSON:
             other (LinearJSON): The other LinearJSON object to append.
         """
         if self.header != other.header:
-            new_header = self.__merge_headers(other)
+            new_header = self.merge_headers(self, other)
             # New header will have new columns anywhere in the header, so we
             # need to identify the new columns and insert None values for them
             # in the data
@@ -203,7 +205,7 @@ class LinearJSON:
             header_str = ",".join(self.header)
             return header_str, data_str_out
         return data_str_out
-    
+
     def remove_columns(self, columns: list[str]) -> None:
         """Removes columns from the LinearJSON object.
 
@@ -212,7 +214,7 @@ class LinearJSON:
         """
         new_header = [x for x in self.header if x not in columns]
         self.__standardize_new_header(new_header)
-    
+
     def remove_url_columns(self) -> None:
         """Removes columns that are URLs from the LinearJSON object."""
         url_columns = [x for x in self.header if x.lower().endswith("url")]
@@ -231,10 +233,10 @@ class JSONParser:
         if isinstance(data, dict):
             data = [data]
         self.data = data
-    
+
     def __len__(self) -> int:
         return len(self.data)
-    
+
     def __repr__(self) -> str:
         return f"JSONParser({len(self)} battles)"
 
@@ -250,7 +252,7 @@ class JSONParser:
             header, data = linearize_json(row)
             out.append(LinearJSON(header, data))
         return out
-    
+
     def remove_columns(self, columns: list[str]) -> None:
         """Removes columns from the data.
 
@@ -260,7 +262,7 @@ class JSONParser:
         linear_json = self.__to_linear_json()
         linear_json.remove_columns(columns)
         self.data = linear_json.delinearize()["data"]
-    
+
     def remove_url_columns(self) -> None:
         """Removes URL columns from the data."""
         linear_json = self.__to_linear_json()

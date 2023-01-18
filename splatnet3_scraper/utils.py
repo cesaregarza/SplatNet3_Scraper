@@ -1,5 +1,6 @@
 import re
 from functools import cache
+from operator import itemgetter
 from typing import Any, Callable, ParamSpec, Type, TypeVar
 
 import requests
@@ -118,8 +119,9 @@ def delinearize_json(
 
     # Sort the keys by depth
     depths = [len(json_splitter_re.split(key)) for key in keys]
-    keys, values, depths = zip(*sorted(zip(keys, values, depths), key=lambda x: x[0]))
-    keys, values, depths = zip(*sorted(zip(keys, values, depths), key=lambda x: x[2]))
+    kvd = list(zip(keys, values, depths))
+    kvd = sorted(kvd, key=lambda x: (x[2], x[0]))
+    keys, values, _ = list(zip(*kvd))
 
     # Delinearize
     for key, value in zip(keys, values):
@@ -139,29 +141,29 @@ def delinearize_json(
         current = json_data
         for i, splitter in enumerate(splitters):
             # If the key already exists, move on to the next key
-            # TODO: way too messy, needs to be cleaned up
-            if isinstance(current, list):
-                if len(current) > subkeys[i]:
-                    next_obj = current[subkeys[i]]
-                    # Overwrite Nones with new objects
+            if isinstance(current, (list, dict)):
+                chosen_subkey = subkeys[i]
+                if isinstance(current, list):
+                    condition = len(current) > chosen_subkey
+                elif isinstance(current, dict):
+                    condition = chosen_subkey in current
+
+                if condition:
+                    next_obj = current[chosen_subkey]
+                    # Next object might be None as an artifact of header merging
                     if next_obj is not None:
-                        current = current[subkeys[i]]
-                        continue
-            elif isinstance(current, dict):
-                if subkeys[i] in current:
-                    next_obj = current[subkeys[i]]
-                    if next_obj is not None:
-                        current = current[subkeys[i]]
+                        current = next_obj
                         continue
             new_obj: dict | list = {} if (splitter == ".") else []
 
-            # If the current object is a list, append the new object to it.
+            # Append or assign the new object to the current object depending
+            # on type.
             if isinstance(current, list):
                 current.append(new_obj)
             elif isinstance(current, dict):
                 current[subkeys[i]] = new_obj
             # Mypy doesn't like that this is dynamically typed, so we have to
-            # ignore it
+            # ignore it. This is python, not C.
             current = new_obj  # type: ignore
         if isinstance(current, list):
             current.append(value)

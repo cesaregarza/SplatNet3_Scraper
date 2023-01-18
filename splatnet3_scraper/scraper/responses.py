@@ -46,7 +46,7 @@ class QueryResponse:
         if self._detailed is None:
             raise AttributeError("No detailed data")
         return self._detailed
-    
+
     def __repr__(self) -> str:
         detail_str = "Detailed" if self._detailed is not None else ""
         return f"QueryResponse({detail_str})"
