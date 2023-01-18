@@ -17,3 +17,8 @@ def urand36_expected() -> bytes:
 @pytest.fixture
 def urand32_expected() -> bytes:
     return b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-o"
+
+
+@pytest.fixture
+def test_session_token() -> str:
+    return "test_session_token"
