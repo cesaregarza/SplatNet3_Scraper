@@ -135,3 +135,53 @@ class TestNSO:
         monkeypatch.setattr(os, "urandom", mock_urandom)
         assert nso.state == encoded_str
         assert nso._state == encoded_str
+
+    def test_generate_new_verifier(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        urand36: bytes,
+        urand32_expected: bytes,
+    ):
+        def mock_urandom(*args, **kwargs):
+            return urand36[:32]
+
+        monkeypatch.setattr(os, "urandom", mock_urandom)
+        nso = NSO.new_instance()
+        encoded_str = urand32_expected
+        assert nso.generate_new_verifier() == encoded_str
+        assert b"=" not in encoded_str
+
+    def test_verifier_property(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        urand36: bytes,
+        urand32_expected: bytes,
+    ):
+        def mock_urandom(*args, **kwargs):
+            return urand36[:32]
+
+        monkeypatch.setattr(os, "urandom", mock_urandom)
+        nso = NSO.new_instance()
+        assert nso._verifier is None
+        encoded_str = urand32_expected
+        assert nso.verifier == encoded_str
+        assert nso._verifier == encoded_str
+
+        # Test short circuit
+        def mock_urandom(*args, **kwargs):
+            raise Exception
+
+        monkeypatch.setattr(os, "urandom", mock_urandom)
+        assert nso.verifier == encoded_str
+        assert nso._verifier == encoded_str
+
+    def test_session_token(self):
+        nso = NSO.new_instance()
+        assert nso._session_token is None
+        with pytest.raises(ValueError):
+            nso.session_token
+
+        nso._session_token = "test"
+        assert nso.session_token == "test"
+    
+    

@@ -12,3 +12,8 @@ def urand36() -> bytes:
 @pytest.fixture
 def urand36_expected() -> bytes:
     return b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-row_vL"
+
+
+@pytest.fixture
+def urand32_expected() -> bytes:
+    return b"4QkljBV_YNnGQLU56jEKk9-cqjEXrxlmfOigbM7vn-o"
