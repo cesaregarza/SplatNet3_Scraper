@@ -199,7 +199,15 @@ class LinearJSON:
         data = self.data
         data_str = []
         for row in data:
-            data_str.append(",".join([str(x) for x in row]))
+            out_row = []
+            # If the row has a comma, then we need to wrap the row in quotes
+            for col in row:
+                if isinstance(col, str) and "," in col:
+                    out_col = f'"{col}"'
+                else:
+                    out_col = str(col)
+                out_row.append(out_col)
+            data_str.append(",".join(out_row))
         data_str_out = "\n".join(data_str)
         if include_header:
             header_str = ",".join(self.header)
