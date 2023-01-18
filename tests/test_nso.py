@@ -89,13 +89,11 @@ class TestNSO:
         assert nso._version == "5.0.0"
 
         # Test short circuit
-        fake_mock = TestNSO.MockResponse(200, "")
-
         def mock_get(*args, **kwargs):
-            return fake_mock
-
+            raise Exception
         monkeypatch.setattr(requests.Session, "get", mock_get)
         version = nso.version
         assert version == "5.0.0"
         assert nso._version == "5.0.0"
-        assert fake_mock.text_counter == 0
+
+    
