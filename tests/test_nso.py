@@ -100,6 +100,7 @@ class TestNSO:
 
     def test_generate_new_state(self, monkeypatch: pytest.MonkeyPatch):
         def mock_urandom(*args, **kwargs):
+            # DO NOT USE THIS FOR ANYTHING OTHER THAN TESTING. IT IS NOT SECURE
             return (
                 b"\xe1\t%\x8c\x15\x7f`\xd9\xc6@\xb59\xea1\n\x93\xdf\x9c\xaa1"
                 b"\x17\xaf\x19f|\xe8\xa0l\xce\xef\x9f\xea\xe8\xc3\xfb\xcb"
@@ -112,6 +113,7 @@ class TestNSO:
 
     def test_state_property(self, monkeypatch: pytest.MonkeyPatch):
         def mock_urandom(*args, **kwargs):
+            # DO NOT USE THIS FOR ANYTHING OTHER THAN TESTING. IT IS NOT SECURE
             return (
                 b"\xe1\t%\x8c\x15\x7f`\xd9\xc6@\xb59\xea1\n\x93\xdf\x9c\xaa1"
                 b"\x17\xaf\x19f|\xe8\xa0l\xce\xef\x9f\xea\xe8\xc3\xfb\xcb"
