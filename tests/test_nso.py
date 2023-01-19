@@ -269,7 +269,7 @@ class TestNSO:
 
         access_token = nso.get_user_access_token("test")
         assert isinstance(access_token, requests.Response)
-    
+
     def test_user_info(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get(*args, **kwargs):
             return TestNSO.MockResponse(200, json={"test": "test"})
@@ -278,5 +278,28 @@ class TestNSO:
         nso = self.get_new_nso()
         user_info = nso.get_user_info("test")
         assert user_info == {"test": "test"}
-    
-    
+
+    def test_get_ftoken(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_post(*args, **kwargs):
+            out_json = {
+                "f": "test_f",
+                "request_id": "test_request_id",
+                "timestamp": "test_timestamp",
+            }
+            return TestNSO.MockResponse(200, json=out_json)
+
+        nso = self.get_new_nso()
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        ftoken, request_id, timestamp = nso.get_ftoken("test", "test", "test")
+        assert ftoken == "test_f"
+        assert request_id == "test_request_id"
+        assert timestamp == "test_timestamp"
+
+        # Fail
+        def mock_post(*args, **kwargs):
+            return TestNSO.MockResponse(400, json={})
+
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+        with pytest.raises(FTokenException):
+            nso.get_ftoken("test", "test", "test")
