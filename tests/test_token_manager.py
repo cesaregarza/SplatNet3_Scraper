@@ -1,14 +1,16 @@
-import pytest
-import freezegun
 import time
+
+import freezegun
+import pytest
 
 from splatnet3_scraper.base.tokens.token_manager import Token, TokenManager
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
     TOKEN_EXPIRATIONS,
-    TOKENS
+    TOKENS,
 )
+
 
 class TestToken:
     @freezegun.freeze_time("2021-01-01 00:00:00")
