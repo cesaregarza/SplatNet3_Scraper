@@ -1,10 +1,8 @@
 import hashlib
 import os
-from unittest import mock
 
 import pytest
 import requests
-from pytest_lazyfixture import lazy_fixture
 
 from splatnet3_scraper.base.tokens.nso import (
     NSO,
@@ -12,14 +10,8 @@ from splatnet3_scraper.base.tokens.nso import (
     NintendoException,
     SplatnetException,
 )
-from splatnet3_scraper import utils
 from splatnet3_scraper.constants import (
     APP_VERSION_FALLBACK,
-    DEFAULT_USER_AGENT,
-    IMINK_URL,
-    IOS_APP_URL,
-    SPLATNET_URL,
-    WEB_VIEW_VERSION_FALLBACK,
 )
 
 
@@ -471,8 +463,10 @@ class TestNSO:
             "birthday": "birthday",
             "country": "country",
         }
+
         def generate_and_mock_post(status_code, out_json, exception):
             nso = self.get_new_nso(web_view_version="5.0.0")
+
             def mock_post(*args, **kwargs):
                 assert "cookies" in kwargs
                 return TestNSO.MockResponse(status_code, json=out_json)
@@ -489,9 +483,13 @@ class TestNSO:
 
         # Success
         nso = self.get_new_nso(web_view_version="5.0.0")
+
         def mock_post(*args, **kwargs):
             assert "cookies" in kwargs
-            return TestNSO.MockResponse(200, json={"bulletToken": "bullet_token"})
+            return TestNSO.MockResponse(
+                200, json={"bulletToken": "bullet_token"}
+            )
+
         monkeypatch.setattr(requests.Session, "post", mock_post)
         bullet_token = nso.get_bullet_token("gtoken", user_info)
         assert bullet_token == "bullet_token"
