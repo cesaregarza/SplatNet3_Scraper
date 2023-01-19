@@ -493,3 +493,7 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "post", mock_post)
         bullet_token = nso.get_bullet_token("gtoken", user_info)
         assert bullet_token == "bullet_token"
+    
+    # TODO: cgarza - test splatnet_web_version. This is tricky because it's a
+    # decorated function, so we need to mock the underlying function without
+    # mocking the decorator.
