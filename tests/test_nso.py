@@ -303,3 +303,15 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "post", mock_post)
         with pytest.raises(FTokenException):
             nso.get_ftoken("test", "test", "test")
+    
+    def test_get_splatoon_token(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_post(*args, **kwargs):
+            return TestNSO.MockResponse(200, json={})
+
+        nso = self.get_new_nso(version="5.0.0")
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        splatoon_token = nso.get_splatoon_token({"parameter": {"f": "test"}})
+        assert isinstance(splatoon_token, TestNSO.MockResponse)
+        assert splatoon_token.json() == {}
+
