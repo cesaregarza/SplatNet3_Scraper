@@ -504,6 +504,21 @@ pycodestyle = ">=2.10.0,<2.11.0"
 pyflakes = ">=3.0.0,<3.1.0"
 
 [[package]]
+name = "freezegun"
+version = "1.2.2"
+description = "Let your Python tests travel through time"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "freezegun-1.2.2-py3-none-any.whl", hash = "sha256:ea1b963b993cb9ea195adbd893a48d573fda951b0da64f60883d7e988b606c9f"},
+    {file = "freezegun-1.2.2.tar.gz", hash = "sha256:cd22d1ba06941384410cd967d8a99d5ae2442f57dfafeff2fda5de8dc5c05446"},
+]
+
+[package.dependencies]
+python-dateutil = ">=2.7"
+
+[[package]]
 name = "genson"
 version = "1.2.2"
 description = "GenSON is a powerful, user-friendly JSON Schema generator."
@@ -1499,4 +1514,4 @@ parquet = ["pyarrow"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a739cddb86b0515a1a42bd672d7c9ff1fa9c60db3fa8756bc2f6942ddc9b5ffe"
+content-hash = "3c232c79428e85b44583a87ed91bb2f6639f53afffc07cf0ddffb9379215948d"
