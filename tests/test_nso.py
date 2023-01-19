@@ -50,7 +50,6 @@ class TestNSO:
             self.text_counter += 1
             return self._text
 
-        @property
         def json(self):
             self.json_counter += 1
             return self._json
@@ -59,6 +58,28 @@ class TestNSO:
         def url(self):
             self.url_counter += 1
             return self._url
+
+    def get_new_nso(
+        self,
+        state: str | None = None,
+        verifier: str | None = None,
+        version: str | None = None,
+        web_view_version: str | None = None,
+        user_access_token: str | None = None,
+        id_token: str | None = None,
+        gtoken: str | None = None,
+        user_info: dict | None = None,
+    ) -> NSO:
+        nso = NSO.new_instance()
+        nso._state = state
+        nso._verifier = verifier
+        nso._version = version
+        nso._web_view_version = web_view_version
+        nso._user_access_token = user_access_token
+        nso._id_token = id_token
+        nso._gtoken = gtoken
+        nso._user_info = user_info
+        return nso
 
     def test_new_instance(self):
         nso = NSO.new_instance()
@@ -228,3 +249,23 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "get", mock_get)
         nso = NSO.new_instance()
         assert nso.generate_login_url() == "https://test.com/"
+
+    def test_get_session_token(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_get(*args, **kwargs):
+            return TestNSO.MockResponse(200, json={"session_token": "test"})
+
+        monkeypatch.setattr(requests.Session, "post", mock_get)
+        nso = self.get_new_nso(version="5.0.0", verifier="test_verifier")
+        assert nso._session_token is None
+        session_token = nso.get_session_token("session_code")
+        assert session_token == "test"
+
+    def test_get_user_access_token(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_get(*args, **kwargs):
+            return requests.Response()
+
+        monkeypatch.setattr(requests.Session, "post", mock_get)
+        nso = self.get_new_nso()
+
+        access_token = nso.get_user_access_token("test")
+        assert isinstance(access_token, requests.Response)
