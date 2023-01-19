@@ -303,7 +303,7 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "post", mock_post)
         with pytest.raises(FTokenException):
             nso.get_ftoken("test", "test", "test")
-    
+
     def test_get_splatoon_token(self, monkeypatch: pytest.MonkeyPatch):
         def mock_post(*args, **kwargs):
             return TestNSO.MockResponse(200, json={})
@@ -315,3 +315,61 @@ class TestNSO:
         assert isinstance(splatoon_token, TestNSO.MockResponse)
         assert splatoon_token.json() == {}
 
+    def test_f_token_generation_step_1(self, monkeypatch: pytest.MonkeyPatch):
+        user_access_response = TestNSO.MockResponse(
+            200, json={"id_token": "id_token"}
+        )
+
+        def mock_get_ftoken(*args, **kwargs):
+            return "f_token", "request_id", "timestamp"
+
+        def generate_mock_get_splatoon_token(out_json):
+            def mock_get_splatoon_token(self, body):
+                assert body["parameter"]["f"] == "f_token"
+                assert body["parameter"]["language"] == "language"
+                assert body["parameter"]["naBirthday"] == "birthday"
+                assert body["parameter"]["naCountry"] == "country"
+                assert body["parameter"]["naIdToken"] == "id_token"
+                assert body["parameter"]["requestId"] == "request_id"
+                assert body["parameter"]["timestamp"] == "timestamp"
+
+                return TestNSO.MockResponse(200, json=out_json)
+
+            return mock_get_splatoon_token
+
+        valid_json = {
+            "result": {
+                "webApiServerCredential": {
+                    "accessToken": "access_token",
+                }
+            }
+        }
+        mock_get_splatoon_token = generate_mock_get_splatoon_token(valid_json)
+        monkeypatch.setattr(NSO, "get_ftoken", mock_get_ftoken)
+        monkeypatch.setattr(NSO, "get_splatoon_token", mock_get_splatoon_token)
+
+        nso = self.get_new_nso()
+
+        user_info = {
+            "language": "language",
+            "birthday": "birthday",
+            "country": "country",
+        }
+
+        ftoken = nso.f_token_generation_step_1(
+            user_access_response, user_info, "test_url"
+        )
+        assert isinstance(ftoken, TestNSO.MockResponse)
+        assert (
+            ftoken.json()["result"]["webApiServerCredential"]["accessToken"]
+            == "access_token"
+        )
+
+        # Fail
+        invalid_json = {"result": {}}
+        mock_get_splatoon_token = generate_mock_get_splatoon_token(invalid_json)
+        monkeypatch.setattr(NSO, "get_splatoon_token", mock_get_splatoon_token)
+        with pytest.raises(KeyError):
+            nso.f_token_generation_step_1(
+                user_access_response, user_info, "test_url"
+            )
