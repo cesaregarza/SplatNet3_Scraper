@@ -399,3 +399,67 @@ class TestNSO:
         nso = self.get_new_nso(version="5.0.0")
         gtoken = nso.f_token_generation_step_2("test_id", "test_url")
         assert gtoken == "gtoken"
+
+    def test_get_gtoken(self, monkeypatch: pytest.MonkeyPatch):
+        # User access failure
+        def mock_get_user_access_token(*args, **kwargs):
+            return TestNSO.MockResponse(400, json={})
+
+        monkeypatch.setattr(
+            NSO, "get_user_access_token", mock_get_user_access_token
+        )
+        nso = self.get_new_nso()
+        with pytest.raises(NintendoException):
+            nso.get_gtoken("test")
+
+        def mock_get_user_access_token(*args, **kwargs):
+            out_json = {
+                "id_token": "id_token",
+                "access_token": "user_access_token",
+            }
+            return TestNSO.MockResponse(200, json=out_json)
+
+        monkeypatch.setattr(
+            NSO, "get_user_access_token", mock_get_user_access_token
+        )
+
+        def mock_get_user_info(*args, **kwargs):
+            return {
+                "language": "language",
+                "birthday": "birthday",
+                "country": "country",
+            }
+
+        monkeypatch.setattr(NSO, "get_user_info", mock_get_user_info)
+
+        def mock_f_token_generation_step_1(*args, **kwargs):
+            out_json = {
+                "result": {
+                    "webApiServerCredential": {
+                        "accessToken": "access_token",
+                    }
+                }
+            }
+            return TestNSO.MockResponse(200, json=out_json)
+
+        monkeypatch.setattr(
+            NSO, "f_token_generation_step_1", mock_f_token_generation_step_1
+        )
+
+        def mock_f_token_generation_step_2(*args, **kwargs):
+            assert args[1] == "access_token"
+            return "gtoken"
+
+        monkeypatch.setattr(
+            NSO, "f_token_generation_step_2", mock_f_token_generation_step_2
+        )
+
+        nso = self.get_new_nso()
+        gtoken = nso.get_gtoken("test")
+        assert gtoken == "gtoken"
+        assert nso._user_access_token == "user_access_token"
+        assert nso._id_token == "id_token"
+        assert nso._user_info["language"] == "language"
+        assert nso._user_info["birthday"] == "birthday"
+        assert nso._user_info["country"] == "country"
+        assert nso._gtoken == "gtoken"
