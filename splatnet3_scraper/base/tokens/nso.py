@@ -583,6 +583,8 @@ class NSO:
 
     @property
     def splatnet_web_version(self) -> str:
+        if self._web_view_version is not None:
+            return self._web_view_version
         try:
             web_version = get_splatnet_web_version()
             self._web_view_version = web_version

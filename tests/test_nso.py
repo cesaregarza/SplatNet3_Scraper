@@ -12,6 +12,7 @@ from splatnet3_scraper.base.tokens.nso import (
     NintendoException,
     SplatnetException,
 )
+from splatnet3_scraper import utils
 from splatnet3_scraper.constants import (
     APP_VERSION_FALLBACK,
     DEFAULT_USER_AGENT,
@@ -91,7 +92,7 @@ class TestNSO:
             else:
                 assert nso_variables[key] is None
 
-    def test_generate_version(self, monkeypatch: pytest.MonkeyPatch):
+    def test_generate_version(self, monkeypatch):
         test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
         def mock_get(*args, **kwargs):
@@ -110,7 +111,7 @@ class TestNSO:
         version = nso.get_version()
         assert version == APP_VERSION_FALLBACK
 
-    def test_version_property(self, monkeypatch: pytest.MonkeyPatch):
+    def test_version_property(self, monkeypatch):
         test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
         def mock_get(*args, **kwargs):
@@ -133,7 +134,7 @@ class TestNSO:
 
     def test_generate_new_state(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         urand36: bytes,
         urand36_expected: bytes,
     ):
@@ -147,7 +148,7 @@ class TestNSO:
 
     def test_state_property(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         urand36: bytes,
         urand36_expected: bytes,
     ):
@@ -171,7 +172,7 @@ class TestNSO:
 
     def test_generate_new_verifier(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         urand36: bytes,
         urand32_expected: bytes,
     ):
@@ -186,7 +187,7 @@ class TestNSO:
 
     def test_verifier_property(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         urand36: bytes,
         urand32_expected: bytes,
     ):
@@ -219,7 +220,7 @@ class TestNSO:
 
     def test_login_url(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         urand36: bytes,
     ):
         def mock_generate_new_state(*args, **kwargs):
@@ -250,7 +251,7 @@ class TestNSO:
         nso = NSO.new_instance()
         assert nso.generate_login_url() == "https://test.com/"
 
-    def test_get_session_token(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_session_token(self, monkeypatch):
         def mock_get(*args, **kwargs):
             return TestNSO.MockResponse(200, json={"session_token": "test"})
 
@@ -260,7 +261,7 @@ class TestNSO:
         session_token = nso.get_session_token("session_code")
         assert session_token == "test"
 
-    def test_get_user_access_token(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_user_access_token(self, monkeypatch):
         def mock_get(*args, **kwargs):
             return requests.Response()
 
@@ -270,7 +271,7 @@ class TestNSO:
         access_token = nso.get_user_access_token("test")
         assert isinstance(access_token, requests.Response)
 
-    def test_user_info(self, monkeypatch: pytest.MonkeyPatch):
+    def test_user_info(self, monkeypatch):
         def mock_get(*args, **kwargs):
             return TestNSO.MockResponse(200, json={"test": "test"})
 
@@ -279,7 +280,7 @@ class TestNSO:
         user_info = nso.get_user_info("test")
         assert user_info == {"test": "test"}
 
-    def test_get_ftoken(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_ftoken(self, monkeypatch):
         def mock_post(*args, **kwargs):
             out_json = {
                 "f": "test_f",
@@ -304,7 +305,7 @@ class TestNSO:
         with pytest.raises(FTokenException):
             nso.get_ftoken("test", "test", "test")
 
-    def test_get_splatoon_token(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_splatoon_token(self, monkeypatch):
         def mock_post(*args, **kwargs):
             return TestNSO.MockResponse(200, json={})
 
@@ -315,7 +316,7 @@ class TestNSO:
         assert isinstance(splatoon_token, TestNSO.MockResponse)
         assert splatoon_token.json() == {}
 
-    def test_f_token_generation_step_1(self, monkeypatch: pytest.MonkeyPatch):
+    def test_f_token_generation_step_1(self, monkeypatch):
         user_access_response = TestNSO.MockResponse(
             200, json={"id_token": "id_token"}
         )
@@ -377,7 +378,7 @@ class TestNSO:
                 user_access_response, user_info, "test_url"
             )
 
-    def test_f_token_generation_step_2(self, monkeypatch: pytest.MonkeyPatch):
+    def test_f_token_generation_step_2(self, monkeypatch):
         def mock_get_ftoken(*args, **kwargs):
             # Make sure it's using the correct hash method
             assert args[3] == 2
@@ -400,7 +401,7 @@ class TestNSO:
         gtoken = nso.f_token_generation_step_2("test_id", "test_url")
         assert gtoken == "gtoken"
 
-    def test_get_gtoken(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_gtoken(self, monkeypatch):
         # User access failure
         def mock_get_user_access_token(*args, **kwargs):
             return TestNSO.MockResponse(400, json={})
@@ -463,3 +464,34 @@ class TestNSO:
         assert nso._user_info["birthday"] == "birthday"
         assert nso._user_info["country"] == "country"
         assert nso._gtoken == "gtoken"
+
+    def test_get_bullet_token(self, monkeypatch):
+        user_info = {
+            "language": "language",
+            "birthday": "birthday",
+            "country": "country",
+        }
+        def generate_and_mock_post(status_code, out_json, exception):
+            nso = self.get_new_nso(web_view_version="5.0.0")
+            def mock_post(*args, **kwargs):
+                assert "cookies" in kwargs
+                return TestNSO.MockResponse(status_code, json=out_json)
+
+            monkeypatch.setattr(requests.Session, "post", mock_post)
+            with pytest.raises(exception):
+                nso.get_bullet_token("gtoken", user_info)
+
+        # Failures
+        generate_and_mock_post(401, {}, SplatnetException)
+        generate_and_mock_post(403, {}, SplatnetException)
+        generate_and_mock_post(204, {}, SplatnetException)
+        generate_and_mock_post(200, {}, NintendoException)
+
+        # Success
+        nso = self.get_new_nso(web_view_version="5.0.0")
+        def mock_post(*args, **kwargs):
+            assert "cookies" in kwargs
+            return TestNSO.MockResponse(200, json={"bulletToken": "bullet_token"})
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+        bullet_token = nso.get_bullet_token("gtoken", user_info)
+        assert bullet_token == "bullet_token"
