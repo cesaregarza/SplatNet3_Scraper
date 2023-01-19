@@ -269,3 +269,14 @@ class TestNSO:
 
         access_token = nso.get_user_access_token("test")
         assert isinstance(access_token, requests.Response)
+    
+    def test_user_info(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_get(*args, **kwargs):
+            return TestNSO.MockResponse(200, json={"test": "test"})
+
+        monkeypatch.setattr(requests.Session, "get", mock_get)
+        nso = self.get_new_nso()
+        user_info = nso.get_user_info("test")
+        assert user_info == {"test": "test"}
+    
+    
