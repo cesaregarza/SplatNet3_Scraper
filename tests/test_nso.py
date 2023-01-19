@@ -321,10 +321,13 @@ class TestNSO:
         )
 
         def mock_get_ftoken(*args, **kwargs):
+            # Make sure it's using the correct hash method
+            assert args[3] == 1
             return "f_token", "request_id", "timestamp"
 
         def generate_mock_get_splatoon_token(out_json):
             def mock_get_splatoon_token(self, body):
+                assert "parameter" in body
                 assert body["parameter"]["f"] == "f_token"
                 assert body["parameter"]["language"] == "language"
                 assert body["parameter"]["naBirthday"] == "birthday"
@@ -373,3 +376,26 @@ class TestNSO:
             nso.f_token_generation_step_1(
                 user_access_response, user_info, "test_url"
             )
+
+    def test_f_token_generation_step_2(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_get_ftoken(*args, **kwargs):
+            # Make sure it's using the correct hash method
+            assert args[3] == 2
+            return "f_token", "request_id", "timestamp"
+
+        def mock_post(*args, **kwargs):
+            # Make sure it's using the correct id
+            assert kwargs["json"]["parameter"]["id"] == 4834290508791808
+            out_json = {
+                "result": {
+                    "accessToken": "gtoken",
+                }
+            }
+            return TestNSO.MockResponse(200, json=out_json)
+
+        monkeypatch.setattr(NSO, "get_ftoken", mock_get_ftoken)
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        nso = self.get_new_nso(version="5.0.0")
+        gtoken = nso.f_token_generation_step_2("test_id", "test_url")
+        assert gtoken == "gtoken"
