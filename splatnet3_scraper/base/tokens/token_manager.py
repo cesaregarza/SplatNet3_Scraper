@@ -67,7 +67,7 @@ class Token:
             out += f"{mins:.0f}m "
         if secs > 0:
             out += f"{secs:.1f}s"
-        return out
+        return out.strip()
 
     def __repr__(self) -> str:
         out = "Token("
