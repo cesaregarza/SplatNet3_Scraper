@@ -1,3 +1,4 @@
+import pathlib
 import time
 
 import freezegun
@@ -237,3 +238,70 @@ class TestTokenManager:
         token_manager = TokenManager()
         token_manager.generate_all_tokens()
         assert counter == 2
+
+    def test_from_session_token(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+        token_manager = TokenManager.from_session_token("test_session_token")
+        assert token_manager.nso._session_token == "test_session_token"
+        expected_origin = {"origin": "session_token", "data": None}
+        assert token_manager._origin == expected_origin
+
+    def test_from_config_file(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+        counter = 0
+
+        def mock_test_tokens(*args, **kwargs):
+            return True
+
+        def mock_generate_all_tokens(*args, **kwargs):
+            nonlocal counter
+            counter += 1
+
+        monkeypatch.setattr(TokenManager, "test_tokens", mock_test_tokens)
+        monkeypatch.setattr(
+            TokenManager, "generate_all_tokens", mock_generate_all_tokens
+        )
+        base_path = pathlib.Path(__file__).parent / "fixtures" / "config_files"
+
+        # Test with no config file
+        with pytest.raises(ValueError):
+            TokenManager.from_config_file(".nonexistent")
+
+        # Test with a valid config file
+        path = str(base_path / ".valid")
+        token_manager = TokenManager.from_config_file(path)
+        assert token_manager.nso._session_token == "test_session_token"
+        assert token_manager.nso._gtoken == "test_gtoken"
+        assert (
+            token_manager._tokens["session_token"].token == "test_session_token"
+        )
+        assert token_manager._tokens["gtoken"].token == "test_gtoken"
+        assert (
+            token_manager._tokens["bullet_token"].token == "test_bullet_token"
+        )
+        expected_data = {
+            "country": "US",
+            "language": "en-US",
+        }
+        assert token_manager.data == expected_data
+        expected_origin = {
+            "origin": "config_file",
+            "data": path,
+        }
+        assert token_manager._origin == expected_origin
+
+        # Test with a config file without a tokens section
+        path = str(base_path / ".no_tokens_section")
+        with pytest.raises(ValueError):
+            TokenManager.from_config_file(path)
+
+        # Test with a config without data
+        path = str(base_path / ".no_data")
+        token_manager = TokenManager.from_config_file(path)
+        assert counter == 1
+
+        # Test config with extra tokens
+        path = str(base_path / ".extra_tokens")
+        token_manager = TokenManager.from_config_file(path)
+        assert "extra_token" in token_manager._tokens
+        assert token_manager._tokens["extra_token"].token == "test_extra_token"

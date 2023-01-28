@@ -1,0 +1,11 @@
+[tokens_]
+session_token = test_session_token
+gtoken = test_gtoken
+bullet_token = test_bullet_token
+
+[data]
+country = US
+language = en-US
+
+[options]
+user_agent = test_user_agent
