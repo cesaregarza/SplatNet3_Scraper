@@ -62,6 +62,10 @@ class MockNSO:
         self._user_info = None
         self._gtoken = None
 
+    @property
+    def session_token(self):
+        return self._session_token
+
     def get_gtoken(self, *args) -> str:
         self._gtoken = "test_gtoken"
         self._user_info = {
@@ -168,3 +172,10 @@ class TestTokenManager:
             token_manager.generate_gtoken()
 
         token_manager.add_session_token("test_session_token")
+        token_manager.generate_gtoken()
+        expected_user_info = {
+            "country": "test_country",
+            "language": "test_language",
+        }
+        assert token_manager.data == expected_user_info
+        assert "gtoken" in token_manager._tokens
