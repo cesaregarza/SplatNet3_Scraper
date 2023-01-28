@@ -219,3 +219,21 @@ class TestTokenManager:
         token_manager.nso._invalid_tokens = ["bullet_token"]
         with pytest.raises(SplatnetException):
             token_manager.generate_bullet_token()
+
+    def test_generate_all_tokens(self, monkeypatch: pytest.MonkeyPatch):
+        counter = 0
+
+        def mock_generate_token(*args, **kwargs):
+            nonlocal counter
+            counter += 1
+
+        monkeypatch.setattr(
+            TokenManager, "generate_gtoken", mock_generate_token
+        )
+        monkeypatch.setattr(
+            TokenManager, "generate_bullet_token", mock_generate_token
+        )
+
+        token_manager = TokenManager()
+        token_manager.generate_all_tokens()
+        assert counter == 2
