@@ -3,7 +3,11 @@ import time
 import freezegun
 import pytest
 
-from splatnet3_scraper.base.tokens.nso import NSO
+from splatnet3_scraper.base.tokens.nso import (
+    NSO,
+    NintendoException,
+    SplatnetException,
+)
 from splatnet3_scraper.base.tokens.token_manager import Token, TokenManager
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
@@ -61,12 +65,16 @@ class MockNSO:
         self._session_token = None
         self._user_info = None
         self._gtoken = None
+        self._invalid_tokens = []
 
     @property
     def session_token(self):
         return self._session_token
 
     def get_gtoken(self, *args) -> str:
+        if "gtoken" in self._invalid_tokens:
+            return ""
+
         self._gtoken = "test_gtoken"
         self._user_info = {
             "country": "test_country",
@@ -75,6 +83,9 @@ class MockNSO:
         return self._gtoken
 
     def get_bullet_token(self, *args) -> str:
+        if "bullet_token" in self._invalid_tokens:
+            return ""
+
         return "test_bullet_token"
 
     @staticmethod
@@ -179,3 +190,32 @@ class TestTokenManager:
         }
         assert token_manager.data == expected_user_info
         assert "gtoken" in token_manager._tokens
+
+    def test_generate_bullet_token(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+        token_manager = TokenManager()
+
+        # Test generating a bullet token without a session token
+        with pytest.raises(ValueError):
+            token_manager.generate_bullet_token()
+
+        # Test generating a bullet token without a gtoken
+        token_manager.add_session_token("test_session_token")
+        assert "gtoken" not in token_manager._tokens
+        token_manager.generate_bullet_token()
+        assert "gtoken" in token_manager._tokens
+        assert "bullet_token" in token_manager._tokens
+
+        # Test invalid gtoken returned
+        token_manager = TokenManager()
+        token_manager.add_session_token("test_session_token")
+        token_manager.nso._invalid_tokens = ["gtoken"]
+        with pytest.raises(NintendoException):
+            token_manager.generate_bullet_token()
+
+        # Test valid gtoken, invalid bullet token
+        token_manager = TokenManager()
+        token_manager.add_session_token("test_session_token")
+        token_manager.nso._invalid_tokens = ["bullet_token"]
+        with pytest.raises(SplatnetException):
+            token_manager.generate_bullet_token()

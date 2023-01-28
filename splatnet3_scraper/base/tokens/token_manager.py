@@ -8,7 +8,11 @@ import requests
 
 from splatnet3_scraper import __version__
 from splatnet3_scraper.base.graph_ql_queries import queries
-from splatnet3_scraper.base.tokens.nso import NSO, SplatnetException
+from splatnet3_scraper.base.tokens.nso import (
+    NSO,
+    NintendoException,
+    SplatnetException,
+)
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
@@ -207,11 +211,16 @@ class TokenManager:
             )
         gtoken = self.nso.get_gtoken(self.nso.session_token)
         self.add_token(gtoken, TOKENS.GTOKEN)
-        user_info = cast(dict[str, str], self.nso._user_info)
-        country = user_info["country"]
-        language = user_info["language"]
-        self._data["country"] = country
-        self._data["language"] = language
+        try:
+            user_info = cast(dict[str, str], self.nso._user_info)
+            country = user_info["country"]
+            language = user_info["language"]
+            self._data["country"] = country
+            self._data["language"] = language
+        except (KeyError, TypeError):
+            raise NintendoException(
+                "Unable to get user info. Gtoken may be invalid."
+            )
 
     @retry(times=1, exceptions=SplatnetException)
     def generate_bullet_token(self) -> None:
