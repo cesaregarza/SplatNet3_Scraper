@@ -421,8 +421,9 @@ class TokenManager:
         Returns:
             bool: True if the token is valid, False otherwise.
         """
-        token = self.get(token_type, full_token=True)
-        if token is None:
+        try:
+            token = self.get(token_type, full_token=True)
+        except ValueError:
             return False
         return token.is_valid
 

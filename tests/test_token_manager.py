@@ -1,6 +1,6 @@
+import builtins
 import configparser
 import pathlib
-import builtins
 import time
 
 import freezegun
@@ -23,6 +23,9 @@ from splatnet3_scraper.constants import (
 @freezegun.freeze_time("2023-01-01 00:00:00")
 def mock_token(token_type):
     return Token(token_type, token_type, time.time())
+
+
+base_path = pathlib.Path(__file__).parent / "fixtures" / "config_files"
 
 
 class TestToken:
@@ -263,7 +266,6 @@ class TestTokenManager:
         monkeypatch.setattr(
             TokenManager, "generate_all_tokens", mock_generate_all_tokens
         )
-        base_path = pathlib.Path(__file__).parent / "fixtures" / "config_files"
 
         # Test with no config file
         with pytest.raises(ValueError):
@@ -336,3 +338,15 @@ class TestTokenManager:
         token_manager = TokenManager.from_env()
         assert token_manager.get("gtoken") == "test_gtoken"
         assert token_manager.get("bullet_token") == "test_bullet_token"
+
+    @pytest.mark.xfail
+    def test_save(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+
+        def mock_test_tokens(*args, **kwargs):
+            return True
+
+        monkeypatch.setattr(TokenManager, "test_tokens", mock_test_tokens)
+        path = str(base_path / ".valid")
+        token_manager = TokenManager.from_config_file(path)
+        raise NotImplementedError
