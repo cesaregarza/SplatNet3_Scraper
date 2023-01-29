@@ -20,7 +20,7 @@ def mock_token(token_type):
     return Token(token_type, token_type, time.time())
 
 
-base_path = pathlib.Path(__file__).parent / "fixtures" / "config_files"
+base_path = pathlib.Path(__file__).parent.parent / "fixtures" / "config_files"
 token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
 
 
