@@ -1,5 +1,6 @@
 import configparser
 import pathlib
+import builtins
 import time
 
 import freezegun
@@ -273,13 +274,10 @@ class TestTokenManager:
         token_manager = TokenManager.from_config_file(path)
         assert token_manager.nso._session_token == "test_session_token"
         assert token_manager.nso._gtoken == "test_gtoken"
-        assert (
-            token_manager._tokens["session_token"].token == "test_session_token"
-        )
-        assert token_manager._tokens["gtoken"].token == "test_gtoken"
-        assert (
-            token_manager._tokens["bullet_token"].token == "test_bullet_token"
-        )
+        assert token_manager.get("session_token") == "test_session_token"
+        assert token_manager.get("gtoken") == "test_gtoken"
+        assert token_manager.get("bullet_token") == "test_bullet_token"
+
         expected_data = {
             "country": "US",
             "language": "en-US",
@@ -304,32 +302,30 @@ class TestTokenManager:
         # Test config with extra tokens
         path = str(base_path / ".extra_tokens")
         token_manager = TokenManager.from_config_file(path)
-        assert "extra_token" in token_manager._tokens
-        assert token_manager._tokens["extra_token"].token == "test_extra_token"
+        assert token_manager.get("extra_token") == "test_extra_token"
 
     @pytest.mark.xfail
     def test_from_text_file(self, monkeypatch: pytest.MonkeyPatch):
         raise NotImplementedError
-    
+
     def test_from_env(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
 
         def mock_test_tokens(*args, **kwargs):
             return True
-        
+
         monkeypatch.setattr(TokenManager, "test_tokens", mock_test_tokens)
 
         # Test with no environment variables
         with pytest.raises(ValueError):
             TokenManager.from_env()
-        
+
         # Test with only session token
         monkeypatch.setenv("SN3S_SESSION_TOKEN", "test_session_token")
         token_manager = TokenManager.from_env()
 
         assert token_manager.nso._session_token == "test_session_token"
-        assert "session_token" in token_manager._tokens
-        assert token_manager._tokens["session_token"].token == "test_session_token"
+        assert token_manager.get("session_token") == "test_session_token"
         expected_origin = {"origin": "env", "data": None}
         assert token_manager._origin == expected_origin
 
@@ -338,9 +334,5 @@ class TestTokenManager:
         monkeypatch.setenv("SN3S_BULLET_TOKEN", "test_bullet_token")
 
         token_manager = TokenManager.from_env()
-        assert token_manager.nso._gtoken == "test_gtoken"
-        assert "gtoken" in token_manager._tokens
-        assert token_manager._tokens["gtoken"].token == "test_gtoken"
-        assert "bullet_token" in token_manager._tokens
-        assert token_manager._tokens["bullet_token"].token == "test_bullet_token"
-
+        assert token_manager.get("gtoken") == "test_gtoken"
+        assert token_manager.get("bullet_token") == "test_bullet_token"
