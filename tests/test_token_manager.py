@@ -2,9 +2,11 @@ import builtins
 import configparser
 import pathlib
 import time
+from unittest.mock import mock_open, patch
 
 import freezegun
 import pytest
+import pytest_mock
 
 from splatnet3_scraper.base.tokens.nso import (
     NSO,
@@ -339,8 +341,9 @@ class TestTokenManager:
         assert token_manager.get("gtoken") == "test_gtoken"
         assert token_manager.get("bullet_token") == "test_bullet_token"
 
-    @pytest.mark.xfail
-    def test_save(self, monkeypatch: pytest.MonkeyPatch):
+    def test_save(
+        self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockFixture
+    ):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
 
         def mock_test_tokens(*args, **kwargs):
@@ -348,5 +351,14 @@ class TestTokenManager:
 
         monkeypatch.setattr(TokenManager, "test_tokens", mock_test_tokens)
         path = str(base_path / ".valid")
+        out_path = str(base_path / ".out")
         token_manager = TokenManager.from_config_file(path)
-        raise NotImplementedError
+        # mock ConfigParser.write
+        patch("configparser.ConfigParser.write")
+        with patch("builtins.open", mock_open()) as mock_file, patch(
+            "configparser.ConfigParser.write"
+        ) as mock_write:
+            token_manager.save(out_path)
+            mock_file.assert_called_once_with(out_path, "w")
+
+            mock_write.assert_called_once_with(mock_file.return_value)
