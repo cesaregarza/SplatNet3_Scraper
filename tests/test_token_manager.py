@@ -1,25 +1,18 @@
-import builtins
-import configparser
 import pathlib
 import time
 from unittest.mock import mock_open, patch
 
 import freezegun
 import pytest
-import pytest_mock
+import requests
 
+from splatnet3_scraper.base.graph_ql_queries import GraphQLQueries
 from splatnet3_scraper.base.tokens.nso import (
     NSO,
     NintendoException,
     SplatnetException,
 )
 from splatnet3_scraper.base.tokens.token_manager import Token, TokenManager
-from splatnet3_scraper.constants import (
-    ENV_VAR_NAMES,
-    GRAPH_QL_REFERENCE_URL,
-    TOKEN_EXPIRATIONS,
-    TOKENS,
-)
 
 
 @freezegun.freeze_time("2023-01-01 00:00:00")
@@ -28,6 +21,7 @@ def mock_token(token_type):
 
 
 base_path = pathlib.Path(__file__).parent / "fixtures" / "config_files"
+token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
 
 
 class TestToken:
@@ -364,14 +358,12 @@ class TestTokenManager:
 
         # "tokens.ini", environment variables, and ".splatnet3_scraper"
         # (.splatnet3_scraper takes precedence)
-        token_manager_path = (
-            "splatnet3_scraper.base"
-            ".tokens.token_manager"
-            ".TokenManager.from_config_file"
-        )
-        with monkeypatch.context() as m, patch(
-            token_manager_path
-        ) as mock_from_config_file:
+        with (
+            monkeypatch.context() as m,
+            patch(
+                token_manager_path + ".from_config_file"
+            ) as mock_from_config_file,
+        ):
 
             def path_exists(path):
                 return path in ("tokens.ini", ".splatnet3_scraper")
@@ -393,12 +385,65 @@ class TestTokenManager:
         out_path = str(base_path / ".out")
         token_manager = TokenManager.from_config_file(path)
         # mock ConfigParser.write
-        patch("configparser.ConfigParser.write")
-        with patch("builtins.open", mock_open()) as mock_file, patch(
-            "configparser.ConfigParser.write"
-        ) as mock_write:
+        with (
+            patch("builtins.open", mock_open()) as mock_file,
+            patch("configparser.ConfigParser.write") as mock_write,
+        ):
             token_manager.save(out_path)
             mock_file.assert_called_once_with(out_path, "w")
 
             mock_write.assert_called_once_with(mock_file.return_value)
-        
+
+    def test_token_is_valid(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+
+        token_manager = TokenManager()
+        assert token_manager.token_is_valid("session_token") is False
+        token_manager.add_session_token("test_session_token")
+        assert token_manager.token_is_valid("session_token") is True
+
+    def test_test_tokens(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+
+        # Despite the seemingly high complexity of this function, it is easy
+        # to test by letting the other functions do their job since they are
+        # already tested. The only thing that needs to be tested is the unique
+        # behavior of this function.
+        token_manager = TokenManager()
+        token_manager.add_session_token("test_session_token")
+        token_manager.add_token("test_gtoken", "gtoken")
+        token_manager.add_token("test_bullet_token", "bullet_token")
+        token_manager._data = {"language": "test_language"}
+
+        class MockResponse:
+            def __init__(self, status_code):
+                self.status_code = status_code
+
+        def post_status_code(status_code):
+            def mock_post(*args, **kwargs):
+                return MockResponse(status_code)
+
+            return mock_post
+
+        def query_header(*args, **kwargs):
+            return {}
+
+        monkeypatch.setattr(GraphQLQueries, "query_header", query_header)
+
+        # 200 status code
+        with (
+            patch(token_manager_path + ".generate_all_tokens") as mock_generate,
+            monkeypatch.context() as m,
+        ):
+            m.setattr(requests, "post", post_status_code(200))
+            token_manager.test_tokens()
+            mock_generate.assert_not_called()
+
+        # 400 status code
+        with (
+            patch(token_manager_path + ".generate_all_tokens") as mock_generate,
+            monkeypatch.context() as m,
+        ):
+            m.setattr(requests, "post", post_status_code(400))
+            token_manager.test_tokens()
+            mock_generate.assert_called_once()
