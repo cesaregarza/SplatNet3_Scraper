@@ -341,9 +341,48 @@ class TestTokenManager:
         assert token_manager.get("gtoken") == "test_gtoken"
         assert token_manager.get("bullet_token") == "test_bullet_token"
 
-    def test_save(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockFixture
-    ):
+    def test_load(self, monkeypatch: pytest.MonkeyPatch):
+        # No config files at all
+        with monkeypatch.context() as m:
+            m.setattr("os.path.exists", lambda x: False)
+            with pytest.raises(ValueError):
+                TokenManager.load()
+
+        # Only "tokens.ini"
+        with monkeypatch.context() as m:
+            m.setattr("os.path.exists", lambda x: x == "tokens.ini")
+            m.setattr(TokenManager, "from_config_file", lambda x: "config_file")
+            assert TokenManager.load() == "config_file"
+
+        # "tokens.ini" and environment variables (env takes precedence)
+        with monkeypatch.context() as m:
+            m.setattr("os.path.exists", lambda x: x == "tokens.ini")
+            m.setattr(TokenManager, "from_config_file", lambda x: "config_file")
+            m.setattr(TokenManager, "from_env", lambda: "env")
+            m.setenv("SN3S_SESSION_TOKEN", "test_session_token")
+            assert TokenManager.load() == "env"
+
+        # "tokens.ini", environment variables, and ".splatnet3_scraper"
+        # (.splatnet3_scraper takes precedence)
+        token_manager_path = (
+            "splatnet3_scraper.base"
+            ".tokens.token_manager"
+            ".TokenManager.from_config_file"
+        )
+        with monkeypatch.context() as m, patch(
+            token_manager_path
+        ) as mock_from_config_file:
+
+            def path_exists(path):
+                return path in ("tokens.ini", ".splatnet3_scraper")
+
+            m.setattr("os.path.exists", path_exists)
+            m.setattr(TokenManager, "from_env", lambda: "env")
+            m.setenv("SN3S_SESSION_TOKEN", "test_session_token")
+            TokenManager.load()
+            mock_from_config_file.assert_called_once_with(".splatnet3_scraper")
+
+    def test_save(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
 
         def mock_test_tokens(*args, **kwargs):
