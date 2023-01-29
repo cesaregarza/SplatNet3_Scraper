@@ -21,3 +21,7 @@ class TestGraphQLQueries:
         queries = GraphQLQueries()
         assert queries.hash_map == {"test": "test"}
         assert isinstance(queries.session, requests.Session)
+    
+    # The other functions are so simple that they don't need to be tested, they
+    # generally are helper functions to generate dictionaries with specific keys
+    # and values.
