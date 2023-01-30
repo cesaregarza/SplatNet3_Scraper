@@ -7,7 +7,7 @@ import pytest
 import pytest_mock
 
 from splatnet3_scraper.scraper.config import Config
-from tests.mock import MockNSO, MockResponse, MockTokenManager
+from tests.mock import MockNSO, MockResponse, MockTokenManager, MockConfigParser
 
 config_path = "splatnet3_scraper.scraper.config.Config"
 
@@ -28,6 +28,7 @@ class TestConfig:
         assert config.config_path is None
         assert isinstance(config.config, ConfigParser)
         assert config.config.sections() == ["options"]
+        assert config.options == config.config.options("options")
 
     # No need to test __post_init__ because it is only called in __init__ and
     # is simple enough to not need testing.
@@ -92,3 +93,35 @@ class TestConfig:
             config.save()
             mock_file.assert_called_once_with("test_config_path", "w")
             mock_write.assert_called_once_with(mock_file.return_value)
+
+    def test_manage_options(self, monkeypatch: pytest.MonkeyPatch):
+        # No options
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+
+        mock_config = MockConfigParser()
+        test_options = {
+            # accepted options
+            "user_agent": "test_user_agent",
+            # deprecated options
+            "api_key": "test_stat_ink_api_key",
+            # invalid options
+            "invalid_option": "test_invalid_option",
+        }
+        mock_config["options"] = test_options
+        config.config = mock_config
+        config.options = mock_config.options("options")
+        config.manage_options()
+        expected_options = {
+            "user_agent": "test_user_agent",
+            "stat.ink_api_key": "test_stat_ink_api_key",
+        }
+        expected_deprecated = {
+            "api_key": "test_stat_ink_api_key",
+        }
+        expected_unknown = {
+            "invalid_option": "test_invalid_option",
+        }
+        assert config.config["options"] == expected_options
+        assert config.config["deprecated"] == expected_deprecated
+        assert config.config["unknown"] == expected_unknown

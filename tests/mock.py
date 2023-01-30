@@ -81,3 +81,39 @@ class MockTokenManager:
     @staticmethod
     def from_config_file(*args, **kwargs):
         return MockTokenManager()
+
+
+class MockConfigParser:
+    def __init__(self) -> None:
+        self._mocked = True
+        self._sections = {"options": {}}
+
+    def __getitem__(self, key):
+        return self._sections[key]
+
+    def __setitem__(self, key, value):
+        self._sections[key] = value
+
+    def __contains__(self, key):
+        return key in self._sections
+
+    def __iter__(self):
+        return iter(self._sections)
+
+    def __len__(self):
+        return len(self._sections)
+
+    def add_section(self, section):
+        self._sections[section] = {}
+
+    def remove_section(self, section):
+        del self._sections[section]
+
+    def has_section(self, section):
+        return section in self._sections
+
+    def options(self, section):
+        return list(self._sections[section].keys())
+
+    def remove_option(self, section, option):
+        del self._sections[section][option]
