@@ -117,3 +117,6 @@ class MockConfigParser:
 
     def remove_option(self, section, option):
         del self._sections[section][option]
+
+class MockConfig:
+    pass

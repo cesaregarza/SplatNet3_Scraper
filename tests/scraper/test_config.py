@@ -1,5 +1,4 @@
 import configparser
-import unittest
 from configparser import ConfigParser
 from unittest.mock import mock_open, patch
 
@@ -8,7 +7,7 @@ import pytest_mock
 
 from splatnet3_scraper.scraper.config import Config
 from splatnet3_scraper.constants import DEFAULT_USER_AGENT
-from tests.mock import MockNSO, MockResponse, MockTokenManager, MockConfigParser
+from tests.mock import MockTokenManager, MockConfigParser
 
 config_path = "splatnet3_scraper.scraper.config.Config"
 
