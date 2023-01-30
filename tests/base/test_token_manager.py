@@ -4,6 +4,7 @@ from unittest.mock import mock_open, patch
 
 import freezegun
 import pytest
+import pytest_mock
 import requests
 
 from splatnet3_scraper.base.graph_ql_queries import GraphQLQueries
@@ -302,7 +303,9 @@ class TestTokenManager:
         assert token_manager.get("gtoken") == "test_gtoken"
         assert token_manager.get("bullet_token") == "test_bullet_token"
 
-    def test_load(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load(
+        self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockFixture
+    ):
         # No config files at all
         with monkeypatch.context() as m:
             m.setattr("os.path.exists", lambda x: False)
@@ -341,7 +344,9 @@ class TestTokenManager:
             TokenManager.load()
             mock_from_config_file.assert_called_once_with(".splatnet3_scraper")
 
-    def test_save(self, monkeypatch: pytest.MonkeyPatch):
+    def test_save(
+        self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockFixture
+    ):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
 
         def mock_test_tokens(*args, **kwargs):

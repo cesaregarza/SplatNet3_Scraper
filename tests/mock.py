@@ -67,3 +67,17 @@ class MockNSO:
     @staticmethod
     def new_instance():
         return MockNSO()
+
+
+class MockTokenManager:
+    def __init__(self, origin: dict = {}) -> None:
+        self._mocked = True
+        self._origin = origin
+
+    @staticmethod
+    def load():
+        return MockTokenManager()
+
+    @staticmethod
+    def from_config_file(*args, **kwargs):
+        return MockTokenManager()

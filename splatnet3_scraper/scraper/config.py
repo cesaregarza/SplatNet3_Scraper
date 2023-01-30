@@ -37,6 +37,8 @@ class Config:
         if token_manager is None:
             self.__post_init__(config_path)
             return
+        else:
+            self.config_path = config_path
 
         self.token_manager = token_manager
         self.config = configparser.ConfigParser()
