@@ -180,6 +180,8 @@ class Config:
                 return self.DEFAULT_OPTIONS[key]
             else:
                 raise KeyError(f"Option not set and has no default: {key}")
+        elif key in self.DEPRECATED_OPTIONS:
+            return self.get(self.DEPRECATED_OPTIONS[key])
         else:
             raise KeyError(f"Invalid option: {key}")
 
