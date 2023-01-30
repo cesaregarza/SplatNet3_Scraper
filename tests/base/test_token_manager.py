@@ -13,6 +13,7 @@ from splatnet3_scraper.base.tokens.nso import (
     SplatnetException,
 )
 from splatnet3_scraper.base.tokens.token_manager import Token, TokenManager
+from tests.mock import MockNSO
 
 
 @freezegun.freeze_time("2023-01-01 00:00:00")
@@ -59,40 +60,6 @@ class TestToken:
             + "\n)"
         )
         assert repr(token) == expected
-
-
-class MockNSO:
-    def __init__(self) -> None:
-        self._mocked = True
-        self._session_token = None
-        self._user_info = None
-        self._gtoken = None
-        self._invalid_tokens = []
-
-    @property
-    def session_token(self):
-        return self._session_token
-
-    def get_gtoken(self, *args) -> str:
-        if "gtoken" in self._invalid_tokens:
-            return ""
-
-        self._gtoken = "test_gtoken"
-        self._user_info = {
-            "country": "test_country",
-            "language": "test_language",
-        }
-        return self._gtoken
-
-    def get_bullet_token(self, *args) -> str:
-        if "bullet_token" in self._invalid_tokens:
-            return ""
-
-        return "test_bullet_token"
-
-    @staticmethod
-    def new_instance():
-        return MockNSO()
 
 
 class TestTokenManager:

@@ -11,45 +11,10 @@ from splatnet3_scraper.base.tokens.nso import (
     SplatnetException,
 )
 from splatnet3_scraper.constants import APP_VERSION_FALLBACK
+from tests.mock import MockResponse
 
 
 class TestNSO:
-    class MockResponse:
-        def __init__(
-            self,
-            status_code: int,
-            text: str = "",
-            json: dict = {},
-            url: str = "",
-        ) -> None:
-            self._status_code = status_code
-            self.status_code_counter = 0
-            self._text = text
-            self.text_counter = 0
-            self._json = json
-            self.json_counter = 0
-            self._url = url
-            self.url_counter = 0
-
-        @property
-        def status_code(self):
-            self.status_code_counter += 1
-            return self._status_code
-
-        @property
-        def text(self):
-            self.text_counter += 1
-            return self._text
-
-        def json(self):
-            self.json_counter += 1
-            return self._json
-
-        @property
-        def url(self):
-            self.url_counter += 1
-            return self._url
-
     def get_new_nso(
         self,
         state: str | None = None,
@@ -86,7 +51,7 @@ class TestNSO:
         test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
         def mock_get(*args, **kwargs):
-            return TestNSO.MockResponse(200, text=test_string)
+            return MockResponse(200, text=test_string)
 
         monkeypatch.setattr(requests.Session, "get", mock_get)
         nso = NSO.new_instance()
@@ -95,7 +60,7 @@ class TestNSO:
 
         # Test fallback
         def mock_get(*args, **kwargs):
-            return TestNSO.MockResponse(200, text="")
+            return MockResponse(200, text="")
 
         monkeypatch.setattr(requests.Session, "get", mock_get)
         version = nso.get_version()
@@ -105,7 +70,7 @@ class TestNSO:
         test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
         def mock_get(*args, **kwargs):
-            return TestNSO.MockResponse(200, text=test_string)
+            return MockResponse(200, text=test_string)
 
         monkeypatch.setattr(requests.Session, "get", mock_get)
         nso = NSO.new_instance()
@@ -230,7 +195,7 @@ class TestNSO:
             return HashlibMock()
 
         def mock_get(*args, **kwargs):
-            return TestNSO.MockResponse(200, url="https://test.com/")
+            return MockResponse(200, url="https://test.com/")
 
         monkeypatch.setattr(NSO, "generate_new_state", mock_generate_new_state)
         monkeypatch.setattr(
@@ -243,7 +208,7 @@ class TestNSO:
 
     def test_get_session_token(self, monkeypatch):
         def mock_get(*args, **kwargs):
-            return TestNSO.MockResponse(200, json={"session_token": "test"})
+            return MockResponse(200, json={"session_token": "test"})
 
         monkeypatch.setattr(requests.Session, "post", mock_get)
         nso = self.get_new_nso(version="5.0.0", verifier="test_verifier")
@@ -263,7 +228,7 @@ class TestNSO:
 
     def test_user_info(self, monkeypatch):
         def mock_get(*args, **kwargs):
-            return TestNSO.MockResponse(200, json={"test": "test"})
+            return MockResponse(200, json={"test": "test"})
 
         monkeypatch.setattr(requests.Session, "get", mock_get)
         nso = self.get_new_nso()
@@ -277,7 +242,7 @@ class TestNSO:
                 "request_id": "test_request_id",
                 "timestamp": "test_timestamp",
             }
-            return TestNSO.MockResponse(200, json=out_json)
+            return MockResponse(200, json=out_json)
 
         nso = self.get_new_nso()
         monkeypatch.setattr(requests.Session, "post", mock_post)
@@ -289,7 +254,7 @@ class TestNSO:
 
         # Fail
         def mock_post(*args, **kwargs):
-            return TestNSO.MockResponse(400, json={})
+            return MockResponse(400, json={})
 
         monkeypatch.setattr(requests.Session, "post", mock_post)
         with pytest.raises(FTokenException):
@@ -297,19 +262,17 @@ class TestNSO:
 
     def test_get_splatoon_token(self, monkeypatch):
         def mock_post(*args, **kwargs):
-            return TestNSO.MockResponse(200, json={})
+            return MockResponse(200, json={})
 
         nso = self.get_new_nso(version="5.0.0")
         monkeypatch.setattr(requests.Session, "post", mock_post)
 
         splatoon_token = nso.get_splatoon_token({"parameter": {"f": "test"}})
-        assert isinstance(splatoon_token, TestNSO.MockResponse)
+        assert isinstance(splatoon_token, MockResponse)
         assert splatoon_token.json() == {}
 
     def test_f_token_generation_step_1(self, monkeypatch):
-        user_access_response = TestNSO.MockResponse(
-            200, json={"id_token": "id_token"}
-        )
+        user_access_response = MockResponse(200, json={"id_token": "id_token"})
 
         def mock_get_ftoken(*args, **kwargs):
             # Make sure it's using the correct hash method
@@ -327,7 +290,7 @@ class TestNSO:
                 assert body["parameter"]["requestId"] == "request_id"
                 assert body["parameter"]["timestamp"] == "timestamp"
 
-                return TestNSO.MockResponse(200, json=out_json)
+                return MockResponse(200, json=out_json)
 
             return mock_get_splatoon_token
 
@@ -353,7 +316,7 @@ class TestNSO:
         ftoken = nso.f_token_generation_step_1(
             user_access_response, user_info, "test_url"
         )
-        assert isinstance(ftoken, TestNSO.MockResponse)
+        assert isinstance(ftoken, MockResponse)
         assert (
             ftoken.json()["result"]["webApiServerCredential"]["accessToken"]
             == "access_token"
@@ -382,7 +345,7 @@ class TestNSO:
                     "accessToken": "gtoken",
                 }
             }
-            return TestNSO.MockResponse(200, json=out_json)
+            return MockResponse(200, json=out_json)
 
         monkeypatch.setattr(NSO, "get_ftoken", mock_get_ftoken)
         monkeypatch.setattr(requests.Session, "post", mock_post)
@@ -394,7 +357,7 @@ class TestNSO:
     def test_get_gtoken(self, monkeypatch):
         # User access failure
         def mock_get_user_access_token(*args, **kwargs):
-            return TestNSO.MockResponse(400, json={})
+            return MockResponse(400, json={})
 
         monkeypatch.setattr(
             NSO, "get_user_access_token", mock_get_user_access_token
@@ -408,7 +371,7 @@ class TestNSO:
                 "id_token": "id_token",
                 "access_token": "user_access_token",
             }
-            return TestNSO.MockResponse(200, json=out_json)
+            return MockResponse(200, json=out_json)
 
         monkeypatch.setattr(
             NSO, "get_user_access_token", mock_get_user_access_token
@@ -431,7 +394,7 @@ class TestNSO:
                     }
                 }
             }
-            return TestNSO.MockResponse(200, json=out_json)
+            return MockResponse(200, json=out_json)
 
         monkeypatch.setattr(
             NSO, "f_token_generation_step_1", mock_f_token_generation_step_1
@@ -467,7 +430,7 @@ class TestNSO:
 
             def mock_post(*args, **kwargs):
                 assert "cookies" in kwargs
-                return TestNSO.MockResponse(status_code, json=out_json)
+                return MockResponse(status_code, json=out_json)
 
             monkeypatch.setattr(requests.Session, "post", mock_post)
             with pytest.raises(exception):
@@ -484,9 +447,7 @@ class TestNSO:
 
         def mock_post(*args, **kwargs):
             assert "cookies" in kwargs
-            return TestNSO.MockResponse(
-                200, json={"bulletToken": "bullet_token"}
-            )
+            return MockResponse(200, json={"bulletToken": "bullet_token"})
 
         monkeypatch.setattr(requests.Session, "post", mock_post)
         bullet_token = nso.get_bullet_token("gtoken", user_info)
