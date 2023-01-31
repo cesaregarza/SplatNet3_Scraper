@@ -1,14 +1,10 @@
 import random
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_mock
-import requests
 
-from splatnet3_scraper.base.tokens import TokenManager
-from splatnet3_scraper.scraper.config import Config
 from splatnet3_scraper.scraper.main import QueryMap, SplatNet3_Scraper
-from splatnet3_scraper.scraper.responses import QueryResponse
 from tests.mock import MockConfig, MockResponse, MockTokenManager
 
 config_path = "splatnet3_scraper.scraper.config.Config"
@@ -184,7 +180,7 @@ class TestSplatNet3Scraper:
                 summary=get_return_summary, detailed=get_return_detailed
             )
 
-    def test__vs_with_details(self, monkeypatch: pytest.MonkeyPatch):
+    def test__vs_with_details(self):
         scraper = SplatNet3_Scraper(MockConfig())
 
         def generate_return_value(num_groups: int, num_per_group: int) -> dict:

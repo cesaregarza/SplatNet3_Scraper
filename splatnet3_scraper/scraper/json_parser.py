@@ -245,6 +245,11 @@ class JSONParser:
     def __len__(self) -> int:
         return len(self.data)
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, JSONParser):
+            return self.data == other.data
+        return False
+
     def __repr__(self) -> str:
         return f"JSONParser({len(self)} battles)"
 
