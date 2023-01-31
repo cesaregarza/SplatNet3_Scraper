@@ -12,6 +12,16 @@ from tests.mock import MockConfig, MockResponse, MockTokenManager
 config_path = "splatnet3_scraper.scraper.config.Config"
 
 
+class TestQueryMap:
+    def test_get(self):
+        # Valid
+        assert QueryMap.get("ANARCHY") == QueryMap.ANARCHY
+        # lowercase
+        assert QueryMap.get("anarchy") == QueryMap.ANARCHY
+        # Invalid
+        with pytest.raises(AttributeError):
+            QueryMap.get("invalid")
+
 class TestSplatNet3Scraper:
     def test_from_config_file(
         self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
