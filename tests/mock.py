@@ -82,6 +82,9 @@ class MockTokenManager:
     def from_config_file(*args, **kwargs):
         return MockTokenManager()
 
+    def generate_all_tokens(self, *args, **kwargs):
+        pass
+
 
 class MockConfigParser:
     def __init__(self) -> None:
@@ -122,3 +125,4 @@ class MockConfigParser:
 class MockConfig:
     def __init__(self, *args, **kwargs) -> None:
         self._mocked = True
+        self.token_manager = MockTokenManager()
