@@ -38,7 +38,6 @@ class TestSplatNet3Scraper:
             mock_config.assert_called_once_with("test_config_path")
 
     def test__get_query(self):
-
         scraper = SplatNet3_Scraper(MockConfig())
 
         # 200 response
