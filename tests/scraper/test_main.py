@@ -1,5 +1,5 @@
-from unittest.mock import mock_open, patch
 import random
+from unittest.mock import mock_open, patch
 
 import pytest
 import pytest_mock
