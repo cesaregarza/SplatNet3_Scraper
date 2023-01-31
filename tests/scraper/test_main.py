@@ -1,4 +1,5 @@
 from unittest.mock import mock_open, patch
+import random
 
 import pytest
 import pytest_mock
@@ -182,3 +183,72 @@ class TestSplatNet3Scraper:
             mock_query_response.assert_called_once_with(
                 summary=get_return_summary, detailed=get_return_detailed
             )
+
+    def test__vs_with_details(self, monkeypatch: pytest.MonkeyPatch):
+        scraper = SplatNet3_Scraper(MockConfig())
+
+        def generate_return_value(num_groups: int, num_per_group: int) -> dict:
+            return {
+                "results": {
+                    "historyGroups": {
+                        "nodes": [
+                            {
+                                "historyDetails": {
+                                    "nodes": [
+                                        {"id": f"test_id_{i}_{j}"}
+                                        for j in range(num_per_group)
+                                    ]
+                                }
+                            }
+                            for i in range(num_groups)
+                        ]
+                    }
+                }
+            }
+
+        # No limit
+        with (
+            patch.object(scraper, "_SplatNet3_Scraper__get_query") as mock_get,
+            patch.object(
+                scraper, "_SplatNet3_Scraper__get_detailed_query"
+            ) as mock_get_detailed,
+        ):
+            num_groups = random.randint(3, 8)
+            num_per_group = random.randint(10, 20)
+            num_total = num_groups * num_per_group
+            mock_get.return_value = generate_return_value(
+                num_groups, num_per_group
+            )
+            mock_get_detailed.return_value = 0
+            (
+                query_result,
+                game_details,
+            ) = scraper._SplatNet3_Scraper__vs_with_details("anarchy")
+            assert len(game_details) == num_total
+            assert mock_get_detailed.call_count == num_total
+            assert mock_get.call_count == 1
+            assert query_result == mock_get.return_value
+
+        # Limit
+        with (
+            patch.object(scraper, "_SplatNet3_Scraper__get_query") as mock_get,
+            patch.object(
+                scraper, "_SplatNet3_Scraper__get_detailed_query"
+            ) as mock_get_detailed,
+        ):
+            num_groups = random.randint(3, 8)
+            num_per_group = random.randint(10, 20)
+            num_total = num_groups * num_per_group
+            limit = random.randint(10, num_total)
+            mock_get.return_value = generate_return_value(
+                num_groups, num_per_group
+            )
+            mock_get_detailed.return_value = 0
+            (
+                query_result,
+                game_details,
+            ) = scraper._SplatNet3_Scraper__vs_with_details("anarchy", limit)
+            assert len(game_details) == limit
+            assert mock_get_detailed.call_count == limit
+            assert mock_get.call_count == 1
+            assert query_result == mock_get.return_value
