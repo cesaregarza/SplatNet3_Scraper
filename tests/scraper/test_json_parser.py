@@ -442,3 +442,37 @@ class TestJSONParser:
         ]
         expected_values = [None, 1, 1.0, True, False, None, [], {}, ["a", "b"]]
         JSONParser.automatic_type_conversion(test_values) == expected_values
+
+    def test_from_json(self):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        with (
+            patch("builtins.open", mock_open()) as mock_file,
+            patch("json.load") as mock_load,
+        ):
+            mock_load.return_value = data
+            json_parser = JSONParser.from_json("test_path")
+            mock_file.assert_called_once_with(
+                "test_path", "r", encoding="utf-8"
+            )
+            mock_load.assert_called_once()
+            assert json_parser.data == data
+
+    def test_from_gzipped_json(self):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        with (
+            patch("gzip.open", mock_open()) as mock_file,
+            patch("json.load") as mock_load,
+        ):
+            mock_load.return_value = data
+            json_parser = JSONParser.from_gzipped_json("test_path")
+            mock_file.assert_called_once_with(
+                "test_path", "rt", encoding="utf-8"
+            )
+            mock_load.assert_called_once()
+            assert json_parser.data == data

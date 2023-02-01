@@ -446,7 +446,7 @@ class JSONParser:
         Returns:
             JSONParser: The JSONParser object.
         """
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return cls(json.load(f))
 
     @classmethod
@@ -459,7 +459,7 @@ class JSONParser:
         Returns:
             JSONParser: The JSONParser object.
         """
-        with gzip.open(path, "rt") as f:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
             return cls(json.load(f))
 
     @classmethod
