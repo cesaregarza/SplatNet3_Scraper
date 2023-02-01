@@ -244,3 +244,10 @@ class TestLinearJSON:
         with patch(linear_json_mangled + "__standardize_new_header") as mock:
             linear_json.remove_url_columns()
             mock.assert_called_once_with(["test_header_1"])
+
+
+class TestJSONParser:
+    def test_init(self):
+        data = {"test_key": "test_value"}
+        assert JSONParser(data).data == [data]
+        assert JSONParser([data]).data == [data]
