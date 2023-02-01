@@ -79,9 +79,9 @@ class LinearJSON:
             bool: Whether the other object is equal to this object.
         """
         if isinstance(other, LinearJSON):
-            return self.header == other.header
+            return self.header == other.header and self.data == other.data
         elif isinstance(other, list):
-            return self.header == other
+            return self.header == other[0] and self.data == other[1:]
         return False
 
     def __validate(self) -> None:

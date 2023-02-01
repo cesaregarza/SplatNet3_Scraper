@@ -62,3 +62,14 @@ class TestLinearJSON:
             assert mock_delinearize.call_count == y_length
             assert list(delinearized.keys()) == ["data"]
             assert len(delinearized["data"]) == y_length
+
+    def test_eq(self):
+        header = ["test_header_0", "test_header_1"]
+        data = ["test_data_0", "test_data_1"]
+        linear_json = LinearJSON(header, data)
+        assert linear_json == LinearJSON(header, data)
+        assert linear_json != LinearJSON(header, data[::-1])
+        assert linear_json != LinearJSON(["test_header_2"], data[:1])
+        assert linear_json != LinearJSON(["test_header_2"], ["test_data_2"])
+        assert linear_json != "test"
+        assert linear_json == [header, data]
