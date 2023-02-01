@@ -103,6 +103,7 @@ class TestLinearJSON:
         header_length = random.randint(10, 50)
         original_header, data = generate_data(header_length)
         linear_json = LinearJSON(original_header, data)
+
         # Remove some headers
         new_header_length = header_length // 2
         remove_indices = random.sample(range(header_length), new_header_length)
@@ -139,3 +140,20 @@ class TestLinearJSON:
         linear_json._LinearJSON__standardize_new_header(new_header)
         assert linear_json.header == new_header
         assert linear_json.data == [expected_data]
+
+    def test_merge_headers(self):
+        header_0 = ["th0", "test_h1", "test_header_2", "test_header_333"]
+        header_1 = ["th00", "test_h10", "test_header_2", "test_header_334"]
+        expected_header = [
+            "th0",
+            "th00",
+            "test_h1",
+            "test_h10",
+            "test_header_2",
+            "test_header_333",
+            "test_header_334",
+        ]
+        linear_json_0 = LinearJSON(header_0, ["test_data_0"] * len(header_0))
+        linear_json_1 = LinearJSON(header_1, ["test_data_1"] * len(header_1))
+        new_header = LinearJSON.merge_headers(linear_json_0, linear_json_1)
+        assert new_header == expected_header
