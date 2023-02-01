@@ -193,3 +193,38 @@ class TestLinearJSON:
             ["test_data_1", "test_data_3", "test_data_5"],
         ]
         assert transposed_data == expected_data
+
+    def test_stringify(self):
+        # No special characters
+        header = ["test_header_0", "test_header_1"]
+        data = [
+            ["test_data_0", "test_data_1"],
+            ["test_data_2", "test_data_3"],
+            ["test_data_4", "test_data_5"],
+        ]
+        linear_json = LinearJSON(header, data)
+        expected_header = "test_header_0,test_header_1"
+        expected_string = (
+            "test_data_0,test_data_1\n"
+            "test_data_2,test_data_3\n"
+            "test_data_4,test_data_5"
+        )
+        assert linear_json.stringify() == (expected_header, expected_string)
+        assert linear_json.stringify(include_header=False) == expected_string
+
+        # Commas in data
+        header = ["test_header_0", "test_header_1"]
+        data = [
+            ["test_data_0", "test_data_1"],
+            ["test_data_2", "test_data_3,3"],
+            ["test_data_4", "test_data_5"],
+        ]
+        linear_json = LinearJSON(header, data)
+        expected_header = "test_header_0,test_header_1"
+        expected_string = (
+            "test_data_0,test_data_1\n"
+            'test_data_2,"test_data_3,3"\n'
+            "test_data_4,test_data_5"
+        )
+        assert linear_json.stringify() == (expected_header, expected_string)
+        assert linear_json.stringify(include_header=False) == expected_string
