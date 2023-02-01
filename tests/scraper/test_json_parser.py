@@ -263,3 +263,8 @@ class TestJSONParser:
         assert JSONParser(data_0) == JSONParser(data_0)
         assert JSONParser(data_0) != JSONParser(data_1)
         assert JSONParser(data_0) != "test"
+
+    def test_repr(self):
+        length = random.randint(1, 100)
+        data = [{"test_key": "test_value"}] * length
+        assert repr(JSONParser(data)) == f"JSONParser({length} battles)"
