@@ -164,3 +164,4 @@ tokens.ini
 # Extra goodies
 !tests/fixtures/*.csv
 !reports/junit/*.html
+reports/flake8/*.css
