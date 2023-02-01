@@ -334,3 +334,32 @@ class TestJSONParser:
             mock_linear_json.assert_called_once()
             mock_stringify.assert_called_once()
             mock_file().write.call_count == 2
+
+    def test_to_json(self):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        json_parser = JSONParser(data)
+
+        # No given kwargs
+        with (
+            patch("builtins.open", mock_open()) as mock_file,
+            patch("json.dump") as mock_dump,
+        ):
+            json_parser.to_json("test_path")
+            mock_file.assert_called_once_with(
+                "test_path", "w", encoding="utf-8"
+            )
+            mock_dump.assert_called_once_with(data, mock_file(), indent=4)
+
+        # With kwargs
+        with (
+            patch("builtins.open", mock_open()) as mock_file,
+            patch("json.dump") as mock_dump,
+        ):
+            json_parser.to_json("test_path", indent=2)
+            mock_file.assert_called_once_with(
+                "test_path", "w", encoding="utf-8"
+            )
+            mock_dump.assert_called_once_with(data, mock_file(), indent=2)
