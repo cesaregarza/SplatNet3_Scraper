@@ -157,3 +157,24 @@ class TestLinearJSON:
         linear_json_1 = LinearJSON(header_1, ["test_data_1"] * len(header_1))
         new_header = LinearJSON.merge_headers(linear_json_0, linear_json_1)
         assert new_header == expected_header
+
+    def test_append(self):
+        header = ["test_header_0", "test_header_1"]
+        alt_header = ["test_header_0", "test_header_2", "test_header_3"]
+        data = ["test_data_0", "test_data_1"]
+        alt_data = ["test_data_0", "test_data_2", "test_data_3"]
+        linear_json = LinearJSON(header, data)
+        alt_linear_json = LinearJSON(alt_header, alt_data)
+        linear_json.append(alt_linear_json)
+        expected_header = [
+            "test_header_0",
+            "test_header_1",
+            "test_header_2",
+            "test_header_3",
+        ]
+        expected_data = [
+            ["test_data_0", "test_data_1", None, None],
+            ["test_data_0", None, "test_data_2", "test_data_3"],
+        ]
+        assert linear_json.header == expected_header
+        assert linear_json.data == expected_data
