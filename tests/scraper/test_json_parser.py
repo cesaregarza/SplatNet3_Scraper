@@ -1,5 +1,6 @@
 import random
 from unittest.mock import mock_open, patch
+import pathlib
 
 import pyarrow as pa
 import pytest
@@ -381,7 +382,6 @@ class TestJSONParser:
             {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
             {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
         ]
-        expected_headers = ["test_key_0", "test_key_1"]
         json_parser = JSONParser(data)
         with (
             patch("pyarrow.array") as mock_pa_array,
@@ -390,6 +390,8 @@ class TestJSONParser:
         ):
             pa_return = ["test_value_0", "test_value_1"]
             mock_pa_array.return_value = pa_return
+            # PyArrow Table is immutable so we mock the full class instead of
+            # any of the methods
             m.setattr(pa, "Table", MockPyArrowTable)
             json_parser.to_parquet("test_path")
             mock_pa_array.call_count == 2
@@ -401,3 +403,27 @@ class TestJSONParser:
             write_call_args = mock_write.call_args_list[0][0]
             assert isinstance(write_call_args[0], MockPyArrowTable)
             assert write_call_args[1] == "test_path"
+
+    def test_from_csv(self, json_with_none):
+
+        # No commas
+        base_path = pathlib.Path(__file__).parent.parent / "fixtures"
+        no_comma_path = str(base_path / "linear_json.csv")
+        json_parser = JSONParser.from_csv(no_comma_path)
+        assert json_parser.data == [json_with_none]
+
+        # With commas
+        comma_path = str(base_path / "linear_json_with_commas.csv")
+        json_parser = JSONParser.from_csv(comma_path)
+        expected_json = {
+            "a": 1,
+            "b,": 2,
+            "c": [
+                None,
+                {
+                    "d,": 3,
+                    "e": 4,
+                },
+            ],
+        }
+        assert json_parser.data == [expected_json]

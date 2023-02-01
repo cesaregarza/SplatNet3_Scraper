@@ -1,6 +1,7 @@
 import gzip
 import hashlib
 import json
+import csv
 from typing import Any, Literal, overload
 
 from splatnet3_scraper.utils import delinearize_json, linearize_json
@@ -388,6 +389,32 @@ class JSONParser:
         table = pa.Table.from_arrays(arrays, names=linear_json.header)
         pq.write_table(table, path, **kwargs)
 
+    @staticmethod
+    def automatic_type_conversion(
+        row: list[str],
+    ) -> list[str | int | float | None]:
+        """Converts a row of data to the appropriate type.
+
+        Args:
+            row (list[str]): The row of data to convert.
+
+        Returns:
+            list[str | int | float | None]: The converted row of data.
+        """
+        converted_row = []
+        for col in row:
+            if col == "":
+                converted_row.append(None)
+            elif col.isnumeric():
+                num = int(col)
+                if num == float(col):
+                    converted_row.append(num)
+                else:
+                    converted_row.append(float(col))
+            else:
+                converted_row.append(col)
+        return converted_row
+
     @classmethod
     def from_csv(cls, path: str) -> "JSONParser":
         """Loads a JSON object from a CSV file.
@@ -398,12 +425,18 @@ class JSONParser:
         Returns:
             JSONParser: The JSONParser object.
         """
-        with open(path, "r") as f:
-            header = f.readline().strip().split(",")
-            data = []
-            for line in f:
-                data.append(line.strip().split(","))
-        return cls(delinearize_json(header, data))
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.reader(
+                f,
+                quotechar='"',
+                delimiter=",",
+                quoting=csv.QUOTE_MINIMAL,
+                skipinitialspace=True,
+            )
+            header = next(reader)
+            data = [JSONParser.automatic_type_conversion(row) for row in reader]
+        delinearized_data = [delinearize_json(header, row) for row in data]
+        return cls(delinearized_data)
 
     @classmethod
     def from_json(cls, path: str) -> "JSONParser":
