@@ -126,3 +126,13 @@ class MockConfig:
     def __init__(self, *args, **kwargs) -> None:
         self._mocked = True
         self.token_manager = MockTokenManager()
+
+
+class MockLinearJSON:
+    def __init__(self, *args, **kwargs) -> None:
+        self._mocked = True
+        self.stringify_calls = 0
+
+    def stringify(self, *args, **kwargs):
+        self.stringify_calls += 1
+        return ("test_headers", "test_data")

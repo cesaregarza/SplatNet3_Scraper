@@ -1,14 +1,20 @@
 import random
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 import pytest
 import pytest_mock
 
 from splatnet3_scraper.scraper.json_parser import JSONParser, LinearJSON
-from tests.mock import MockConfig, MockResponse, MockTokenManager
+from tests.mock import (
+    MockConfig,
+    MockResponse,
+    MockTokenManager,
+    MockLinearJSON,
+)
 
 # Paths
 json_path = "splatnet3_scraper.scraper.json_parser"
+mock_path = "tests.mock"
 linear_json_path = json_path + ".LinearJSON"
 json_parser_path = json_path + ".JSONParser"
 linear_json_mangled = linear_json_path + "._LinearJSON"
@@ -303,3 +309,28 @@ class TestJSONParser:
         ]
         json_parser.remove_url_columns()
         assert json_parser.data == expected_data
+
+    def test_to_csv(self):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        json_parser = JSONParser(data)
+        expected_header = "test_key_0,test_key_1"
+        expected_string = (
+            "test_value_0,test_value_1\n" "test_value_2,test_value_3"
+        )
+        with (
+            patch("builtins.open", mock_open()) as mock_file,
+            patch(json_parser_mangled + "__to_linear_json") as mock_linear_json,
+            patch(mock_path + ".MockLinearJSON.stringify") as mock_stringify,
+        ):
+            mock_linear_json.return_value = MockLinearJSON()
+            mock_stringify.return_value = (expected_header, expected_string)
+            json_parser.to_csv("test_path")
+            mock_file.assert_called_once_with(
+                "test_path", "w", encoding="utf-8"
+            )
+            mock_linear_json.assert_called_once()
+            mock_stringify.assert_called_once()
+            mock_file().write.call_count == 2
