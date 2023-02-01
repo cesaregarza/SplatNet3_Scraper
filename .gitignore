@@ -159,3 +159,4 @@ tokens.ini
 *.csv
 *.parquet
 *.gz
+!tests/fixtures/*.csv
