@@ -160,4 +160,7 @@ tokens.ini
 *.csv
 *.parquet
 *.gz
+
+# Extra goodies
 !tests/fixtures/*.csv
+!reports/junit/*.html
