@@ -107,6 +107,11 @@ class LinearJSON:
         """
         new_header_columns = [x for x in new_header if x not in self.header]
         removed_header_columns = [x for x in self.header if x not in new_header]
+
+        # Check if the new header has any duplicates and raise an error if it does
+        if len(new_header) != len(set(new_header)):
+            raise ValueError("The new header has duplicate columns.")
+
         if (not new_header_columns) and (not removed_header_columns):
             return
         new_data = []

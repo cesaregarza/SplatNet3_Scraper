@@ -85,3 +85,57 @@ class TestLinearJSON:
                 ["test_header"],
                 [["test_data_0"], ["test_data_1", "test_data_2"]],
             )
+
+    def test_standardize_new_header(self):
+
+        # Duplicates in header
+        header = ["test_header_0", "test_header_1", "test_header_0"]
+        data = ["test_data_0", "test_data_1", "test_data_2"]
+        linear_json = LinearJSON(header, data)
+        with pytest.raises(ValueError):
+            linear_json._LinearJSON__standardize_new_header(header)
+
+        def generate_data(header_length):
+            header = random.sample(range(header_length * 2), header_length)
+            data = list(range(header_length))
+            return header, data
+
+        header_length = random.randint(10, 50)
+        original_header, data = generate_data(header_length)
+        linear_json = LinearJSON(original_header, data)
+        # Remove some headers
+        new_header_length = header_length // 2
+        remove_indices = random.sample(range(header_length), new_header_length)
+        remove_indices.sort()
+        new_header = [
+            original_header[i]
+            for i in range(header_length)
+            if i not in remove_indices
+        ]
+        expected_data = [
+            data[i] for i in range(header_length) if i not in remove_indices
+        ]
+        linear_json._LinearJSON__standardize_new_header(new_header)
+        assert linear_json.header == new_header
+        assert linear_json.data == [expected_data]
+
+        # Add some headers
+        original_header, data = generate_data(header_length)
+        original_header_copy = original_header.copy()
+        data_copy = data.copy()
+        new_header_length = header_length + header_length // 2
+        insert_indices = random.sample(
+            range(new_header_length), new_header_length - header_length
+        )
+        new_header = [
+            original_header_copy.pop(0) if i not in insert_indices else i + 100
+            for i in range(new_header_length)
+        ]
+        expected_data = [
+            data_copy.pop(0) if i not in insert_indices else None
+            for i in range(new_header_length)
+        ]
+        linear_json = LinearJSON(original_header, data)
+        linear_json._LinearJSON__standardize_new_header(new_header)
+        assert linear_json.header == new_header
+        assert linear_json.data == [expected_data]
