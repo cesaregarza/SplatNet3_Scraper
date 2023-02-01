@@ -98,7 +98,7 @@ class Config:
             self.config.remove_section("tokens")
         if path is None and self.config_path is not None:
             path = self.config_path
-        elif path is None and self.config_path is None:
+        elif path is None:
             path = ".splatnet3_scraper"
 
         with open(path, "w") as configfile:

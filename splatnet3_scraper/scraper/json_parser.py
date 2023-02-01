@@ -3,7 +3,7 @@ import csv
 import gzip
 import hashlib
 import json
-from typing import Any, Literal, overload
+from typing import Any, Literal, overload, Callable
 
 from splatnet3_scraper.utils import delinearize_json, linearize_json
 
@@ -338,11 +338,12 @@ class JSONParser:
         default_kwargs: dict[str, Any] = {"indent": 4}
         default_kwargs.update(kwargs)
         if use_gzip:
-            open_function = gzip.open
+            open_function: Callable = gzip.open
             open_kwargs = {"mode": "wt", "encoding": "utf-8"}
         else:
             open_function = open
             open_kwargs = {"mode": "w", "encoding": "utf-8"}
+
         with open_function(path, **open_kwargs) as f:
             json.dump(self.data, f, **default_kwargs)
 
