@@ -1,3 +1,4 @@
+import random
 from unittest.mock import patch
 
 import pytest
@@ -45,3 +46,19 @@ class TestLinearJSON:
                 return_values[0], [return_values[1]]
             )
             mock_linearize.assert_called_once_with(test_object)
+
+    def test_delinearize(self):
+        x_length = random.randint(10, 50)
+        y_length = random.randint(5, 10)
+        header = [f"test_header_{i}" for i in range(x_length)]
+        data = [
+            [f"test_data_{j}_{i}" for i in range(x_length)]
+            for j in range(y_length)
+        ]
+        linear_json = LinearJSON(header, data)
+        with patch(json_path + ".delinearize_json") as mock_delinearize:
+            mock_delinearize.return_value = None
+            delinearized = linear_json.delinearize()
+            assert mock_delinearize.call_count == y_length
+            assert list(delinearized.keys()) == ["data"]
+            assert len(delinearized["data"]) == y_length
