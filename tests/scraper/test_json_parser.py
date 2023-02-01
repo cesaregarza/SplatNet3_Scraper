@@ -290,3 +290,16 @@ class TestJSONParser:
         ]
         json_parser.remove_columns(remove_columns)
         assert json_parser.data == expected_data
+
+    def test_remove_url_columns(self):
+        data = [
+            {"test_key_0URL": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0url": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        json_parser = JSONParser(data)
+        expected_data = [
+            {"test_key_1": "test_value_1"},
+            {"test_key_1": "test_value_3"},
+        ]
+        json_parser.remove_url_columns()
+        assert json_parser.data == expected_data
