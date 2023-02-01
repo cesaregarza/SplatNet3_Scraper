@@ -82,7 +82,7 @@ class TestTokenManager:
         token_manager = TokenManager()
 
         # Test adding a token
-        with freezegun.freeze_time("2023-01-01 00:00:00") as frozen_time:
+        with freezegun.freeze_time("2023-01-01 00:00:00"):
             token_manager.add_token("test_token", "test_type")
             assert isinstance(token_manager._tokens["test_type"], Token)
             assert token_manager._tokens["test_type"].token == "test_token"
@@ -90,7 +90,7 @@ class TestTokenManager:
             assert token_manager._tokens["test_type"].timestamp == time.time()
 
         # Test adding a token with a timestamp
-        with freezegun.freeze_time("2023-01-01 00:00:00") as frozen_time:
+        with freezegun.freeze_time("2023-01-01 00:00:00"):
             token_manager.add_token("test_token", "test_type", timestamp=123)
             assert isinstance(token_manager._tokens["test_type"], Token)
             assert token_manager._tokens["test_type"].token == "test_token"
@@ -98,7 +98,7 @@ class TestTokenManager:
             assert token_manager._tokens["test_type"].timestamp == 123
 
         # Test adding a Token object
-        with freezegun.freeze_time("2023-01-01 00:00:00") as frozen_time:
+        with freezegun.freeze_time("2023-01-01 00:00:00"):
             token = Token("test_token", "test_type", time.time())
             token_manager.add_token(token)
             assert isinstance(token_manager._tokens["test_type"], Token)

@@ -1,7 +1,8 @@
+import ast
+import csv
 import gzip
 import hashlib
 import json
-import csv
 from typing import Any, Literal, overload
 
 from splatnet3_scraper.utils import delinearize_json, linearize_json
@@ -103,13 +104,16 @@ class LinearJSON:
         None values for columns that are in the new header but not the current
         header.
 
+        Raises:
+            ValueError: If the new header has duplicate columns.
+
         Args:
             new_header (list[str]): The new header.
         """
         new_header_columns = [x for x in new_header if x not in self.header]
         removed_header_columns = [x for x in self.header if x not in new_header]
 
-        # Check if the new header has any duplicates and raise an error if it does
+        # Check if the new header has any duplicates and raise an error if so
         if len(new_header) != len(set(new_header)):
             raise ValueError("The new header has duplicate columns.")
 
@@ -329,6 +333,7 @@ class JSONParser:
         Args:
             path (str): The path to save the JSON file to.
             use_gzip (bool): Whether or not to compress the file with gzip.
+            **kwargs: Any keyword arguments to pass to the json.dump method.
         """
         default_kwargs: dict[str, Any] = {"indent": 4}
         default_kwargs.update(kwargs)
@@ -390,29 +395,22 @@ class JSONParser:
         pq.write_table(table, path, **kwargs)
 
     @staticmethod
-    def automatic_type_conversion(
-        row: list[str],
-    ) -> list[str | int | float | None]:
-        """Converts a row of data to the appropriate type.
+    def automatic_type_conversion(row: list[str]) -> list[Any]:
+        """Converts a row of strings to the most appropriate type.
 
         Args:
-            row (list[str]): The row of data to convert.
+            row (list[str]): The row of strings to convert.
 
         Returns:
-            list[str | int | float | None]: The converted row of data.
+            list[Any]: The converted row.
         """
         converted_row = []
         for col in row:
-            if col == "":
-                converted_row.append(None)
-            elif col.isnumeric():
-                num = int(col)
-                if num == float(col):
-                    converted_row.append(num)
-                else:
-                    converted_row.append(float(col))
-            else:
-                converted_row.append(col)
+            try:
+                value = ast.literal_eval(col)
+            except (ValueError, SyntaxError):
+                value = None if col == "" else col
+            converted_row.append(value)
         return converted_row
 
     @classmethod

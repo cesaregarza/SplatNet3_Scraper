@@ -1,6 +1,6 @@
+import pathlib
 import random
 from unittest.mock import mock_open, patch
-import pathlib
 
 import pyarrow as pa
 import pytest

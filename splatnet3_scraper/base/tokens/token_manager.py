@@ -204,6 +204,7 @@ class TokenManager:
 
         Raises:
             ValueError: If the session token has not been set.
+            NintendoException: If the user info could not be retrieved.
         """
         if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
