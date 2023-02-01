@@ -251,3 +251,8 @@ class TestJSONParser:
         data = {"test_key": "test_value"}
         assert JSONParser(data).data == [data]
         assert JSONParser([data]).data == [data]
+    
+    def test_len(self):
+        length = random.randint(1, 100)
+        data = [{"test_key": "test_value"}] * length
+        assert len(JSONParser(data)) == length
