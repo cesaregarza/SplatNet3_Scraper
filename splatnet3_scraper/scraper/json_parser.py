@@ -223,7 +223,8 @@ class LinearJSON:
         """Removes columns from the LinearJSON object.
 
         Args:
-            columns (list[str]): The columns to remove.
+            columns (list[str]): The columns to remove. If a column is not in
+                the header, it will be ignored.
         """
         new_header = [x for x in self.header if x not in columns]
         self.__standardize_new_header(new_header)

@@ -228,3 +228,13 @@ class TestLinearJSON:
         )
         assert linear_json.stringify() == (expected_header, expected_string)
         assert linear_json.stringify(include_header=False) == expected_string
+
+    def test_remove_columns(self):
+        header = ["test_header_0", "test_header_1", "test_header_2"]
+        data = [
+            ["test_data_0", "test_data_1", "test_data_2"],
+        ]
+        linear_json = LinearJSON(header, data)
+        with patch(linear_json_mangled + "__standardize_new_header") as mock:
+            linear_json.remove_columns(["test_header_0", "test_header_2"])
+            mock.assert_called_once_with(["test_header_1"])
