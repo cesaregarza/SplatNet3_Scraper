@@ -30,7 +30,7 @@ Symbols
 | ------ | ------- |
 | :white_check_mark: | Implemented |
 | :construction: | In progress |
-| :white_large_square: | Planned |
+| :world_map: | Planned |
 | :x: | Not planned |
 
 Roadmap
@@ -39,16 +39,16 @@ Roadmap
 | Feature | Status |
 | ------- | ------ |
 | Support for the SplatNet 3 API | :white_check_mark: |
-| Full support for the SplatNet 3 API | :white_large_square: |
+| Full support for the SplatNet 3 API | :world_map: |
 | Support for the SplatNet 2 API | :x: |
 | Obtaining session tokens | :white_check_mark: |
-| Full documentation | :white_large_square: |
-| Full unit test coverage | :construction: |
+| Full documentation | :world_map: |
+| Full unit test coverage | :white_check_mark: |
 | Columnar data format support | :construction: |
 | CLI interface | :x: |
 | Integration with stats.ink | :x: |
-| PyPI package | :white_large_square: |
-| Docker image | :white_large_square: |
+| PyPI package | :world_map: |
+| Docker image | :world_map: |
 | Executable binary | :x: |
 
 Docker Note
