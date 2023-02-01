@@ -73,3 +73,15 @@ class TestLinearJSON:
         assert linear_json != LinearJSON(["test_header_2"], ["test_data_2"])
         assert linear_json != "test"
         assert linear_json == [header, data]
+
+    def test__validate(self):
+        # Valid
+        LinearJSON(["test_header"], ["test_data"])
+        LinearJSON(["test_header"], [["test_data_0"], ["test_data_1"]])
+
+        # Invalid: not all data is the same length
+        with pytest.raises(ValueError):
+            LinearJSON(
+                ["test_header"],
+                [["test_data_0"], ["test_data_1", "test_data_2"]],
+            )
