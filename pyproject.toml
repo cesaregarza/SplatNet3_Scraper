@@ -29,6 +29,8 @@ line-profiler = "^4.0.2"
 pytest-lazy-fixture = "^0.6.3"
 freezegun = "^1.2.2"
 pytest-mock = "^3.10.0"
+genbadge = {extras = ["all"], version = "^1.1.0"}
+pytest-html = "^3.2.0"
 
 [build-system]
 requires = ["poetry-core"]
