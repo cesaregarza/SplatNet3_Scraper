@@ -319,7 +319,7 @@ class JSONParser:
             header, data = linear_json.stringify()
             f.write(header + "\n")
             f.write(data)
-    
+
     def __to_json(self, path: str, use_gzip: bool, **kwargs) -> None:
         """Saves the JSON object to a JSON file. Any keyword arguments are
         passed to the json.dump method. If gzip is True, the file will be
@@ -328,7 +328,7 @@ class JSONParser:
         Args:
             path (str): The path to save the JSON file to.
             use_gzip (bool): Whether or not to compress the file with gzip.
-        """        
+        """
         default_kwargs: dict[str, Any] = {"indent": 4}
         default_kwargs.update(kwargs)
         if use_gzip:
@@ -339,7 +339,6 @@ class JSONParser:
             open_kwargs = {"mode": "w", "encoding": "utf-8"}
         with open_function(path, **open_kwargs) as f:
             json.dump(self.data, f, **default_kwargs)
-        
 
     def to_json(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a JSON file. Any keyword arguments are

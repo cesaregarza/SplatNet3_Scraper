@@ -1,16 +1,12 @@
 import random
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
+import pyarrow as pa
 import pytest
 import pytest_mock
 
 from splatnet3_scraper.scraper.json_parser import JSONParser, LinearJSON
-from tests.mock import (
-    MockConfig,
-    MockResponse,
-    MockTokenManager,
-    MockLinearJSON,
-)
+from tests.mock import MockLinearJSON, MockPyArrowTable
 
 # Paths
 json_path = "splatnet3_scraper.scraper.json_parser"
@@ -363,7 +359,7 @@ class TestJSONParser:
                 "test_path", mode="w", encoding="utf-8"
             )
             mock_dump.assert_called_once_with(data, mock_file(), indent=2)
-    
+
     def test_to_gzipped_json(self):
         data = [
             {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
@@ -379,3 +375,29 @@ class TestJSONParser:
                 "test_path", mode="wt", encoding="utf-8"
             )
             mock_dump.assert_called_once_with(data, mock_file(), indent=4)
+
+    def test_to_parquet(self, monkeypatch: pytest.MonkeyPatch):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        expected_headers = ["test_key_0", "test_key_1"]
+        json_parser = JSONParser(data)
+        with (
+            patch("pyarrow.array") as mock_pa_array,
+            patch("pyarrow.parquet.write_table") as mock_write,
+            monkeypatch.context() as m,
+        ):
+            pa_return = ["test_value_0", "test_value_1"]
+            mock_pa_array.return_value = pa_return
+            m.setattr(pa, "Table", MockPyArrowTable)
+            json_parser.to_parquet("test_path")
+            mock_pa_array.call_count == 2
+            array_call_args = mock_pa_array.call_args_list
+            assert array_call_args[0][0][0][0] == "test_value_0"
+            assert array_call_args[0][0][0][1] == "test_value_2"
+            assert array_call_args[1][0][0][0] == "test_value_1"
+            assert array_call_args[1][0][0][1] == "test_value_3"
+            write_call_args = mock_write.call_args_list[0][0]
+            assert isinstance(write_call_args[0], MockPyArrowTable)
+            assert write_call_args[1] == "test_path"

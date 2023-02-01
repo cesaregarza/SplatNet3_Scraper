@@ -136,3 +136,12 @@ class MockLinearJSON:
     def stringify(self, *args, **kwargs):
         self.stringify_calls += 1
         return ("test_headers", "test_data")
+
+
+class MockPyArrowTable:
+    def __init__(self, *args, **kwargs) -> None:
+        self._mocked = True
+
+    @staticmethod
+    def from_arrays(*args, **kwargs):
+        return MockPyArrowTable()
