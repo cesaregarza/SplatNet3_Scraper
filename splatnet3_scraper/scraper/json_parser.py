@@ -319,6 +319,27 @@ class JSONParser:
             header, data = linear_json.stringify()
             f.write(header + "\n")
             f.write(data)
+    
+    def __to_json(self, path: str, use_gzip: bool, **kwargs) -> None:
+        """Saves the JSON object to a JSON file. Any keyword arguments are
+        passed to the json.dump method. If gzip is True, the file will be
+        compressed with gzip.
+
+        Args:
+            path (str): The path to save the JSON file to.
+            use_gzip (bool): Whether or not to compress the file with gzip.
+        """        
+        default_kwargs: dict[str, Any] = {"indent": 4}
+        default_kwargs.update(kwargs)
+        if use_gzip:
+            open_function = gzip.open
+            open_kwargs = {"mode": "wt", "encoding": "utf-8"}
+        else:
+            open_function = open
+            open_kwargs = {"mode": "w", "encoding": "utf-8"}
+        with open_function(path, **open_kwargs) as f:
+            json.dump(self.data, f, **default_kwargs)
+        
 
     def to_json(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a JSON file. Any keyword arguments are
@@ -328,10 +349,7 @@ class JSONParser:
             path (str): The path to save the JSON file to.
             **kwargs: Keyword arguments to pass to the json.dump method.
         """
-        default_kwargs: dict[str, Any] = {"indent": 4}
-        default_kwargs.update(kwargs)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, **default_kwargs)
+        self.__to_json(path, False, **kwargs)
 
     def to_gzipped_json(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a gzipped JSON file. Any keyword arguments
@@ -341,10 +359,7 @@ class JSONParser:
             path (str): The path to save the gzipped JSON file to.
             **kwargs: Keyword arguments to pass to the json.dump method.
         """
-        default_kwargs: dict[str, Any] = {"indent": 4}
-        default_kwargs.update(kwargs)
-        with gzip.open(path, "wt", encoding="utf-8") as f:
-            json.dump(self.data, f, **default_kwargs)
+        self.__to_json(path, True, **kwargs)
 
     def to_parquet(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a Parquet file. Any keyword arguments are

@@ -349,7 +349,7 @@ class TestJSONParser:
         ):
             json_parser.to_json("test_path")
             mock_file.assert_called_once_with(
-                "test_path", "w", encoding="utf-8"
+                "test_path", mode="w", encoding="utf-8"
             )
             mock_dump.assert_called_once_with(data, mock_file(), indent=4)
 
@@ -360,6 +360,22 @@ class TestJSONParser:
         ):
             json_parser.to_json("test_path", indent=2)
             mock_file.assert_called_once_with(
-                "test_path", "w", encoding="utf-8"
+                "test_path", mode="w", encoding="utf-8"
             )
             mock_dump.assert_called_once_with(data, mock_file(), indent=2)
+    
+    def test_to_gzipped_json(self):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        json_parser = JSONParser(data)
+        with (
+            patch("gzip.open", mock_open()) as mock_file,
+            patch("json.dump") as mock_dump,
+        ):
+            json_parser.to_gzipped_json("test_path")
+            mock_file.assert_called_once_with(
+                "test_path", mode="wt", encoding="utf-8"
+            )
+            mock_dump.assert_called_once_with(data, mock_file(), indent=4)
