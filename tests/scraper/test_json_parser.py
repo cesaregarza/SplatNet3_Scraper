@@ -178,3 +178,18 @@ class TestLinearJSON:
         ]
         assert linear_json.header == expected_header
         assert linear_json.data == expected_data
+
+    def test_transpose(self):
+        header = ["test_header_0", "test_header_1"]
+        data = [
+            ["test_data_0", "test_data_1"],
+            ["test_data_2", "test_data_3"],
+            ["test_data_4", "test_data_5"],
+        ]
+        linear_json = LinearJSON(header, data)
+        transposed_data = linear_json.transpose()
+        expected_data = [
+            ["test_data_0", "test_data_2", "test_data_4"],
+            ["test_data_1", "test_data_3", "test_data_5"],
+        ]
+        assert transposed_data == expected_data
