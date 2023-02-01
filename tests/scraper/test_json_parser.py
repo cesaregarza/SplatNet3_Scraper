@@ -62,6 +62,8 @@ class TestLinearJSON:
             assert mock_delinearize.call_count == y_length
             assert list(delinearized.keys()) == ["data"]
             assert len(delinearized["data"]) == y_length
+            assert isinstance(delinearized, dict)
+            assert isinstance(delinearized["data"], list)
 
     def test_eq(self):
         header = ["test_header_0", "test_header_1"]
@@ -268,3 +270,23 @@ class TestJSONParser:
         length = random.randint(1, 100)
         data = [{"test_key": "test_value"}] * length
         assert repr(JSONParser(data)) == f"JSONParser({length} battles)"
+
+    def test_to_linear_json(self):
+        data = [{"test_key": "test_value_0"}, {"test_key": "test_value_1"}]
+        linear_json = JSONParser(data)._JSONParser__to_linear_json()
+        assert linear_json.header == ("test_key",)
+        assert linear_json.data == [["test_value_0"], ["test_value_1"]]
+
+    def test_remove_columns(self):
+        data = [
+            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
+            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
+        ]
+        json_parser = JSONParser(data)
+        remove_columns = ["test_key_0"]
+        expected_data = [
+            {"test_key_1": "test_value_1"},
+            {"test_key_1": "test_value_3"},
+        ]
+        json_parser.remove_columns(remove_columns)
+        assert json_parser.data == expected_data
