@@ -427,3 +427,18 @@ class TestJSONParser:
             ],
         }
         assert json_parser.data == [expected_json]
+
+    def test_automatic_type_conversion(self):
+        test_values = [
+            "",
+            "1",
+            "1.0",
+            "true",
+            "false",
+            "null",
+            "[]",
+            "{}",
+            "['a', 'b']",
+        ]
+        expected_values = [None, 1, 1.0, True, False, None, [], {}, ["a", "b"]]
+        JSONParser.automatic_type_conversion(test_values) == expected_values
