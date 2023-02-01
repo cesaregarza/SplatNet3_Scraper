@@ -1,7 +1,9 @@
+import ast
+import csv
 import gzip
 import hashlib
 import json
-from typing import Any, Literal, overload
+from typing import Any, Literal, overload, Callable
 
 from splatnet3_scraper.utils import delinearize_json, linearize_json
 
@@ -79,9 +81,9 @@ class LinearJSON:
             bool: Whether the other object is equal to this object.
         """
         if isinstance(other, LinearJSON):
-            return self.header == other.header
+            return self.header == other.header and self.data == other.data
         elif isinstance(other, list):
-            return self.header == other
+            return self.header == other[0] and self.data == other[1:]
         return False
 
     def __validate(self) -> None:
@@ -102,11 +104,19 @@ class LinearJSON:
         None values for columns that are in the new header but not the current
         header.
 
+        Raises:
+            ValueError: If the new header has duplicate columns.
+
         Args:
             new_header (list[str]): The new header.
         """
         new_header_columns = [x for x in new_header if x not in self.header]
         removed_header_columns = [x for x in self.header if x not in new_header]
+
+        # Check if the new header has any duplicates and raise an error if so
+        if len(new_header) != len(set(new_header)):
+            raise ValueError("The new header has duplicate columns.")
+
         if (not new_header_columns) and (not removed_header_columns):
             return
         new_data = []
@@ -218,7 +228,8 @@ class LinearJSON:
         """Removes columns from the LinearJSON object.
 
         Args:
-            columns (list[str]): The columns to remove.
+            columns (list[str]): The columns to remove. If a column is not in
+                the header, it will be ignored.
         """
         new_header = [x for x in self.header if x not in columns]
         self.__standardize_new_header(new_header)
@@ -244,6 +255,11 @@ class JSONParser:
 
     def __len__(self) -> int:
         return len(self.data)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, JSONParser):
+            return self.data == other.data
+        return False
 
     def __repr__(self) -> str:
         return f"JSONParser({len(self)} battles)"
@@ -309,6 +325,28 @@ class JSONParser:
             f.write(header + "\n")
             f.write(data)
 
+    def __to_json(self, path: str, use_gzip: bool, **kwargs) -> None:
+        """Saves the JSON object to a JSON file. Any keyword arguments are
+        passed to the json.dump method. If gzip is True, the file will be
+        compressed with gzip.
+
+        Args:
+            path (str): The path to save the JSON file to.
+            use_gzip (bool): Whether or not to compress the file with gzip.
+            **kwargs: Any keyword arguments to pass to the json.dump method.
+        """
+        default_kwargs: dict[str, Any] = {"indent": 4}
+        default_kwargs.update(kwargs)
+        if use_gzip:
+            open_function: Callable = gzip.open
+            open_kwargs = {"mode": "wt", "encoding": "utf-8"}
+        else:
+            open_function = open
+            open_kwargs = {"mode": "w", "encoding": "utf-8"}
+
+        with open_function(path, **open_kwargs) as f:
+            json.dump(self.data, f, **default_kwargs)
+
     def to_json(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a JSON file. Any keyword arguments are
         passed to the json.dump method.
@@ -317,10 +355,7 @@ class JSONParser:
             path (str): The path to save the JSON file to.
             **kwargs: Keyword arguments to pass to the json.dump method.
         """
-        default_kwargs: dict[str, Any] = {"indent": 4}
-        default_kwargs.update(kwargs)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, **default_kwargs)
+        self.__to_json(path, False, **kwargs)
 
     def to_gzipped_json(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a gzipped JSON file. Any keyword arguments
@@ -330,10 +365,7 @@ class JSONParser:
             path (str): The path to save the gzipped JSON file to.
             **kwargs: Keyword arguments to pass to the json.dump method.
         """
-        default_kwargs: dict[str, Any] = {"indent": 4}
-        default_kwargs.update(kwargs)
-        with gzip.open(path, "wt", encoding="utf-8") as f:
-            json.dump(self.data, f, **default_kwargs)
+        self.__to_json(path, True, **kwargs)
 
     def to_parquet(self, path: str, **kwargs) -> None:
         """Saves the JSON object to a Parquet file. Any keyword arguments are
@@ -363,6 +395,25 @@ class JSONParser:
         table = pa.Table.from_arrays(arrays, names=linear_json.header)
         pq.write_table(table, path, **kwargs)
 
+    @staticmethod
+    def automatic_type_conversion(row: list[str]) -> list[Any]:
+        """Converts a row of strings to the most appropriate type.
+
+        Args:
+            row (list[str]): The row of strings to convert.
+
+        Returns:
+            list[Any]: The converted row.
+        """
+        converted_row = []
+        for col in row:
+            try:
+                value = ast.literal_eval(col)
+            except (ValueError, SyntaxError):
+                value = None if col == "" else col
+            converted_row.append(value)
+        return converted_row
+
     @classmethod
     def from_csv(cls, path: str) -> "JSONParser":
         """Loads a JSON object from a CSV file.
@@ -373,12 +424,18 @@ class JSONParser:
         Returns:
             JSONParser: The JSONParser object.
         """
-        with open(path, "r") as f:
-            header = f.readline().strip().split(",")
-            data = []
-            for line in f:
-                data.append(line.strip().split(","))
-        return cls(delinearize_json(header, data))
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.reader(
+                f,
+                quotechar='"',
+                delimiter=",",
+                quoting=csv.QUOTE_MINIMAL,
+                skipinitialspace=True,
+            )
+            header = next(reader)
+            data = [JSONParser.automatic_type_conversion(row) for row in reader]
+        delinearized_data = [delinearize_json(header, row) for row in data]
+        return cls(delinearized_data)
 
     @classmethod
     def from_json(cls, path: str) -> "JSONParser":
@@ -390,7 +447,7 @@ class JSONParser:
         Returns:
             JSONParser: The JSONParser object.
         """
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return cls(json.load(f))
 
     @classmethod
@@ -403,7 +460,7 @@ class JSONParser:
         Returns:
             JSONParser: The JSONParser object.
         """
-        with gzip.open(path, "rt") as f:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
             return cls(json.load(f))
 
     @classmethod

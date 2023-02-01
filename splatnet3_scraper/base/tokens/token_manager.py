@@ -8,7 +8,11 @@ import requests
 
 from splatnet3_scraper import __version__
 from splatnet3_scraper.base.graph_ql_queries import queries
-from splatnet3_scraper.base.tokens.nso import NSO, SplatnetException
+from splatnet3_scraper.base.tokens.nso import (
+    NSO,
+    NintendoException,
+    SplatnetException,
+)
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
@@ -67,7 +71,7 @@ class Token:
             out += f"{mins:.0f}m "
         if secs > 0:
             out += f"{secs:.1f}s"
-        return out
+        return out.strip()
 
     def __repr__(self) -> str:
         out = "Token("
@@ -200,6 +204,7 @@ class TokenManager:
 
         Raises:
             ValueError: If the session token has not been set.
+            NintendoException: If the user info could not be retrieved.
         """
         if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
@@ -207,11 +212,16 @@ class TokenManager:
             )
         gtoken = self.nso.get_gtoken(self.nso.session_token)
         self.add_token(gtoken, TOKENS.GTOKEN)
-        user_info = cast(dict[str, str], self.nso._user_info)
-        country = user_info["country"]
-        language = user_info["language"]
-        self._data["country"] = country
-        self._data["language"] = language
+        try:
+            user_info = cast(dict[str, str], self.nso._user_info)
+            country = user_info["country"]
+            language = user_info["language"]
+            self._data["country"] = country
+            self._data["language"] = language
+        except (KeyError, TypeError):
+            raise NintendoException(
+                "Unable to get user info. Gtoken may be invalid."
+            )
 
     @retry(times=1, exceptions=SplatnetException)
     def generate_bullet_token(self) -> None:
@@ -412,8 +422,9 @@ class TokenManager:
         Returns:
             bool: True if the token is valid, False otherwise.
         """
-        token = self.get(token_type, full_token=True)
-        if token is None:
+        try:
+            token = self.get(token_type, full_token=True)
+        except ValueError:
             return False
         return token.is_valid
 

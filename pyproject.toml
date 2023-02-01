@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "splatnet3_scraper"
-version = "0.3.0"
+version = "0.3.1"
 description = "Scraper for SplatNet 3 for Splatoon 3"
 authors = ["Cesar E Garza <cesar@cegarza.com>"]
 readme = "README.md"
@@ -26,6 +26,9 @@ coverage = "^7.0.4"
 ipykernel = "^6.19.4"
 genson = "^1.2.2"
 line-profiler = "^4.0.2"
+pytest-lazy-fixture = "^0.6.3"
+freezegun = "^1.2.2"
+pytest-mock = "^3.10.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -43,6 +46,7 @@ line_length = 80
 python_version = "3.10"
 ignore_missing_imports = true
 pretty = true
+exclude = [".venv", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"

@@ -37,10 +37,13 @@ class Config:
         if token_manager is None:
             self.__post_init__(config_path)
             return
+        else:
+            self.config_path = config_path
 
         self.token_manager = token_manager
         self.config = configparser.ConfigParser()
         self.config.add_section("options")
+        self.options = self.config.options("options")
 
     def __post_init__(self, config_path: str | None = None) -> None:
         """This function is called after the __init__ method and is used to
@@ -95,7 +98,7 @@ class Config:
             self.config.remove_section("tokens")
         if path is None and self.config_path is not None:
             path = self.config_path
-        elif path is None and self.config_path is None:
+        elif path is None:
             path = ".splatnet3_scraper"
 
         with open(path, "w") as configfile:
@@ -109,12 +112,13 @@ class Config:
         with the new option name.
         """
         for option in self.options:
-            if option not in self.ACCEPTED_OPTIONS:
+            if option not in (
+                self.ACCEPTED_OPTIONS + list(self.DEPRECATED_OPTIONS.keys())
+            ):
                 if not self.config.has_section("unknown"):
                     self.config.add_section("unknown")
                 self.config["unknown"][option] = self.config["options"][option]
                 self.config.remove_option("options", option)
-                continue
             if option in self.DEPRECATED_OPTIONS:
                 deprecated_name = option
                 option_name = self.DEPRECATED_OPTIONS[option]
@@ -176,6 +180,8 @@ class Config:
                 return self.DEFAULT_OPTIONS[key]
             else:
                 raise KeyError(f"Option not set and has no default: {key}")
+        elif key in self.DEPRECATED_OPTIONS:
+            return self.get(self.DEPRECATED_OPTIONS[key])
         else:
             raise KeyError(f"Invalid option: {key}")
 
