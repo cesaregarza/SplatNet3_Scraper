@@ -231,10 +231,16 @@ class TestLinearJSON:
 
     def test_remove_columns(self):
         header = ["test_header_0", "test_header_1", "test_header_2"]
-        data = [
-            ["test_data_0", "test_data_1", "test_data_2"],
-        ]
+        data = [["test_data_0", "test_data_1", "test_data_2"]]
         linear_json = LinearJSON(header, data)
         with patch(linear_json_mangled + "__standardize_new_header") as mock:
             linear_json.remove_columns(["test_header_0", "test_header_2"])
+            mock.assert_called_once_with(["test_header_1"])
+
+    def test_remove_url_columns(self):
+        header = ["test_header_0URL", "test_header_1", "test_header_2url"]
+        data = [["test_data_0", "test_data_1", "test_data_2"]]
+        linear_json = LinearJSON(header, data)
+        with patch(linear_json_mangled + "__standardize_new_header") as mock:
+            linear_json.remove_url_columns()
             mock.assert_called_once_with(["test_header_1"])
