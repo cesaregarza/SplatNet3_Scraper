@@ -189,9 +189,7 @@ class TestSplatNet3Scraper:
 
             scraper.get_mode_summary("anarchy", detailed=False)
             mock_get.assert_called_once_with(QueryMap.get("anarchy"))
-            mock_query_response.assert_called_once_with(
-                summary=get_return_value
-            )
+            mock_query_response.assert_called_once_with(data=get_return_value)
 
         # Valid mode, detailed
         with (
@@ -208,7 +206,7 @@ class TestSplatNet3Scraper:
             scraper.get_mode_summary("anarchy", detailed=True)
             mock_get.assert_called_once_with(QueryMap.get("anarchy"), None)
             mock_query_response.assert_called_once_with(
-                summary=get_return_summary, detailed=get_return_detailed
+                data=get_return_summary, additional_data=get_return_detailed
             )
 
     def test__vs_with_details(self):

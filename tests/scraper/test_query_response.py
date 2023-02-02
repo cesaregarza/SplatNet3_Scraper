@@ -8,22 +8,22 @@ class TestQueryResponse:
     def test_init(self):
         # No detailed
         response = QueryResponse({"test_key": "test_value"})
-        assert response.summary == JSONParser({"test_key": "test_value"})
+        assert response.data == JSONParser({"test_key": "test_value"})
         with pytest.raises(AttributeError):
-            response.detailed
-        assert response._detailed is None
+            response.additional_data
+        assert response._additional_data is None
         # Detailed
         response = QueryResponse(
             {"test_key": "test_value"}, [{"test_key": "test_value"}]
         )
-        assert response.summary == JSONParser({"test_key": "test_value"})
-        assert response.detailed == JSONParser([{"test_key": "test_value"}])
+        assert response.data == JSONParser({"test_key": "test_value"})
+        assert response._additional_data == [{"test_key": "test_value"}]
         # Detailed None
         response = QueryResponse({"test_key": "test_value"}, None)
-        assert response.summary == JSONParser({"test_key": "test_value"})
+        assert response.data == JSONParser({"test_key": "test_value"})
         with pytest.raises(AttributeError):
-            response.detailed
-        assert response._detailed is None
+            response.additional_data
+        assert response._additional_data is None
 
     def test_repr(self):
         # No detailed
@@ -33,4 +33,10 @@ class TestQueryResponse:
         response = QueryResponse(
             {"test_key": "test_value"}, [{"test_key": "test_value"}]
         )
-        assert repr(response) == "QueryResponse(Detailed)"
+        assert repr(response) == "QueryResponse+()"
+
+    def test_getitem(self, json_deep_nested):
+        response = QueryResponse(json_deep_nested)
+        assert response["c"] == QueryResponse(json_deep_nested["c"])
+        assert response["c", "d"] == json_deep_nested["c"]["d"]
+        assert response["c", "e", "g", "h"] == 5

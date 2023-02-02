@@ -199,11 +199,11 @@ class SplatNet3_Scraper:
 
         if not detailed:
             data = self.__get_query(query_name)
-            return QueryResponse(summary=data)
+            return QueryResponse(data=data)
         summary, detailed_data = self.__vs_with_details(
             query_name, detailed_limit
         )
-        return QueryResponse(summary=summary, detailed=detailed_data)
+        return QueryResponse(data=summary, additional_data=detailed_data)
 
     def get_vs_detail(self, game_id: str) -> dict:
         """Gets the details of a versus game.

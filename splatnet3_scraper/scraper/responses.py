@@ -10,43 +10,65 @@ class QueryResponse:
 
     def __init__(
         self,
-        summary: dict[str, Any],
-        detailed: list[dict[str, Any]] | None = None,
+        data: dict[str, Any] | list[dict[str, Any]],
+        additional_data: list[dict[str, Any]] | dict[str, Any] | None = None,
     ) -> None:
         """Initializes a QueryResponse.
 
         Args:
-            summary (dict[str, Any]): The summary data from the response.
-            detailed (list[dict[str, Any]] | None): The detailed data from the
-                response. Defaults to None.
+            data (dict[str, Any]): The data from the response.
+            additional_data (list[dict[str, Any]] | None): Any additional data,
+                useful for complex queries that require multiple requests.
+                Defaults to None.
         """
-        self._summary = JSONParser(summary)
-        self._detailed = JSONParser(detailed) if detailed is not None else None
+        self._data = data
+        self._additional_data = additional_data
 
     @property
-    def summary(self) -> JSONParser:
-        """JSONParser of the summary data.
+    def data(self) -> JSONParser:
+        """The JSONParser object containing the data.
 
         Returns:
-            JSONParser: The summary data.
+            JSONParser: The data.
         """
-        return self._summary
+        return JSONParser(self._data)
 
     @property
-    def detailed(self) -> JSONParser:
-        """JSONParser of the detailed data. If there is no detailed data, this
-        will raise an AttributeError.
+    def additional_data(self) -> JSONParser:
+        """JSONParser containing any additional data. Intended to contain data
+            from multiple requests, such as detailed battle data.
 
         Raises:
-            AttributeError: If there is no detailed data.
+            AttributeError: If there is no additional data.
 
         Returns:
-            JSONParser: The detailed data.
+            JSONParser: The additional data.
         """
-        if self._detailed is None:
-            raise AttributeError("No detailed data")
-        return self._detailed
+        if self._additional_data is None:
+            raise AttributeError("No additional data")
+        return JSONParser(self._additional_data)
 
     def __repr__(self) -> str:
-        detail_str = "Detailed" if self._detailed is not None else ""
-        return f"QueryResponse({detail_str})"
+        detail_str = "+" if self._additional_data is not None else ""
+        return f"QueryResponse{detail_str}()"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, QueryResponse):
+            return False
+        return (
+            self._data == other._data
+            and self._additional_data == other._additional_data
+        )
+
+    def __getitem__(
+        self, key: str | int | tuple[str | int, ...]
+    ) -> "QueryResponse":
+        if isinstance(key, tuple):
+            for k in key:
+                self = self[k]
+            return self
+
+        data = self._data[key]  # type: ignore
+        if isinstance(data, (dict, list)):
+            return QueryResponse(data)
+        return data
