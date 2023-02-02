@@ -17,6 +17,9 @@ class TestQueryResponse:
             {"test_key": "test_value"}, [{"test_key": "test_value"}]
         )
         assert response.data == JSONParser({"test_key": "test_value"})
+        assert response.additional_data == JSONParser(
+            [{"test_key": "test_value"}]
+        )
         assert response._additional_data == [{"test_key": "test_value"}]
         # Detailed None
         response = QueryResponse({"test_key": "test_value"}, None)
@@ -34,6 +37,13 @@ class TestQueryResponse:
             {"test_key": "test_value"}, [{"test_key": "test_value"}]
         )
         assert repr(response) == "QueryResponse+()"
+
+    def test_eq(self, json_small):
+        response = QueryResponse(json_small)
+        assert response == QueryResponse(json_small)
+        assert response != QueryResponse(json_small, json_small)
+        assert response == QueryResponse(json_small, None)
+        assert response != json_small
 
     def test_getitem(self, json_deep_nested):
         response = QueryResponse(json_deep_nested)
