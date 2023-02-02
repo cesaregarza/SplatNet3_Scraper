@@ -10,6 +10,8 @@ from splatnet3_scraper.scraper.config import Config
 from tests.mock import MockConfigParser, MockTokenManager
 
 config_path = "splatnet3_scraper.scraper.config.Config"
+config_mangled = config_path + "._Config"
+token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
 
 
 class TestConfig:
@@ -30,8 +32,50 @@ class TestConfig:
         assert config.config.sections() == ["options"]
         assert config.options == config.config.options("options")
 
-    # No need to test __post_init__ because it is only called in __init__ and
-    # is simple enough to not need testing.
+    def test_post_init(self):
+        config = Config(token_manager=MockTokenManager())
+        # config path is not none
+        with (
+            patch(
+                token_manager_path + ".from_config_file"
+            ) as mock_from_config_file,
+            patch("configparser.ConfigParser.read") as mock_read,
+            patch("configparser.ConfigParser.options") as mock_options,
+            patch(config_path + ".manage_options") as mock_manage_options,
+            patch("builtins.open", mock_open()) as mock_file,
+            patch("configparser.ConfigParser.write") as mock_write,
+        ):
+            mock_options.return_value = True
+            config.__post_init__("config_path")
+            mock_from_config_file.assert_called_once_with("config_path")
+            mock_read.assert_called_once_with("config_path")
+            mock_options.assert_called_once_with("options")
+            mock_manage_options.assert_called_once()
+            mock_file.assert_called_once_with("config_path", "w")
+            mock_write.assert_called_once()
+
+        # config path is none
+        with (
+            patch(
+                token_manager_path + ".from_config_file"
+            ) as mock_from_config_file,
+            patch(token_manager_path + ".load") as mock_load,
+            patch("configparser.ConfigParser.read") as mock_read,
+            patch("configparser.ConfigParser.options") as mock_options,
+            patch(config_path + ".manage_options") as mock_manage_options,
+            patch("builtins.open", mock_open()) as mock_file,
+            patch("configparser.ConfigParser.write") as mock_write,
+        ):
+            mock_options.return_value = True
+            mock_load.return_value = MockTokenManager()
+            config.__post_init__(None)
+            mock_from_config_file.assert_not_called()
+            mock_load.assert_called_once()
+            mock_read.assert_called_once_with(".splatnet3_scraper")
+            mock_options.assert_called_once_with("options")
+            mock_manage_options.assert_called_once()
+            mock_file.assert_called_once_with(".splatnet3_scraper", "w")
+            mock_write.assert_called_once()
 
     def test_save(self, monkeypatch: pytest.MonkeyPatch):
         def remove_section(*args, **kwargs):

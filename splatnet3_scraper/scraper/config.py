@@ -61,7 +61,9 @@ class Config:
         else:
             self.token_manager = TokenManager.load()
 
-        config_path = ".splatnet3_scraper"
+        config_path = (
+            ".splatnet3_scraper" if config_path is None else config_path
+        )
 
         self.config_path = config_path
         self.config = configparser.ConfigParser()
