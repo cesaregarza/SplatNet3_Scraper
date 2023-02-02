@@ -48,11 +48,11 @@ class MockNSO:
     @property
     def session_token(self):
         return self._session_token
-    
+
     @property
     def state(self):
         return self._state
-    
+
     @property
     def verifier(self):
         return self._verifier

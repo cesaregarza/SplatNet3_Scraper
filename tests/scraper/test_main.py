@@ -4,13 +4,14 @@ from unittest.mock import patch
 import pytest
 import pytest_mock
 
-from splatnet3_scraper.scraper.main import QueryMap, SplatNet3_Scraper
 from splatnet3_scraper.base.tokens.nso import NSO
-from tests.mock import MockConfig, MockResponse, MockTokenManager, MockNSO
+from splatnet3_scraper.scraper.main import QueryMap, SplatNet3_Scraper
+from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
 config_path = "splatnet3_scraper.scraper.config.Config"
 query_response_path = "splatnet3_scraper.scraper.responses.QueryResponse"
 nso_path = "splatnet3_scraper.base.tokens.nso.NSO"
+token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
 
 
 class TestQueryMap:
@@ -60,6 +61,22 @@ class TestSplatNet3Scraper:
         assert url == "test_url"
         assert state == b"test_state"
         assert verifier == b"test_verifier"
+
+    def test_from_session_token(self):
+        with (
+            patch(
+                token_manager_path + ".from_session_token"
+            ) as mock_from_token,
+            patch.object(
+                MockTokenManager, "generate_all_tokens"
+            ) as mock_generate,
+            patch(config_path + ".__init__") as mock_config,
+        ):
+            mock_from_token.return_value = MockTokenManager()
+            mock_config.return_value = None
+            SplatNet3_Scraper.from_session_token("test_token")
+            mock_from_token.assert_called_once_with("test_token")
+            mock_generate.assert_called_once()
 
     def test__get_query(self):
         scraper = SplatNet3_Scraper(MockConfig())
