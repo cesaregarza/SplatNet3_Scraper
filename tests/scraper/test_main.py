@@ -5,10 +5,12 @@ import pytest
 import pytest_mock
 
 from splatnet3_scraper.scraper.main import QueryMap, SplatNet3_Scraper
-from tests.mock import MockConfig, MockResponse, MockTokenManager
+from splatnet3_scraper.base.tokens.nso import NSO
+from tests.mock import MockConfig, MockResponse, MockTokenManager, MockNSO
 
 config_path = "splatnet3_scraper.scraper.config.Config"
 query_response_path = "splatnet3_scraper.scraper.responses.QueryResponse"
+nso_path = "splatnet3_scraper.base.tokens.nso.NSO"
 
 
 class TestQueryMap:
@@ -46,6 +48,18 @@ class TestSplatNet3Scraper:
             mock_config.return_value = None
             SplatNet3_Scraper.from_config_file("test_config_path")
             mock_config.assert_called_once_with("test_config_path")
+
+    def test_generate_session_token_url(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+
+        (
+            url,
+            state,
+            verifier,
+        ) = SplatNet3_Scraper.generate_session_token_url()
+        assert url == "test_url"
+        assert state == b"test_state"
+        assert verifier == b"test_verifier"
 
     def test__get_query(self):
         scraper = SplatNet3_Scraper(MockConfig())

@@ -42,10 +42,20 @@ class MockNSO:
         self._user_info = None
         self._gtoken = None
         self._invalid_tokens = []
+        self._state = b"test_state"
+        self._verifier = b"test_verifier"
 
     @property
     def session_token(self):
         return self._session_token
+    
+    @property
+    def state(self):
+        return self._state
+    
+    @property
+    def verifier(self):
+        return self._verifier
 
     def get_gtoken(self, *args) -> str:
         if "gtoken" in self._invalid_tokens:
@@ -67,6 +77,9 @@ class MockNSO:
     @staticmethod
     def new_instance():
         return MockNSO()
+
+    def generate_login_url(self, *args) -> str:
+        return "test_url"
 
 
 class MockTokenManager:

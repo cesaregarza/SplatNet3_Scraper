@@ -109,6 +109,10 @@ class TestLinearJSON:
         original_header, data = generate_data(header_length)
         linear_json = LinearJSON(original_header, data)
 
+        # No changes
+        linear_json._LinearJSON__standardize_new_header(original_header)
+        assert linear_json.header == original_header
+
         # Remove some headers
         new_header_length = header_length // 2
         remove_indices = random.sample(range(header_length), new_header_length)
