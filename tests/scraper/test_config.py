@@ -32,7 +32,7 @@ class TestConfig:
         assert config.config.sections() == ["options"]
         assert config.options == config.config.options("options")
 
-    def test_post_init(self):
+    def test_post_init(self, monkeypatch: pytest.MonkeyPatch):
         config = Config(token_manager=MockTokenManager())
         # config path is not none
         with (
@@ -61,18 +61,29 @@ class TestConfig:
             ) as mock_from_config_file,
             patch(token_manager_path + ".load") as mock_load,
             patch("configparser.ConfigParser.read") as mock_read,
-            patch("configparser.ConfigParser.options") as mock_options,
             patch(config_path + ".manage_options") as mock_manage_options,
             patch("builtins.open", mock_open()) as mock_file,
             patch("configparser.ConfigParser.write") as mock_write,
+            monkeypatch.context() as m,
         ):
+            count = 0
+
+            def options(*args, **kwargs):
+                nonlocal count
+                count += 1
+                if count == 1:
+                    raise configparser.NoSectionError("options")
+                else:
+                    return True
+
+            m.setattr(ConfigParser, "options", options)
             mock_options.return_value = True
             mock_load.return_value = MockTokenManager()
             config.__post_init__(None)
             mock_from_config_file.assert_not_called()
             mock_load.assert_called_once()
             mock_read.assert_called_once_with(".splatnet3_scraper")
-            mock_options.assert_called_once_with("options")
+            assert count == 2
             mock_manage_options.assert_called_once()
             mock_file.assert_called_once_with(".splatnet3_scraper", "w")
             mock_write.assert_called_once()
