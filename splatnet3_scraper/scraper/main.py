@@ -1,5 +1,8 @@
+import json
+
 import requests
 
+from splatnet3_scraper.base.exceptions import SplatnetException
 from splatnet3_scraper.base.graph_ql_queries import queries
 from splatnet3_scraper.base.tokens import NSO, TokenManager
 from splatnet3_scraper.constants import TOKENS
@@ -263,3 +266,33 @@ class SplatNet3_Scraper:
                 detailed_game = self.get_vs_detail(game_id)
                 out.append(detailed_game)
         return data, out
+
+    def query(self, query_name: str, variables: dict = {}) -> dict:
+        """Queries Splatnet 3 and returns the data.
+
+        Args:
+            query_name (str): The name of the query to use.
+            variables (dict): The variables to use in the query. Defaults to {}.
+
+        Raises:
+            SplatnetException: If the query was successful but returned at
+                least one error.
+
+        Returns:
+            dict: The data from the query.
+        """
+        response = self.__query(query_name, variables)
+        if response.status_code != 200:
+            self.config.token_manager.generate_all_tokens()
+            response = self.__query(query_name, variables)
+
+        if "errors" in response.json():
+            errors = response.json()["errors"]
+            error_message = (
+                "Query was successful but returned at least one error."
+            )
+
+            error_message += " Errors: " + json.dumps(errors, indent=4)
+            raise SplatnetException(error_message)
+
+        return QueryResponse(data=response.json()["data"])

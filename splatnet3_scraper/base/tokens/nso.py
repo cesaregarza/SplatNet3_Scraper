@@ -8,6 +8,11 @@ from typing import cast
 import requests
 
 from splatnet3_scraper import __version__
+from splatnet3_scraper.base.exceptions import (
+    FTokenException,
+    NintendoException,
+    SplatnetException,
+)
 from splatnet3_scraper.constants import (
     APP_VERSION_FALLBACK,
     DEFAULT_USER_AGENT,
@@ -22,24 +27,6 @@ from splatnet3_scraper.utils import get_splatnet_web_version, retry
 version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
 )
-
-
-class NintendoException(Exception):
-    """Base class for all Nintendo exceptions."""
-
-    pass
-
-
-class FTokenException(Exception):
-    """Base class for all Imink exceptions."""
-
-    pass
-
-
-class SplatnetException(Exception):
-    """Base class for all Splatnet exceptions."""
-
-    pass
 
 
 class NSO:

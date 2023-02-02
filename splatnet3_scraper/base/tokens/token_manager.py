@@ -8,12 +8,12 @@ from typing import Literal, cast, overload
 import requests
 
 from splatnet3_scraper import __version__
-from splatnet3_scraper.base.graph_ql_queries import queries
-from splatnet3_scraper.base.tokens.nso import (
-    NSO,
+from splatnet3_scraper.base.exceptions import (
     NintendoException,
     SplatnetException,
 )
+from splatnet3_scraper.base.graph_ql_queries import queries
+from splatnet3_scraper.base.tokens.nso import NSO
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,

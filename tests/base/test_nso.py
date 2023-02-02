@@ -4,12 +4,12 @@ import os
 import pytest
 import requests
 
-from splatnet3_scraper.base.tokens.nso import (
-    NSO,
+from splatnet3_scraper.base.exceptions import (
     FTokenException,
     NintendoException,
     SplatnetException,
 )
+from splatnet3_scraper.base.tokens.nso import NSO
 from splatnet3_scraper.constants import APP_VERSION_FALLBACK
 from tests.mock import MockResponse
 

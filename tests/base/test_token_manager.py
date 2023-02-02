@@ -7,12 +7,12 @@ import pytest
 import pytest_mock
 import requests
 
-from splatnet3_scraper.base.graph_ql_queries import GraphQLQueries
-from splatnet3_scraper.base.tokens.nso import (
-    NSO,
+from splatnet3_scraper.base.exceptions import (
     NintendoException,
     SplatnetException,
 )
+from splatnet3_scraper.base.graph_ql_queries import GraphQLQueries
+from splatnet3_scraper.base.tokens.nso import NSO
 from splatnet3_scraper.base.tokens.token_manager import Token, TokenManager
 from tests.mock import MockNSO
 

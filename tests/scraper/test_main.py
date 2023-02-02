@@ -4,8 +4,10 @@ from unittest.mock import patch
 import pytest
 import pytest_mock
 
+from splatnet3_scraper.base.exceptions import SplatnetException
 from splatnet3_scraper.base.tokens.nso import NSO
 from splatnet3_scraper.scraper.main import QueryMap, SplatNet3_Scraper
+from splatnet3_scraper.scraper.responses import QueryResponse
 from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
 config_path = "splatnet3_scraper.scraper.config.Config"
@@ -277,3 +279,49 @@ class TestSplatNet3Scraper:
             assert mock_get_detailed.call_count == limit
             assert mock_get.call_count == 1
             assert query_result == mock_get.return_value
+
+    def test_query(self):
+        scraper = SplatNet3_Scraper(MockConfig())
+        mock_json = {"data": "test_data"}
+        # 200 response
+        with (
+            patch.object(scraper, "_SplatNet3_Scraper__query") as mock_get,
+            patch.object(
+                MockTokenManager, "generate_all_tokens"
+            ) as mock_generate,
+        ):
+            mock_get.return_value = MockResponse(200, json=mock_json)
+            assert scraper.query("test_query") == QueryResponse(
+                mock_json["data"]
+            )
+            mock_get.assert_called_once_with("test_query", {})
+            mock_generate.assert_not_called()
+
+        # 200 response, with errors
+        with (
+            patch.object(scraper, "_SplatNet3_Scraper__query") as mock_get,
+            patch.object(
+                MockTokenManager, "generate_all_tokens"
+            ) as mock_generate,
+        ):
+            mock_get.return_value = MockResponse(
+                200, json={"errors": "test_error"}
+            )
+            with pytest.raises(SplatnetException):
+                scraper.query("test_query")
+            mock_get.assert_called_once_with("test_query", {})
+            mock_generate.assert_not_called()
+
+        # Not 200 response
+        with (
+            patch.object(scraper, "_SplatNet3_Scraper__query") as mock_get,
+            patch.object(
+                MockTokenManager, "generate_all_tokens"
+            ) as mock_generate,
+        ):
+            mock_get.return_value = MockResponse(404, json=mock_json)
+            assert scraper.query("test_query") == QueryResponse(
+                mock_json["data"]
+            )
+            assert mock_get.call_count == 2
+            mock_generate.assert_called_once()
