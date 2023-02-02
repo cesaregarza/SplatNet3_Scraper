@@ -153,6 +153,7 @@ input_files
 !tests/input_files/*.json
 *.html
 .python-version
+*.sh
 
 # splatnet3_scraper files
 .splatnet3_scraper

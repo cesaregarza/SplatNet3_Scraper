@@ -3,7 +3,7 @@ import csv
 import gzip
 import hashlib
 import json
-from typing import Any, Literal, overload, Callable
+from typing import Any, Callable, Literal, overload
 
 from splatnet3_scraper.utils import delinearize_json, linearize_json
 

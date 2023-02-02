@@ -104,6 +104,15 @@ class TestTokenManager:
             assert isinstance(token_manager._tokens["test_type"], Token)
             assert token_manager._tokens["test_type"].token == "test_token"
 
+        # Test adding a gtoken
+        with freezegun.freeze_time("2023-01-01 00:00:00"):
+            token_manager.add_token("test_token", "gtoken")
+            assert isinstance(token_manager._tokens["gtoken"], Token)
+            assert token_manager._tokens["gtoken"].token == "test_token"
+            assert token_manager._tokens["gtoken"].token_type == "gtoken"
+            assert token_manager._tokens["gtoken"].timestamp == time.time()
+            assert token_manager.nso._gtoken == "test_token"
+
         # Test adding a token string without a type
         with pytest.raises(ValueError):
             token_manager.add_token("test_token")
@@ -270,9 +279,46 @@ class TestTokenManager:
         token_manager = TokenManager.from_config_file(path)
         assert token_manager.get("extra_token") == "test_extra_token"
 
-    @pytest.mark.xfail
     def test_from_text_file(self, monkeypatch: pytest.MonkeyPatch):
-        raise NotImplementedError
+
+        # No session token
+        with (
+            pytest.raises(ValueError),
+            patch("builtins.open", mock_open()),
+            patch("json.load") as mock_load,
+            monkeypatch.context() as m,
+        ):
+            m.setattr(NSO, "new_instance", MockNSO.new_instance)
+            mock_load.return_value = {"gtoken": "test_gtoken"}
+            TokenManager.from_text_file(".nonexistent")
+
+        # Session token
+        with (
+            patch("builtins.open", mock_open()),
+            patch("json.load") as mock_load,
+            monkeypatch.context() as m,
+        ):
+            m.setattr(NSO, "new_instance", MockNSO.new_instance)
+            m.setattr(TokenManager, "test_tokens", lambda *args: True)
+            mock_load.return_value = {
+                "session_token": "test_session_token",
+                "gtoken": "test_gtoken",
+                "bullettoken": "test_bullet_token",
+                "acc_loc": "en-US|US",
+            }
+            token_manager = TokenManager.from_text_file(".nonexistent")
+            assert token_manager.nso._session_token == "test_session_token"
+            assert token_manager.nso._gtoken == "test_gtoken"
+            assert token_manager.get("session_token") == "test_session_token"
+            assert token_manager.get("gtoken") == "test_gtoken"
+            assert token_manager.get("bullet_token") == "test_bullet_token"
+            expected_origin = {"origin": "text_file", "data": ".nonexistent"}
+            assert token_manager._origin == expected_origin
+            expected_data = {
+                "country": "US",
+                "language": "en-US",
+            }
+            assert token_manager.data == expected_data
 
     def test_from_env(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)

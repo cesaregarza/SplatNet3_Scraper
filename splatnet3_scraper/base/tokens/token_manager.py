@@ -1,4 +1,5 @@
 import configparser
+import json
 import os
 import re
 import time
@@ -139,12 +140,17 @@ class TokenManager:
         """
         if isinstance(token, Token):
             self._tokens[token.token_type] = token
+            if token.token_type == TOKENS.GTOKEN:
+                self.nso._gtoken = token.token
             return
         if token_type is None:
             raise ValueError("token_type must be provided if token is a str.")
         if timestamp is None:
             timestamp = time.time()
-        self._tokens[token_type] = Token(token, token_type, timestamp)
+        token_obj = Token(token, token_type, timestamp)
+        if token_obj.token_type == TOKENS.GTOKEN:
+            self.nso._gtoken = token_obj.token
+        self._tokens[token_type] = token_obj
 
     @overload
     def get(self, token_type: str, full_token: Literal[False] = ...) -> str:
@@ -345,21 +351,29 @@ class TokenManager:
         Args:
             path (str): The path to the text file.
 
+        Raises:
+            ValueError: If the session token is not found in the text file.
+
         Returns:
             TokenManager: The token manager with the tokens loaded.
         """
         token_manager = cls()
         with open(path, "r") as f:
-            lines = f.readlines()
-        # Clean up the lines
-        for line in lines:
-            stripped_line = line.strip()
-            token_name, token = text_config_re.split(stripped_line)
-            if token_name == TOKENS.SESSION_TOKEN:
-                token_manager.add_session_token(token)
-            else:
-                token_manager.add_token(token, token_name)
+            data = json.load(f)
+
+        if "session_token" not in data:
+            raise ValueError("Session token not found in text file.")
+        token_manager.add_session_token(data["session_token"])
         token_manager.flag_origin("text_file", path)
+        if "acc_loc" in data:
+            language, country = data["acc_loc"].split("|")
+            token_manager._data["language"] = language
+            token_manager._data["country"] = country
+
+        if "gtoken" in data:
+            token_manager.add_token(data["gtoken"], TOKENS.GTOKEN)
+        if "bullettoken" in data:
+            token_manager.add_token(data["bullettoken"], TOKENS.BULLET_TOKEN)
         token_manager.test_tokens()
         return token_manager
 
