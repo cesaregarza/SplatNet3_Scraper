@@ -276,7 +276,7 @@ class TestJSONParser:
     def test_repr(self):
         length = random.randint(1, 100)
         data = [{"test_key": "test_value"}] * length
-        assert repr(JSONParser(data)) == f"JSONParser({length} battles)"
+        assert repr(JSONParser(data)) == f"JSONParser({length} rows)"
 
     def test_to_linear_json(self):
         data = [{"test_key": "test_value_0"}, {"test_key": "test_value_1"}]

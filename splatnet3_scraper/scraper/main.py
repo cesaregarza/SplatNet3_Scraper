@@ -13,10 +13,14 @@ from splatnet3_scraper.scraper.responses import QueryResponse
 class QueryMap:
     ANARCHY = "BankaraBattleHistoriesQuery"
     REGULAR = "RegularBattleHistoriesQuery"
-    X = "XBattleHistoriesQuery"
+    XBATTLE = "XBattleHistoriesQuery"
     PRIVATE = "PrivateBattleHistoriesQuery"
     LATEST = "LatestBattleHistoriesQuery"
     SALMON = "CoopHistoryQuery"
+    CATALOG = "CatalogQuery"
+    CHECKIN = "CheckinQuery"
+    CHECKIN_QR = "CheckinWithQRCodeMutation"
+    CONFIGURE_ANALYTICS = "ConfigureAnalyticsQuery"
 
     # Detail
     VS_DETAIL = "VsHistoryDetailQuery"

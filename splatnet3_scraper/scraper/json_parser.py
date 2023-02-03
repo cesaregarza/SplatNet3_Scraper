@@ -262,7 +262,7 @@ class JSONParser:
         return False
 
     def __repr__(self) -> str:
-        return f"JSONParser({len(self)} battles)"
+        return f"JSONParser({len(self)} rows)"
 
     def __to_linear_json(self) -> LinearJSON:
         """Converts the JSON object to a LinearJSON object.
