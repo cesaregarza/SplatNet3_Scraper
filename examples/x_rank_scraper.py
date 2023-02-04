@@ -7,31 +7,29 @@ from splatnet3_scraper import SplatNet3_Scraper
 from splatnet3_scraper.scraper import QueryResponse
 
 
-def main() -> None:
-    scraper = SplatNet3_Scraper.from_config_file()
-    query = "XRankingQuery"
-    detailed_query = "XRankingDetailQuery"
-
-    def get_detailed_data(id: str) -> QueryResponse:
-        response = scraper.query(detailed_query, variables={"id": id})
-        return response
-
-
 class XRankScraper:
     query = "xRankingQuery"
-    detailed_query = "xRankingDetailQuery"
     modes = ["Ar", "Cl", "Gl", "Lf"]
     current_season_path = ("xRanking", "currentSeason", "id")
 
     def __init__(self, scraper: SplatNet3_Scraper) -> None:
         self.scraper = scraper
+    
+    def end_cursor_path_x_rank(self, mode: str, tab: bool = False) -> str:
+        return ("node", f"xRanking{mode}", "pageInfo", "endCursor")
 
     def get_current_season(self) -> str:
         response = self.scraper.query(self.query)
         return response[self.current_season_path]
 
-    def get_detailed_data(self, id: str) -> QueryResponse:
-        response = self.scraper.query(self.detailed_query, variables={"id": id})
+    def get_detailed_data(self, id: str, mode: str, page: int, cursor: str) -> QueryResponse:
+        variables = {
+            "id": id,
+            "mode": mode,
+            "page": page,
+            "cursor": cursor,
+        }
+        response = self.scraper.query(self.detailed_query, variables=variables)
         return response
 
     def get_x_rank_data(self) -> QueryResponse:
