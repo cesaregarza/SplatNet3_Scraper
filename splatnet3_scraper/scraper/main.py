@@ -1,4 +1,5 @@
 import json
+from typing import Callable, ParamSpec, TypeVar, cast
 
 import requests
 
@@ -8,6 +9,10 @@ from splatnet3_scraper.base.tokens import NSO, TokenManager
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.scraper.config import Config
 from splatnet3_scraper.scraper.responses import QueryResponse
+from splatnet3_scraper.utils import retry
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 class QueryMap:
@@ -271,6 +276,7 @@ class SplatNet3_Scraper:
                 out.append(detailed_game)
         return data, out
 
+    @retry(times=1, exceptions=ConnectionError)
     def query(self, query_name: str, variables: dict = {}) -> dict:
         """Queries Splatnet 3 and returns the data.
 

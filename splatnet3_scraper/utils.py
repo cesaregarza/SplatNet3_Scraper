@@ -16,6 +16,7 @@ json_splitter_re = re.compile(r"[\;\.]")
 def retry(
     times: int,
     exceptions: tuple[Type[Exception], ...] | Type[Exception] = Exception,
+    call_on_fail: Callable[[], None] | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that retries a function a specified number of times if it
     raises a specific exception or tuple of exceptions.
@@ -25,6 +26,8 @@ def retry(
             the exception.
         exceptions (tuple[Type[Exception], ...] | Type[Exception]): Exception
             or tuple of exceptions to catch. Defaults to Exception.
+        call_on_fail (Callable[[], None] | None): Function to call if the
+            function fails. If None, nothing will be called. Defaults to None.
 
     Returns:
         Callable[[Callable[P, T]], Callable[P, T]]: Decorator.
@@ -40,6 +43,10 @@ def retry(
                         f"{func.__name__} failed on attempt {i + 1} of "
                         f"{times + 1}, retrying."
                     )
+                    if call_on_fail is not None:
+                        logger.log(f"Calling {call_on_fail.__name__}...")
+                        call_on_fail()
+
             return func(*args, **kwargs)
 
         return wrapper

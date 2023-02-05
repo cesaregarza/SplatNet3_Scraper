@@ -28,9 +28,7 @@ class TestQueryMap:
 
 
 class TestSplatNet3Scraper:
-    def test_from_config_file(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
-    ):
+    def test_from_config_file(self, monkeypatch: pytest.MonkeyPatch):
 
         # No config file
         with (
