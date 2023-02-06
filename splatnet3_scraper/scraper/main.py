@@ -1,5 +1,5 @@
 import json
-from typing import Callable, ParamSpec, TypeVar, cast
+from typing import ParamSpec, TypeVar
 
 import requests
 

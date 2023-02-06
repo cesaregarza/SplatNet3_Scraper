@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from splatnet3_scraper.scraper.json_parser import JSONParser
@@ -38,15 +40,47 @@ class TestQueryResponse:
         )
         assert repr(response) == "QueryResponse+()"
 
-    def test_eq(self, json_small):
+    def test_eq(self, json_small: dict):
         response = QueryResponse(json_small)
         assert response == QueryResponse(json_small)
         assert response != QueryResponse(json_small, json_small)
         assert response == QueryResponse(json_small, None)
         assert response != json_small
 
-    def test_getitem(self, json_deep_nested):
+    def test_getitem(self, json_deep_nested: dict):
         response = QueryResponse(json_deep_nested)
         assert response["c"] == QueryResponse(json_deep_nested["c"])
         assert response["c", "d"] == json_deep_nested["c"]["d"]
         assert response["c", "e", "g", "h"] == 5
+
+    def test_keys(self, json_deep_nested: dict):
+        response = QueryResponse(json_deep_nested)
+        assert response.keys() == list(json_deep_nested.keys())
+
+    def test_values(self, json_deep_nested: dict):
+        response = QueryResponse(json_deep_nested)
+        assert response.values() == list(json_deep_nested.values())
+
+    def test_items(self, json_deep_nested: dict):
+        response = QueryResponse(json_deep_nested)
+        assert response.items() == list(json_deep_nested.items())
+
+    def test_iter(self, json_deep_nested: dict):
+        response = QueryResponse(json_deep_nested)
+        assert list(response) == list(json_deep_nested)
+        generator = iter(response)
+        assert next(generator) == "a"
+
+    def test_show(self, json_deep_nested: dict):
+        # return_value False
+        response = QueryResponse(json_deep_nested)
+        with patch("builtins.print") as print_mock:
+            response.show()
+        print_mock.assert_called_once_with(json_deep_nested)
+
+        # return_value True
+        response = QueryResponse(json_deep_nested)
+        with patch("builtins.print") as print_mock:
+            ret_value = response.show(True)
+        print_mock.assert_not_called()
+        assert isinstance(ret_value, dict)
