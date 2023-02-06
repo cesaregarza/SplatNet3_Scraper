@@ -5,6 +5,7 @@ description = "Scraper for SplatNet 3 for Splatoon 3"
 authors = ["Cesar E Garza <cesar@cegarza.com>"]
 readme = "README.md"
 packages = [{include = "splatnet3_scraper"}]
+license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = "^3.10"
