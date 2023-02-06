@@ -20,7 +20,13 @@
 
 ## Installation
 
-**SplatNet3_Scraper** is currently under active development and is not yet available on PyPI. No wheels are currently available. If you would like to use this early version, you can install it from source by cloning this repository and running `pip install .` in the root directory.
+**SplatNet3_Scraper** is currently under active development but is currently available on PyPI. It can be installed using pip:
+
+```bash
+pip install splatnet3_scraper
+```
+
+Note that the current versions of **SplatNet3_Scraper** are currently `v0.x.y`, which means that the API is not guaranteed to be stable and may change in the future with the release of `v1.0.0`.
 
 ## Usage
 
