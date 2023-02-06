@@ -25,28 +25,49 @@ class QueryResponse:
         self._additional_data = additional_data
 
     @property
-    def data(self) -> JSONParser:
-        """The JSONParser object containing the data.
+    def data(self) -> dict[str, Any] | list[dict[str, Any]]:
+        """The data from the response.
 
         Returns:
-            JSONParser: The data.
+            dict[str, Any]: The data.
         """
-        return JSONParser(self._data)
+        return self._data
 
     @property
-    def additional_data(self) -> JSONParser:
-        """JSONParser containing any additional data. Intended to contain data
-            from multiple requests, such as detailed battle data.
+    def additional_data(self) -> list[dict[str, Any]] | dict[str, Any]:
+        """Any additional data, useful for complex queries that require
+            multiple requests.
 
         Raises:
             AttributeError: If there is no additional data.
 
         Returns:
-            JSONParser: The additional data.
+            list[dict[str, Any]] | dict[str, Any]: The additional data.
         """
         if self._additional_data is None:
             raise AttributeError("No additional data")
-        return JSONParser(self._additional_data)
+        return self._additional_data
+
+    def parse_json(self, additional: bool = False) -> JSONParser:
+        """The JSONParser object containing the data.
+
+        Args:
+            additional (bool): Whether to parse the additional data. Defaults
+                to False.
+
+        Raises:
+            AttributeError: If there is no additional data and additional is
+                True.
+
+        Returns:
+            JSONParser: The data.
+        """
+        if additional and self._additional_data is None:
+            raise AttributeError("No additional data")
+        elif additional:
+            return JSONParser(self._additional_data)
+        else:
+            return JSONParser(self._data)
 
     def __repr__(self) -> str:
         detail_str = "+" if self._additional_data is not None else ""
