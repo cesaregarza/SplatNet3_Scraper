@@ -1,7 +1,8 @@
 # This does not test the actual functionality of the code. Anything that needs
 # some sort of assurance before pushing to production should be tested here.
-import splatnet3_scraper
 import re
+
+import splatnet3_scraper
 
 
 def test_version():

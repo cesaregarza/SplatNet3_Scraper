@@ -98,6 +98,10 @@ class MockTokenManager:
     def generate_all_tokens(self, *args, **kwargs):
         pass
 
+    @property
+    def data(self):
+        return {"test_key_1": "test_value_1", "test_key_2": "test_value_2"}
+
 
 class MockConfigParser:
     def __init__(self) -> None:

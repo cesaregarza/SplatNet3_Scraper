@@ -215,3 +215,13 @@ class TestConfig:
         # Invalid option
         with pytest.raises(KeyError):
             config.get("invalid_option")
+
+    def test_get_data(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+
+        assert not config.config.has_section("data")
+        assert config.get_data("test_key_1") == "test_value_1"
+        assert config.config.has_section("data")
+        assert config.config["data"]["test_key_1"] == "test_value_1"
+        assert config.get_data("test_key_2") == "test_value_2"
