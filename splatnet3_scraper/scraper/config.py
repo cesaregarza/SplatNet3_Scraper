@@ -78,6 +78,15 @@ class Config:
         with open(config_path, "w") as configfile:
             self.config.write(configfile)
 
+    @staticmethod
+    def from_env() -> "Config":
+        """Creates a Config instance using the environment variables.
+
+        Returns:
+            Config: The Config instance.
+        """
+        return Config(token_manager=TokenManager.from_env())
+
     def save(
         self, path: str | None = None, include_tokens: bool = True
     ) -> None:

@@ -78,6 +78,12 @@ class TestSplatNet3Scraper:
             mock_from_token.assert_called_once_with("test_token")
             mock_generate.assert_called_once()
 
+    def test_from_env(self):
+        with patch(config_path + ".from_env") as mock_from_env:
+            mock_from_env.return_value = MockConfig()
+            SplatNet3_Scraper.from_env()
+            mock_from_env.assert_called_once()
+
     def test__get_query(self):
         scraper = SplatNet3_Scraper(MockConfig())
 

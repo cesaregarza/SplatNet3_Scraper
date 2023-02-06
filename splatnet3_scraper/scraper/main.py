@@ -123,6 +123,17 @@ class SplatNet3_Scraper:
         config = Config(token_manager=token_manager)
         return SplatNet3_Scraper(config)
 
+    @staticmethod
+    def from_env() -> "SplatNet3_Scraper":
+        """Creates a new instance of the class using the environment
+        variables.
+
+        Returns:
+            SplatNet3_Scraper: A new instance of the class.
+        """
+        config = Config.from_env()
+        return SplatNet3_Scraper(config)
+
     def __query(
         self, query_name: str, variables: dict = {}
     ) -> requests.Response:

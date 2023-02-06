@@ -88,6 +88,17 @@ class TestConfig:
             mock_file.assert_called_once_with(".splatnet3_scraper", "w")
             mock_write.assert_called_once()
 
+    def test_from_env(self):
+        config = Config(token_manager=MockTokenManager())
+        with (
+            patch(token_manager_path + ".from_env") as mock_from_env,
+            patch(config_path + ".__post_init__") as mock_post_init,
+        ):
+            mock_from_env.return_value = MockTokenManager()
+            config.from_env()
+            mock_from_env.assert_called_once()
+            mock_post_init.assert_not_called()
+
     def test_save(self, monkeypatch: pytest.MonkeyPatch):
         def remove_section(*args, **kwargs):
             if args[1] == "tokens":

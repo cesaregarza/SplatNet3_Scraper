@@ -8,6 +8,7 @@ from splatnet3_scraper.scraper import QueryResponse
 
 class XRankScraper:
     """Scrapes X Ranking data from SplatNet 3."""
+
     query = "XRankingQuery"
     modes = ["Ar", "Cl", "Gl", "Lf"]
     current_season_path = ("xRanking", "currentSeason", "id")
@@ -53,8 +54,7 @@ class XRankScraper:
             mode (str): The mode.
             page (int): The page.
             cursor (str): The cursor.
-            weapons (bool, optional): Whether to get weapon data. Defaults to
-                False.
+            weapons (bool): Whether to get weapon data. Defaults to False.
 
         Returns:
             QueryResponse: The detailed data.
