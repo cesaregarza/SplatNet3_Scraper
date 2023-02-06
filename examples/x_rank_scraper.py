@@ -7,6 +7,7 @@ from splatnet3_scraper.scraper import QueryResponse
 
 
 class XRankScraper:
+    """Scrapes X Ranking data from SplatNet 3."""
     query = "XRankingQuery"
     modes = ["Ar", "Cl", "Gl", "Lf"]
     current_season_path = ("xRanking", "currentSeason", "id")
@@ -17,10 +18,23 @@ class XRankScraper:
         self.scraper = scraper
         self.db_path = db_path if db_path else "x_rank.db"
 
-    def end_cursor_path_x_rank(self, mode: str, tab: bool = False) -> str:
+    def end_cursor_path_x_rank(self, mode: str) -> tuple[str, ...]:
+        """Gets the path to the end cursor for the given mode.
+
+        Args:
+            mode (str): The mode to get the path for.
+
+        Returns:
+            str: The path to the end cursor.
+        """
         return ("node", f"xRanking{mode}", "pageInfo", "endCursor")
 
     def get_current_season(self) -> str:
+        """Gets the current season ID.
+
+        Returns:
+            str: The current season ID.
+        """
         response = self.scraper.query(self.query)
         return response[self.current_season_path]
 
@@ -32,6 +46,19 @@ class XRankScraper:
         cursor: str,
         weapons: bool = False,
     ) -> QueryResponse:
+        """Gets the detailed data for the given season, mode, page, and cursor.
+
+        Args:
+            season_id (str): The season ID.
+            mode (str): The mode.
+            page (int): The page.
+            cursor (str): The cursor.
+            weapons (bool, optional): Whether to get weapon data. Defaults to
+                False.
+
+        Returns:
+            QueryResponse: The detailed data.
+        """
         variables = {
             "id": season_id,
             "mode": mode,
@@ -46,6 +73,15 @@ class XRankScraper:
         return response
 
     def parse_player_data(self, data: QueryResponse) -> dict[str, Any]:
+        """Parses the player data from the given QueryResponse.
+
+        Args:
+            data (QueryResponse): The data to parse.
+
+        Returns:
+            dict[str, Any]: The parsed data. Additional keys can be added by
+                simply adding their paths to the dict along with the key name.
+        """
         player_data = {
             "id": data["id"],
             "name": data["name"],
@@ -64,6 +100,16 @@ class XRankScraper:
     def parse_players_in_mode(
         self, data: QueryResponse, mode: str
     ) -> list[dict[str, Any]]:
+        """Given the data for a mode, parses the player data and adds the mode
+        to each player.
+
+        Args:
+            data (QueryResponse): The data to parse.
+            mode (str): The mode.
+
+        Returns:
+            list[dict[str, Any]]: The parsed player data.
+        """
         players = []
         for player_node in data["edges"]:
             player_data = self.parse_player_data(player_node["node"])
@@ -74,6 +120,15 @@ class XRankScraper:
     def scrape_all_players_in_mode(
         self, season_id: str, mode: str
     ) -> list[dict[str, Any]]:
+        """Scrapes all players in the given mode.
+
+        Args:
+            season_id (str): The season ID.
+            mode (str): The mode.
+
+        Returns:
+            list[dict[str, Any]]: The scraped player data.
+        """
         players = []
         for page in range(1, 6):
             has_next_page = True
@@ -95,12 +150,25 @@ class XRankScraper:
     def scrape_all_players_in_season(
         self, season_id: str
     ) -> list[dict[str, Any]]:
+        """Scrapes all players in the given season.
+
+        Args:
+            season_id (str): The season ID.
+
+        Returns:
+            list[dict[str, Any]]: The scraped player data.
+        """
         players = []
         for mode in self.modes:
             players.extend(self.scrape_all_players_in_mode(season_id, mode))
         return players
 
     def scrape_all_players_current_season(self) -> list[dict[str, Any]]:
+        """Scrapes all players in the current season.
+
+        Returns:
+            list[dict[str, Any]]: The scraped player data.
+        """
         season_id = self.get_current_season()
         timestamp = time.time()
         players = self.scrape_all_players_in_season(season_id)
@@ -109,6 +177,11 @@ class XRankScraper:
         return players
 
     def save_to_db(self, players: list[dict[str, Any]]) -> None:
+        """Saves the given player data to an SQLite database.
+
+        Args:
+            players (list[dict[str, Any]]): The player data to save.
+        """
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
             c.execute(
