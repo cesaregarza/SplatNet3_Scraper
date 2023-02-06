@@ -125,8 +125,8 @@ parser = JSONParser.from_json("response.json")
 | Full unit test coverage | :white_check_mark: |
 | Columnar data format support | :construction: |
 | CLI interface | :x: |
-| Integration with stats.ink | :x: |
-| PyPI package | :world_map: |
+| Integration with stat.ink | :x: |
+| PyPI package | :white_check_mark: |
 | Docker image | :world_map: |
 | Executable binary | :x: |
 
