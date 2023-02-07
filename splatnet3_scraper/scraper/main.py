@@ -133,7 +133,7 @@ class SplatNet3_Scraper:
         """
         config = Config.from_env()
         return SplatNet3_Scraper(config)
-    
+
     @staticmethod
     def from_s3s_config(path: str) -> "SplatNet3_Scraper":
         """Creates a new instance of the class using the s3s config file.
