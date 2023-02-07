@@ -71,6 +71,84 @@ class TestGraphQLQueries:
             )
         assert header == expected_header
 
+    def test_query_body_hash(self):
+        queries = GraphQLQueries()
+        query_hash = "test_hash"
+        variables = {"test_variable": "test_value"}
+        expected_call = {
+            "extensions": {
+                "persistedQuery": {
+                    "sha256Hash": query_hash,
+                    "version": 1,
+                }
+            },
+            "variables": variables,
+        }
+        with patch("json.dumps") as mock_dumps:
+            mock_dumps.return_value = "test_json"
+            body = queries.query_body_hash(query_hash, variables)
+        mock_dumps.assert_called_once_with(expected_call)
+        assert body == "test_json"
+
+    def test_query_body(self):
+        queries = GraphQLQueries()
+        query_name = "anarchy"
+        variables = {"test_variable": "test_value"}
+        with (
+            patch(test_graphql_path + ".get_query") as mock_get_query,
+            patch(
+                test_graphql_path + ".query_body_hash"
+            ) as mock_query_body_hash,
+        ):
+            mock_get_query.return_value = "test_query"
+            mock_query_body_hash.return_value = "test_body"
+            body = queries.query_body(query_name, variables)
+        mock_get_query.assert_called_once_with(query_name)
+        mock_query_body_hash.assert_called_once_with("test_query", variables)
+        assert body == "test_body"
+
+    def test_query_hash(self):
+        queries = GraphQLQueries()
+        query_hash = "test_hash"
+        bullet_token = "test_bullet_token"
+        gtoken = "test_gtoken"
+        language = "test_language"
+        user_agent = "test_user_agent"
+        override = {"test_key": "test_value_override"}
+        variables = {"test_variable": "test_value_variable"}
+
+        with (
+            patch(test_graphql_path + ".query_header") as mock_query_header,
+            patch(test_graphql_path + ".query_body_hash") as mock_query_body,
+            patch("requests.Session.post") as mock_post,
+        ):
+            mock_query_header.return_value = "test_header"
+            mock_query_body.return_value = "test_body"
+            mock_post.return_value = "test_response"
+            response = queries.query_hash(
+                query_hash,
+                bullet_token,
+                gtoken,
+                language,
+                user_agent,
+                override=override,
+                variables=variables,
+            )
+            mock_query_header.assert_called_once_with(
+                bullet_token,
+                language,
+                user_agent,
+                override,
+            )
+            mock_query_body.assert_called_once_with(query_hash, variables)
+            mock_post.assert_called_once_with(
+                GRAPHQL_URL,
+                headers="test_header",
+                data="test_body",
+                cookies={"_gtoken": gtoken},
+            )
+            assert response == "test_response"
+
     def test_query(self):
         queries = GraphQLQueries()
         query_name = "anarchy"
@@ -78,36 +156,32 @@ class TestGraphQLQueries:
         gtoken = "test_gtoken"
         language = "test_language"
         user_agent = "test_user_agent"
+        variables = {"test_variable": "test_value_variable"}
+        override = {"test_key": "test_value_override"}
 
         with (
-            patch(test_graphql_path + ".query_header") as mock_query_header,
-            patch(test_graphql_path + ".query_body") as mock_query_body,
-            patch("requests.Session.post") as mock_post,
+            patch(test_graphql_path + ".query_hash") as mock_query_hash,
+            patch(test_graphql_path + ".get_query") as mock_get_query,
         ):
-            mock_query_header.return_value = "test_header"
-            mock_query_body.return_value = "test_body"
-            mock_post.return_value = "test_response"
+            mock_get_query.return_value = "test_query"
+            mock_query_hash.return_value = "test_response"
             response = queries.query(
                 query_name,
                 bullet_token,
                 gtoken,
                 language,
                 user_agent,
+                variables,
+                override,
             )
-        mock_query_header.assert_called_once_with(
-            bullet_token,
-            language,
-            user_agent,
-            {},
-        )
-        mock_query_body.assert_called_once_with(
-            query_name,
-            {},
-        )
-        mock_post.assert_called_once_with(
-            GRAPHQL_URL,
-            headers="test_header",
-            data="test_body",
-            cookies={"_gtoken": gtoken},
-        )
-        assert response == "test_response"
+            mock_get_query.assert_called_once_with(query_name)
+            mock_query_hash.assert_called_once_with(
+                "test_query",
+                bullet_token,
+                gtoken,
+                language,
+                user_agent,
+                variables,
+                override,
+            )
+            assert response == "test_response"

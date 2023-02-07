@@ -90,6 +90,29 @@ class GraphQLQueries:
         headers.update(override)
         return headers
 
+    def query_body_hash(
+        self, query_hash: str | bytes, variables: dict[str, str] = {}
+    ) -> str:
+        """Gets the body for the GraphQL queries, as a string.
+
+        Args:
+            query_hash (str | bytes): The hash of the query.
+            variables (dict[str, str]): The variables for the query.
+
+        Returns:
+            str: The body for the GraphQL queries, as a string.
+        """
+        out = {
+            "extensions": {
+                "persistedQuery": {
+                    "sha256Hash": query_hash,
+                    "version": 1,
+                }
+            },
+            "variables": variables,
+        }
+        return json.dumps(out)
+
     def query_body(
         self, query_name: str, variables: dict[str, str] = {}
     ) -> str:
@@ -102,16 +125,44 @@ class GraphQLQueries:
         Returns:
             str: The body for the GraphQL queries, as a string.
         """
-        out = {
-            "extensions": {
-                "persistedQuery": {
-                    "sha256Hash": self.get_query(query_name),
-                    "version": 1,
-                }
-            },
-            "variables": variables,
+        query = self.get_query(query_name)
+        return self.query_body_hash(query, variables)
+
+    def query_hash(
+        self,
+        query_hash: str | bytes,
+        bullet_token: str,
+        gtoken: str,
+        language: str,
+        user_agent: str | None = None,
+        variables: dict[str, str] = {},
+        override: dict[str, str] = {},
+    ) -> requests.Response:
+        """Makes a GraphQL query using the persisted query hash.
+
+        Args:
+            query_hash (str | bytes): The hash of the query.
+            bullet_token (str): The bullet token.
+            gtoken (str): The gtoken.
+            language (str): The language code to use.
+            user_agent (str | None): The user agent to use. If None, the default
+                user agent will be used. Defaults to None.
+            variables (dict[str, str]): The variables for the query. Defaults to
+                an empty dictionary.
+            override (dict[str, str]): The headers to override. Defaults to an
+                empty dictionary.
+
+        Returns:
+            requests.Response: The response from the query.
+        """
+        header = self.query_header(bullet_token, language, user_agent, override)
+        body = self.query_body_hash(query_hash, variables)
+        cookies = {
+            "_gtoken": gtoken,
         }
-        return json.dumps(out)
+        return self.session.post(
+            GRAPHQL_URL, headers=header, data=body, cookies=cookies
+        )
 
     def query(
         self,
@@ -123,7 +174,7 @@ class GraphQLQueries:
         variables: dict[str, str] = {},
         override: dict[str, str] = {},
     ) -> requests.Response:
-        """Makes a GraphQL query.
+        """Makes a GraphQL query using the query name to get the hash.
 
         Args:
             query_name (str): The name of the query.
@@ -140,15 +191,16 @@ class GraphQLQueries:
         Returns:
             requests.Response: The response from the query.
         """
-        header = self.query_header(bullet_token, language, user_agent, override)
-        body = self.query_body(query_name, variables)
-        cookies = {
-            "_gtoken": gtoken,
-        }
-        response = self.session.post(
-            GRAPHQL_URL, headers=header, data=body, cookies=cookies
+        query = self.get_query(query_name)
+        return self.query_hash(
+            query,
+            bullet_token,
+            gtoken,
+            language,
+            user_agent,
+            variables,
+            override,
         )
-        return response
 
 
 queries = GraphQLQueries()

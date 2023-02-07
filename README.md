@@ -40,7 +40,7 @@ The `scraper` module is a batteries-included module that allows queries to be ma
 
 ```python
 from splatnet3_scraper import SplatNet3_Scraper
-scraper =SplatNet3_Scraper.from_session_token("session_token")
+scraper = SplatNet3_Scraper.from_session_token("session_token")
 scraper.query("StageScheduleQuery")
 ```
 
