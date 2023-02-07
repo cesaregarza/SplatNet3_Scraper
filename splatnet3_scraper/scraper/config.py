@@ -86,6 +86,18 @@ class Config:
             Config: The Config instance.
         """
         return Config(token_manager=TokenManager.from_env())
+    
+    @staticmethod
+    def from_s3s_config(config_path: str) -> "Config":
+        """Creates a Config instance using the config file from s3s.
+
+        Args:
+            config_path (str): The path to the config file.
+
+        Returns:
+            Config: The Config instance.
+        """
+        return Config(token_manager=TokenManager.from_text_file(config_path))
 
     def save(
         self, path: str | None = None, include_tokens: bool = True
