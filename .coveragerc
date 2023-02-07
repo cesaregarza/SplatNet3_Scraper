@@ -2,4 +2,6 @@
 exclude_lines = 
     pragma: not covered
     @overload
-omit = examples/*
+omit = 
+    examples/*
+    docs/*

@@ -8,50 +8,12 @@ from splatnet3_scraper.base.graph_ql_queries import queries
 from splatnet3_scraper.base.tokens import NSO, TokenManager
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.scraper.config import Config
+from splatnet3_scraper.scraper.query_map import QueryMap
 from splatnet3_scraper.scraper.responses import QueryResponse
 from splatnet3_scraper.utils import retry
 
 T = TypeVar("T")
 P = ParamSpec("P")
-
-
-class QueryMap:
-    ANARCHY = "BankaraBattleHistoriesQuery"
-    REGULAR = "RegularBattleHistoriesQuery"
-    XBATTLE = "XBattleHistoriesQuery"
-    PRIVATE = "PrivateBattleHistoriesQuery"
-    LATEST = "LatestBattleHistoriesQuery"
-    SALMON = "CoopHistoryQuery"
-    CATALOG = "CatalogQuery"
-    CHECKIN = "CheckinQuery"
-    CHECKIN_QR = "CheckinWithQRCodeMutation"
-    CONFIGURE_ANALYTICS = "ConfigureAnalyticsQuery"
-
-    # Detail
-    VS_DETAIL = "VsHistoryDetailQuery"
-    SALMON_DETAIL = "CoopHistoryDetailQuery"
-
-    # Aliases
-    TURF = "RegularBattleHistoriesQuery"
-    COOP = "CoopHistoryQuery"
-    ANARCHY_DETAIL = "VsHistoryDetailQuery"
-    REGULAR_DETAIL = "VsHistoryDetailQuery"
-    X_DETAIL = "VsHistoryDetailQuery"
-    PRIVATE_DETAIL = "VsHistoryDetailQuery"
-    LATEST_DETAIL = "VsHistoryDetailQuery"
-    COOP_DETAIL = "CoopHistoryDetailQuery"
-
-    @staticmethod
-    def get(query: str) -> str:
-        """Gets the query from the query map.
-
-        Args:
-            query (str): The query to get.
-
-        Returns:
-            str: The query.
-        """
-        return getattr(QueryMap, query.upper())
 
 
 class SplatNet3_Scraper:
@@ -137,6 +99,9 @@ class SplatNet3_Scraper:
     @staticmethod
     def from_s3s_config(path: str) -> "SplatNet3_Scraper":
         """Creates a new instance of the class using the s3s config file.
+
+        Args:
+            path (str): The path to the s3s config file.
 
         Returns:
             SplatNet3_Scraper: A new instance of the class.
