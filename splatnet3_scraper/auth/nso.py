@@ -11,7 +11,7 @@ from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.exceptions import (
     FTokenException,
     NintendoException,
-    SplatnetException,
+    SplatNetException,
 )
 from splatnet3_scraper.constants import (
     APP_VERSION_FALLBACK,
@@ -526,9 +526,9 @@ class NSO:
                 will be used. Defaults to None.
 
         Raises:
-            SplatnetException: If the provided gtoken is invalid.
-            SplatnetException: If the version of Splatnet is obsolete.
-            SplatnetException: If no content is returned, indicating that the
+            SplatNetException: If the provided gtoken is invalid.
+            SplatNetException: If the version of Splatnet is obsolete.
+            SplatNetException: If no content is returned, indicating that the
                 user has not accessed online services before.
             NintendoException: If Nintendo returns an invalid response.
 
@@ -557,11 +557,11 @@ class NSO:
         response = self.session.post(url, headers=header, cookies=cookies)
 
         if response.status_code == 401:
-            raise SplatnetException("Invalid gtoken")
+            raise SplatNetException("Invalid gtoken")
         elif response.status_code == 403:
-            raise SplatnetException("Obsolete Version")
+            raise SplatNetException("Obsolete Version")
         elif response.status_code == 204:
-            raise SplatnetException("No Content")
+            raise SplatNetException("No Content")
 
         try:
             return response.json()["bulletToken"]
@@ -576,7 +576,7 @@ class NSO:
             web_version = get_splatnet_web_version()
             self._web_view_version = web_version
             return web_version
-        except SplatnetException as e:
+        except SplatNetException as e:
             logger.log(str(e), "warning")
             logger.log("Using fallback web view version", "warning")
             return WEB_VIEW_VERSION_FALLBACK

@@ -10,7 +10,7 @@ import requests
 from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.exceptions import (
     NintendoException,
-    SplatnetException,
+    SplatNetException,
 )
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.auth.nso import NSO
@@ -229,7 +229,7 @@ class TokenManager:
                 "Unable to get user info. Gtoken may be invalid."
             )
 
-    @retry(times=1, exceptions=SplatnetException)
+    @retry(times=1, exceptions=SplatNetException)
     def generate_bullet_token(self) -> None:
         """Generates a bullet token from the NSO class and adds it to the
         manager. If a gtoken has not been generated, one will be generated
@@ -238,7 +238,7 @@ class TokenManager:
 
         Raises:
             ValueError: If the session token has not been set.
-            SplatnetException: If the bullet token was unable to be generated.
+            SplatNetException: If the bullet token was unable to be generated.
         """
         if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
@@ -252,7 +252,7 @@ class TokenManager:
         self.add_token(bullet_token, TOKENS.BULLET_TOKEN)
         bullet = self.get(TOKENS.BULLET_TOKEN, full_token=True)
         if (bullet is not None) and not bullet.is_valid:
-            raise SplatnetException(
+            raise SplatNetException(
                 "Bullet token was unable to be generated. This is likely due "
                 "to SplatNet 3 being down. Please try again later."
             )

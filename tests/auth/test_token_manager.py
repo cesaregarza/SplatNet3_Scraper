@@ -9,7 +9,7 @@ import requests
 
 from splatnet3_scraper.auth.exceptions import (
     NintendoException,
-    SplatnetException,
+    SplatNetException,
 )
 from splatnet3_scraper.auth.graph_ql_queries import GraphQLQueries
 from splatnet3_scraper.auth.nso import NSO
@@ -196,7 +196,7 @@ class TestTokenManager:
         token_manager = TokenManager()
         token_manager.add_session_token("test_session_token")
         token_manager.nso._invalid_tokens = ["bullet_token"]
-        with pytest.raises(SplatnetException):
+        with pytest.raises(SplatNetException):
             token_manager.generate_bullet_token()
 
     def test_generate_all_tokens(self, monkeypatch: pytest.MonkeyPatch):
