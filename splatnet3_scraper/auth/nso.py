@@ -8,7 +8,7 @@ from typing import cast
 import requests
 
 from splatnet3_scraper import __version__
-from splatnet3_scraper.base.exceptions import (
+from splatnet3_scraper.auth.exceptions import (
     FTokenException,
     NintendoException,
     SplatnetException,

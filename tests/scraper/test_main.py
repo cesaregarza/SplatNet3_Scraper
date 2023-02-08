@@ -4,8 +4,8 @@ from unittest.mock import patch
 import pytest
 import pytest_mock
 
-from splatnet3_scraper.base.exceptions import SplatnetException
-from splatnet3_scraper.base.tokens.nso import NSO
+from splatnet3_scraper.auth.exceptions import SplatnetException
+from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.scraper.main import SplatNet3_Scraper
 from splatnet3_scraper.scraper.query_map import QueryMap
 from splatnet3_scraper.scraper.responses import QueryResponse
@@ -13,8 +13,8 @@ from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
 config_path = "splatnet3_scraper.scraper.config.Config"
 query_response_path = "splatnet3_scraper.scraper.responses.QueryResponse"
-nso_path = "splatnet3_scraper.base.tokens.nso.NSO"
-token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
+nso_path = "splatnet3_scraper.auth.nso.NSO"
+token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 
 
 class TestQueryMap:

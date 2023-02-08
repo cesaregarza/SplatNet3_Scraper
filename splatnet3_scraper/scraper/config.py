@@ -1,7 +1,7 @@
 import configparser
 from typing import Literal, overload
 
-from splatnet3_scraper.base.tokens import Token, TokenManager
+from splatnet3_scraper.auth import Token, TokenManager
 from splatnet3_scraper.constants import DEFAULT_USER_AGENT, IMINK_URL
 
 

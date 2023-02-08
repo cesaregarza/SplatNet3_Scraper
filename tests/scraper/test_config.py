@@ -11,7 +11,7 @@ from tests.mock import MockConfigParser, MockTokenManager
 
 config_path = "splatnet3_scraper.scraper.config.Config"
 config_mangled = config_path + "._Config"
-token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
+token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 
 
 class TestConfig:

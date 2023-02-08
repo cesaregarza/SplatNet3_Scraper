@@ -1,5 +1,5 @@
 import re
-from functools import cache
+from functools import cache, wraps
 from typing import Any, Callable, ParamSpec, Type, TypeVar
 
 import requests
@@ -34,6 +34,7 @@ def retry(
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             for i in range(times):
                 try:

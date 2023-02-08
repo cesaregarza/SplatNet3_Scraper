@@ -3,9 +3,9 @@ from typing import ParamSpec, TypeVar
 
 import requests
 
-from splatnet3_scraper.base.exceptions import SplatnetException
-from splatnet3_scraper.base.graph_ql_queries import queries
-from splatnet3_scraper.base.tokens import NSO, TokenManager
+from splatnet3_scraper.auth import NSO, TokenManager
+from splatnet3_scraper.auth.exceptions import SplatnetException
+from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.scraper.config import Config
 from splatnet3_scraper.scraper.query_map import QueryMap
