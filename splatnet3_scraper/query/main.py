@@ -7,9 +7,9 @@ from splatnet3_scraper.auth import NSO, TokenManager
 from splatnet3_scraper.auth.exceptions import SplatnetException
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.constants import TOKENS
-from splatnet3_scraper.scraper.config import Config
-from splatnet3_scraper.scraper.query_map import QueryMap
-from splatnet3_scraper.scraper.responses import QueryResponse
+from splatnet3_scraper.query.config import Config
+from splatnet3_scraper.query.query_map import QueryMap
+from splatnet3_scraper.query.responses import QueryResponse
 from splatnet3_scraper.utils import retry
 
 T = TypeVar("T")

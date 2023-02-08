@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from splatnet3_scraper.scraper.json_parser import JSONParser
-from splatnet3_scraper.scraper.responses import QueryResponse
+from splatnet3_scraper.query.json_parser import JSONParser
+from splatnet3_scraper.query.responses import QueryResponse
 
 
 class TestQueryResponse:

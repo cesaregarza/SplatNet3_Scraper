@@ -1,6 +1,6 @@
 from typing import Any, Literal, overload
 
-from splatnet3_scraper.scraper.json_parser import JSONParser
+from splatnet3_scraper.query.json_parser import JSONParser
 
 
 class QueryResponse:

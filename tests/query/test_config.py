@@ -6,10 +6,10 @@ import pytest
 import pytest_mock
 
 from splatnet3_scraper.constants import DEFAULT_USER_AGENT
-from splatnet3_scraper.scraper.config import Config
+from splatnet3_scraper.query.config import Config
 from tests.mock import MockConfigParser, MockTokenManager
 
-config_path = "splatnet3_scraper.scraper.config.Config"
+config_path = "splatnet3_scraper.query.config.Config"
 config_mangled = config_path + "._Config"
 token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 

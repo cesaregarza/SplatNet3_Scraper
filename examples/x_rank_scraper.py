@@ -3,7 +3,7 @@ import time
 from typing import Any
 
 from splatnet3_scraper import SplatNet3_Scraper
-from splatnet3_scraper.scraper import QueryResponse
+from splatnet3_scraper.query import QueryResponse
 
 
 class XRankScraper:

@@ -6,13 +6,13 @@ import pytest_mock
 
 from splatnet3_scraper.auth.exceptions import SplatnetException
 from splatnet3_scraper.auth.nso import NSO
-from splatnet3_scraper.scraper.main import SplatNet3_Scraper
-from splatnet3_scraper.scraper.query_map import QueryMap
-from splatnet3_scraper.scraper.responses import QueryResponse
+from splatnet3_scraper.query.main import SplatNet3_Scraper
+from splatnet3_scraper.query.query_map import QueryMap
+from splatnet3_scraper.query.responses import QueryResponse
 from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
-config_path = "splatnet3_scraper.scraper.config.Config"
-query_response_path = "splatnet3_scraper.scraper.responses.QueryResponse"
+config_path = "splatnet3_scraper.query.config.Config"
+query_response_path = "splatnet3_scraper.query.responses.QueryResponse"
 nso_path = "splatnet3_scraper.auth.nso.NSO"
 token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 
