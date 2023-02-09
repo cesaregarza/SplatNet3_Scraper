@@ -6,7 +6,7 @@ import pytest_mock
 
 from splatnet3_scraper.auth.exceptions import SplatNetException
 from splatnet3_scraper.auth.nso import NSO
-from splatnet3_scraper.query.main import SplatNet_Query
+from splatnet3_scraper.query.query import SplatNet_Query
 from splatnet3_scraper.query.query_map import QueryMap
 from splatnet3_scraper.query.responses import QueryResponse
 from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager

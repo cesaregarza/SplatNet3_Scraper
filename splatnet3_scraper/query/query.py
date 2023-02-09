@@ -18,7 +18,7 @@ P = ParamSpec("P")
 
 class SplatNet_Query:
     """This class implements all of the classes and functions defined in the
-    splatnet3_scraper.base module and can be seen as an example of how to put
+    splatnet3_scraper.auth module and can be seen as an example of how to put
     them together. While the class has a method to create the session token, a
     full implementation with a CLI is outside the scope of this project.
     """

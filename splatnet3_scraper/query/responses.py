@@ -1,28 +1,58 @@
-from typing import Any, Literal, overload
+from datetime import datetime
+from typing import Any, Literal, TypedDict, overload
 
 from splatnet3_scraper.query.json_parser import JSONParser
 
 
+class MetaData(TypedDict, total=False):
+    query: str
+    timestamp: float
+
+
 class QueryResponse:
-    """Represents a response from the API. This is a thin wrapper around the
-    JSONParser class.
+    """Represents a response from the API. This class provides convenience
+    methods for interacting with the returned data. It also provides a
+    JSONParser object for more advanced usage, if needed.
     """
 
     def __init__(
         self,
         data: dict[str, Any] | list[dict[str, Any]],
-        additional_data: list[dict[str, Any]] | dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        *args,
+        query: str | None = None,
+        timestamp: float | None = None,
     ) -> None:
         """Initializes a QueryResponse.
 
         Args:
             data (dict[str, Any]): The data from the response.
-            additional_data (list[dict[str, Any]] | None): Any additional data,
-                useful for complex queries that require multiple requests.
-                Defaults to None.
+            metadata (dict[str, Any] | None): The metadata from the response.
+                Possible keys are "query" and "timestamp". Defaults to None.
+            *args: These are ignored.
+            query (str | None): The query that was used to get the data. If
+                provided, it will override the metadata dictionary. Defaults to
+                None.
+            timestamp (float | None): The timestamp of the response. If
+                provided, it will override the metadata dictionary. Defaults to
+                None.
         """
         self._data = data
-        self._additional_data = additional_data
+
+        self._metadata = self.__parse_metadata(metadata)
+
+    def __parse_metadata(self, metadata: dict) -> MetaData | None:
+        if metadata is None:
+            return None
+
+        annotations = MetaData.__annotations__
+        _metadata = {}
+        for key, value in metadata.items():
+            if key in annotations:
+                _metadata[key] = value
+        if len(_metadata) == 0:
+            return None
+        return MetaData(_metadata)
 
     @property
     def data(self) -> dict[str, Any] | list[dict[str, Any]]:
@@ -34,52 +64,97 @@ class QueryResponse:
         return self._data
 
     @property
-    def additional_data(self) -> list[dict[str, Any]] | dict[str, Any]:
-        """Any additional data, useful for complex queries that require
-            multiple requests.
+    def metadata(self) -> MetaData:
+        """The metadata from the response.
 
         Raises:
-            AttributeError: If there is no additional data.
+            ValueError: If no metadata was provided at initialization.
 
         Returns:
-            list[dict[str, Any]] | dict[str, Any]: The additional data.
+            dict[str, Any]: The metadata.
         """
-        if self._additional_data is None:
-            raise AttributeError("No additional data")
-        return self._additional_data
+        if self._metadata is None:
+            raise ValueError("No metadata was provided.")
+        return self._metadata
 
-    def parse_json(self, additional: bool = False) -> JSONParser:
-        """The JSONParser object containing the data.
-
-        Args:
-            additional (bool): Whether to parse the additional data. Defaults
-                to False.
+    @property
+    def query(self) -> str:
+        """The query that was used to get the data.
 
         Raises:
-            AttributeError: If there is no additional data and additional is
-                True.
+            ValueError: If no metadata was provided at initialization.
+
+        Returns:
+            str: The query.
+        """
+        if self._metadata is None:
+            raise ValueError("No metadata was provided.")
+        try:
+            return self._metadata["query"]
+        except KeyError:
+            raise ValueError("No query was provided.")
+
+    @property
+    def timestamp_raw(self) -> float:
+        """The timestamp of the response, as a float.
+
+        Raises:
+            ValueError: If no metadata was provided at initialization.
+
+        Returns:
+            float: The timestamp.
+        """
+        if self._metadata is None:
+            raise ValueError("No metadata was provided.")
+        try:
+            return self._metadata["timestamp"]
+        except KeyError:
+            raise ValueError("No timestamp was provided.")
+
+    @property
+    def timestamp(self) -> datetime:
+        """The timestamp of the response, as a datetime object.
+
+        Returns:
+            datetime: The timestamp.
+        """
+        return datetime.fromtimestamp(self.timestamp_raw)
+
+    def parse_json(self) -> JSONParser:
+        """The JSONParser object containing the data.
 
         Returns:
             JSONParser: The data.
         """
-        if additional and self._additional_data is None:
-            raise AttributeError("No additional data")
-        elif additional:
-            return JSONParser(self._additional_data)
-        else:
-            return JSONParser(self._data)
+        return JSONParser(self._data)
 
     def __repr__(self) -> str:
-        detail_str = "+" if self._additional_data is not None else ""
-        return f"QueryResponse{detail_str}()"
+        out_str = "QueryResponse("
+        if self._metadata is None:
+            return out_str + ")"
+
+        spacing = " " * len(out_str)
+        for key, value in self._metadata.items():
+            # Intercept if key is "timestamp" and convert to datetime
+            if key == "timestamp":
+                out_value = datetime.fromtimestamp(value).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            elif isinstance(value, str):
+                out_value = value if len(value) < 20 else value[:20] + "..."
+            elif isinstance(value, float):
+                out_value = f"{value:.2f}"
+            else:
+                out_value = str(value)
+
+            out_str += spacing + f"{key}={out_value},\n"
+
+        return out_str[:-2] + ")"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, QueryResponse):
             return False
-        return (
-            self._data == other._data
-            and self._additional_data == other._additional_data
-        )
+        return self._data == other._data and self._metadata == other._metadata
 
     def __getitem__(
         self, key: str | int | tuple[str | int, ...]
@@ -91,7 +166,7 @@ class QueryResponse:
 
         data = self._data[key]  # type: ignore
         if isinstance(data, (dict, list)):
-            return QueryResponse(data)
+            return QueryResponse(data, metadata=self._metadata)
         return data
 
     def keys(self) -> list[str]:

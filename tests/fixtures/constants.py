@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 
@@ -22,3 +24,18 @@ def urand32_expected() -> bytes:
 @pytest.fixture
 def test_session_token() -> str:
     return "test_session_token"
+
+
+@pytest.fixture
+def timestamp() -> int:
+    return 1234567890
+
+
+@pytest.fixture
+def timestamp_datetime() -> datetime:
+    return datetime(2009, 2, 13, 17, 31, 30)
+
+
+@pytest.fixture
+def timestamp_datetime_str() -> str:
+    return "2009-02-13 17:31:30"
