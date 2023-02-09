@@ -11,7 +11,7 @@ from splatnet3_scraper.query.responses import QueryResponse
 from splatnet3_scraper.utils import retry
 
 
-class SplatNet_Query:
+class SplatNet_QueryHandler:
     """This class implements all of the classes and functions defined in the
     splatnet3_scraper.auth module and can be seen as an example of how to put
     them together. While the class has a method to create the session token, a
@@ -29,7 +29,9 @@ class SplatNet_Query:
         self.config = config
 
     @staticmethod
-    def from_config_file(config_file: str | None = None) -> "SplatNet_Query":
+    def from_config_file(
+        config_file: str | None = None,
+    ) -> "SplatNet_QueryHandler":
         """Creates a new instance of the class using a configuration file. If
         no configuration file is provided, the default configuration file,
         .splatnet3_scraper, will be used.
@@ -40,10 +42,10 @@ class SplatNet_Query:
                 None.
 
         Returns:
-            SplatNet_Query: A new instance of the class.
+            SplatNet_QueryHandler: A new instance of the class.
         """
         config = Config(config_file)
-        return SplatNet_Query(config)
+        return SplatNet_QueryHandler(config)
 
     @staticmethod
     def generate_session_token_url(
@@ -66,43 +68,43 @@ class SplatNet_Query:
         return url, nso.state, nso.verifier
 
     @staticmethod
-    def from_session_token(session_token: str) -> "SplatNet_Query":
+    def from_session_token(session_token: str) -> "SplatNet_QueryHandler":
         """Creates a new instance of the class using a session token.
 
         Args:
             session_token (str): The session token.
 
         Returns:
-            SplatNet_Query: A new instance of the class.
+            SplatNet_QueryHandler: A new instance of the class.
         """
         token_manager = TokenManager.from_session_token(session_token)
         token_manager.generate_all_tokens()
         config = Config(token_manager=token_manager)
-        return SplatNet_Query(config)
+        return SplatNet_QueryHandler(config)
 
     @staticmethod
-    def from_env() -> "SplatNet_Query":
+    def from_env() -> "SplatNet_QueryHandler":
         """Creates a new instance of the class using the environment
         variables.
 
         Returns:
-            SplatNet_Query: A new instance of the class.
+            SplatNet_QueryHandler: A new instance of the class.
         """
         config = Config.from_env()
-        return SplatNet_Query(config)
+        return SplatNet_QueryHandler(config)
 
     @staticmethod
-    def from_s3s_config(path: str) -> "SplatNet_Query":
+    def from_s3s_config(path: str) -> "SplatNet_QueryHandler":
         """Creates a new instance of the class using the s3s config file.
 
         Args:
             path (str): The path to the s3s config file.
 
         Returns:
-            SplatNet_Query: A new instance of the class.
+            SplatNet_QueryHandler: A new instance of the class.
         """
         config = Config.from_s3s_config(path)
-        return SplatNet_Query(config)
+        return SplatNet_QueryHandler(config)
 
     def __query(
         self, query_name: str, variables: dict = {}

@@ -2,6 +2,7 @@ import pytest
 
 from splatnet3_scraper.scraper.query_map import QueryMap
 
+
 class TestQueryMap:
     def test_get(self):
         # Valid
