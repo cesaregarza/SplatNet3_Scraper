@@ -9,8 +9,9 @@
 ## Features
 
 * Lightweight and minimal dependencies. Only requires the `requests` library. Requires Python 3.10 or later.
-* The `scraper` module provides a high level API that enables a quick and easy way to get data from the SplatNet 3 API, only requiring the user to provide their session token.
-* The `base` module provides a low level API that allows for more fine-grained control over the scraping process. It is designed to be used by the scraper module, but is designed to be flexible enough to be used by other projects as well.
+* The `scraper` module provides a user-level API that enables a quick and easy way to get data from the SplatNet 3 API, only requiring the user to provide their session token.
+* The `query` module provides a high-level API that provides a simple way to make queries to the SplatNet 3 API. It automatically handles authentication and query handling, and provides a simple interface for accessing the response data.
+* The `auth` module provides a low level API that allows for more fine-grained control over the scraping process. It greatly simplifies the process of authentication.
 * Configuration file support is compatible with the configuration file format used by `s3s`.
 * Responses from the SplatNet 3 API can be saved and loaded from disk, currently supporting the following formats:
   * JSON
@@ -20,36 +21,44 @@
 
 ## Installation
 
-**SplatNet_QueryHandler** is currently under active development but is currently available on PyPI. It can be installed using pip:
+**SplatNet 3 Scraper** is currently under active development but is currently available on PyPI. It can be installed using pip:
 
 ```bash
 pip install splatnet3_scraper
 ```
 
-Note that the current versions of **SplatNet_QueryHandler** are currently `v0.x.y`, which means that the API is not guaranteed to be stable and may change in the future with the release of `v1.0.0`.
+Note that the current versions of **SplatNet 3 Scraper** are currently `v0.x.y`, which means that the API is not guaranteed to be stable and may change at any moment. As such, it is highly recommended that you pin the version of **SplatNet 3 Scraper** that you are using until the API is stabilized with the release of `v1.0.0`.
 
 ## Usage
 
-There are two ways to use **SplatNet_QueryHandler**. The first is to use the `scraper` module, which provides a high level API that greatly simplifies the process of retrieving data from SplatNet 3. The second is to use the `base` module, which provides a low level API that allows for much more fine-grained control over the scraping process. Either way, both modules require a session token to be provided.
+There are three ways to use **SplatNet 3 Scraper**. The first is to use the `scraper` module, which provides a top-level API that greatly simplifies the process of retrieving commonly requested data from SplatNet 3. This module is greatly recommended for most users. The second is to use the `query` module, which provides a high-level API that provides a simple interface to make queries to the SplatNet 3 API. This module is recommended for developers who can't find what they need with the `scraper` module. The third is to use the `auth` module, which provides a low-level API that gives the user the most control over the scraping process. This module is recommended for advanced developers who need to have full control over the authentication process. Whichever module you choose to use, all of them require providing a session token.
 
 ### Using the `scraper` module
 
-The `scraper` module is a batteries-included module that allows queries to be made to the SplatNet 3 API with minimal effort. It is designed to be used by the end user, and as such it is the easiest and recommended way to get started with **SplatNet_QueryHandler**. The `scraper` module provides the `SplatNet_QueryHandler` class, which is used to make queries to the SplatNet 3 API. The `SplatNet_QueryHandler` class can be instantiated in one of a few ways: by providing a session token, by providing the path to a configuration file, or by loading environment variables.
+The `scraper` module is by far the easiest way to get data from the SplatNet 3 API and the module that is recommended for most users, especially those who are not highly experienced with Python. The `scraper` module provides multiple functions that can be used to retrieve commonly requested data from the SplatNet 3 API. The `scraper` module is designed to be used by users who are not highly experienced with Python or users who do not need to have full control over the scraping process.
+
+This module is currently under active development and is not yet complete. Please check back later for more functions.
+
+### Using the `query` module
+
+The `query` module is an easy-to-use module that enables fast and painless querying to the SplatNet 3 API. It handles authentication and query handling automagically, and provides a simple interface for accessing the response data. The `query` module is designed to be used by advanced users who need more control over the queries they make to the SplatNet 3 API. If you are looking for a simple way to get data from the SplatNet 3 API, you should use the `scraper` module instead.
+
+The `query` module provides the `SplatNet_QueryHandler` class, which is used to make queries to the SplatNet 3 API. The `SplatNet_QueryHandler` class can be instantiated in one of a few ways: by providing a session token, by providing the path to a configuration file, or by loading environment variables.
 
 #### Instantiating the `SplatNet_QueryHandler` class by providing a session token
 
 ```python
-from splatnet3_scraper import SplatNet_QueryHandler
-scraper = SplatNet_QueryHandler.from_session_token("session_token")
-scraper.query("StageScheduleQuery")
+from splatnet3_scraper.query import SplatNet_QueryHandler
+handler = SplatNet_QueryHandler.from_session_token("session_token")
+handler.query("StageScheduleQuery")
 ```
 
 #### Instantiating the `SplatNet_QueryHandler` class by providing the path to a configuration file
 
 ```python
-from splatnet3_scraper import SplatNet_QueryHandler
-scraper = SplatNet_QueryHandler.from_config_file(".splatnet3_scraper")
-scraper.query("StageScheduleQuery")
+from splatnet3_scraper.query import SplatNet_QueryHandler
+handler = SplatNet_QueryHandler.from_config_file(".splatnet3_scraper")
+handler.query("StageScheduleQuery")
 ```
 
 #### Instantiating the `SplatNet_QueryHandler` class by loading environment variables
@@ -61,9 +70,9 @@ The following environment variables are supported:
 * `SN3S_BULLET_TOKEN`
 
 ```python
-from splatnet3_scraper import SplatNet_QueryHandler
-scraper = SplatNet_QueryHandler.from_env()
-scraper.query("StageScheduleQuery")
+from splatnet3_scrape.query import SplatNet_QueryHandler
+handler = SplatNet_QueryHandler.from_env()
+handler.query("StageScheduleQuery")
 ```
 
 #### Querying the SplatNet 3 API
@@ -71,7 +80,7 @@ scraper.query("StageScheduleQuery")
 The `SplatNet_QueryHandler` class provides a `query` method that can be used to make queries to the SplatNet 3 API. The `query` method takes a single argument, which is the name of the query to make. The `query` method returns a `QueryResponse` object, which contains the response data from the SplatNet 3 API. The `QueryResponse` object provides a `data` property that can be used to access the response data. The `QueryResponse` module also supports numpy-style indexing, which can be used to quickly and clearly access specific parts of the response data. For example, the following code will print the game mode name of the the current stage rotation schedule:
 
 ```python
-from splatnet3_scraper import SplatNet_QueryHandler
+from splatnet3_scraper.query import SplatNet_QueryHandler
 scraper = SplatNet_QueryHandler.from_env()
 response = scraper.query("StageScheduleQuery")
 print(response["xSchedules", "nodes", 0, "vsRule", "name"])
@@ -91,16 +100,16 @@ Note: csv and parquet formats work by converting the response data from a nested
 The following code will save the response data to a file named `response.json` in the current directory:
 
 ```python
-from splatnet3_scraper import SplatNet_QueryHandler
-scraper = SplatNet_QueryHandler.from_env()
-response = scraper.query("StageScheduleQuery")
+from splatnet3_scraper.query import SplatNet_QueryHandler
+handler = SplatNet_QueryHandler.from_env()
+response = handler.query("StageScheduleQuery")
 response.parsed_json().to_json("response.json")
 ```
 
 Additionally, the `JSONParser` class provides a `from_*` method that can be used to load data from a file. The following code will load the response data from the file `response.json` in the current directory:
 
 ```python
-from splatnet3_scraper import JSONParser
+from splatnet3_scraper.query import JSONParser
 parser = JSONParser.from_json("response.json")
 ```
 
@@ -121,7 +130,7 @@ parser = JSONParser.from_json("response.json")
 | Full support for the SplatNet 3 API | :world_map: |
 | Support for the SplatNet 2 API | :x: |
 | Obtaining session tokens | :white_check_mark: |
-| Full documentation | :world_map: |
+| Full documentation | :construction: |
 | Full unit test coverage | :white_check_mark: |
 | Columnar data format support | :construction: |
 | CLI interface | :x: |
