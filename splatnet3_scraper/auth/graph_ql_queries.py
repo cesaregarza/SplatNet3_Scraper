@@ -36,13 +36,13 @@ class GraphQLQueries:
         return hash_map
 
     def get_query(self, query_name: str) -> str:
-        """Gets a GraphQL query.
+        """Gets a GraphQL query hash given the name of the query.
 
         Args:
             query_name (str): The name of the query.
 
         Returns:
-            str: The GraphQL query.
+            str: The GraphQL query hash.
         """
         return self.hash_map[query_name]
 

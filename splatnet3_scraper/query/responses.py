@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal, TypedDict, overload
+from typing import Any, Iterator, Literal, TypedDict, overload
 
 from splatnet3_scraper.query.json_parser import JSONParser
 
@@ -43,6 +43,9 @@ class QueryResponse:
         if len(_metadata) == 0:
             return None
         return MetaData(_metadata)
+
+    def __top_level_is_list(self) -> bool:
+        return isinstance(self._data, list)
 
     @property
     def data(self) -> dict[str, Any] | list[dict[str, Any]]:
@@ -146,6 +149,9 @@ class QueryResponse:
             return False
         return self._data == other._data and self._metadata == other._metadata
 
+    def __len__(self) -> int:
+        return len(self._data)
+
     def __getitem__(
         self, key: str | int | tuple[str | int, ...]
     ) -> "QueryResponse":
@@ -159,12 +165,15 @@ class QueryResponse:
             return QueryResponse(data, metadata=self._metadata)
         return data
 
-    def keys(self) -> list[str]:
-        """Returns a list of keys in the data.
+    def keys(self) -> list[str | int]:
+        """Returns a list of keys in the data. If the top level of the data is
+        a list, this method will return a list of integers.
 
         Returns:
-            list[str]: The keys in the data.
+            list[str | int]: The keys in the data.
         """
+        if self.__top_level_is_list():
+            return list(range(len(self)))
         return list(self._data.keys())
 
     def values(self) -> list[Any]:
@@ -173,7 +182,7 @@ class QueryResponse:
         Returns:
             list[Any]: The values in the data.
         """
-        return list(self._data.values())
+        return list(self)
 
     def items(self) -> list[tuple[str, Any]]:
         """Returns a list of items in the data.
@@ -181,10 +190,14 @@ class QueryResponse:
         Returns:
             list[tuple[str, Any]]: The items in the data.
         """
+        if self.__top_level_is_list():
+            return list(enumerate(self))
         return list(self._data.items())
 
-    def __iter__(self) -> iter:
-        return iter(self._data)
+    def __iter__(self) -> Iterator[Any]:
+        keys = self.keys()
+        for key in keys:
+            yield self[key]
 
     @overload
     def show(self, return_value: bool = Literal[False]) -> None:

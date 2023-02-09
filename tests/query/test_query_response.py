@@ -111,20 +111,32 @@ class TestQueryResponse:
         # Type check
         assert response_1 != "test_type"
 
-    def test_getitem(self, json_deep_nested: dict):
+    def test_getitem(self, json_deep_nested_list: dict):
         metadata = {"query": "test_query"}
-        response = QueryResponse(json_deep_nested, metadata)
-        assert response["c"] == QueryResponse(json_deep_nested["c"], metadata)
-        assert response["c", "d"] == json_deep_nested["c"]["d"]
-        assert response["c", "e", "g", "h"] == 5
+        response = QueryResponse(json_deep_nested_list, metadata)
+        assert response["c"] == QueryResponse(
+            json_deep_nested_list["c"], metadata
+        )
+        assert response["c", 0, "d"] == json_deep_nested_list["c"][0]["d"]
+        assert response["c", 0, "e", "g", "h"] == 5
 
-    def test_keys(self, json_deep_nested: dict):
-        response = QueryResponse(json_deep_nested)
-        assert response.keys() == list(json_deep_nested.keys())
+    @param(
+        "data", [lazy_fixture("json_deep_nested"), [1, 2, 3]], ids=["D", "L"]
+    )
+    def test_keys(self, data):
+        response = QueryResponse(data)
+        if isinstance(data, list):
+            assert response.keys() == list(range(len(data)))
+        else:
+            assert response.keys() == list(data.keys())
 
     def test_values(self, json_deep_nested: dict):
         response = QueryResponse(json_deep_nested)
-        assert response.values() == list(json_deep_nested.values())
+        expected_values = [
+            val if not isinstance(val, dict) else QueryResponse(val)
+            for val in json_deep_nested.values()
+        ]
+        assert response.values() == expected_values
 
     def test_items(self, json_deep_nested: dict):
         response = QueryResponse(json_deep_nested)
@@ -132,9 +144,12 @@ class TestQueryResponse:
 
     def test_iter(self, json_deep_nested: dict):
         response = QueryResponse(json_deep_nested)
-        assert list(response) == list(json_deep_nested)
+        assert list(response) == [
+            val if not isinstance(val, dict) else QueryResponse(val)
+            for val in json_deep_nested.values()
+        ]
         generator = iter(response)
-        assert next(generator) == "a"
+        assert next(generator) == json_deep_nested["a"]
 
     def test_show(self, json_deep_nested: dict):
         # return_value False
