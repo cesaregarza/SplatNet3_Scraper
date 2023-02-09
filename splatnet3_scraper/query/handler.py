@@ -153,7 +153,9 @@ class SplatNet_QueryHandler:
 
     # Repeat code, but I've elected to do this to make it easier to read
     @retry(times=1, exceptions=ConnectionError)
-    def query_hash(self, query_hash: str, variables: dict = {}) -> dict:
+    def query_hash(
+        self, query_hash: str, variables: dict = {}
+    ) -> QueryResponse:
         """Given a query hash, it will query SplatNet 3 and return the response.
 
         Args:
@@ -165,7 +167,7 @@ class SplatNet_QueryHandler:
                 least one error.
 
         Returns:
-            dict: The data from the query.
+            QueryResponse: The response from the query.
         """
         response = self.__query_hash(query_hash, variables)
         if response.status_code != 200:
@@ -184,7 +186,7 @@ class SplatNet_QueryHandler:
         return QueryResponse(data=response.json()["data"])
 
     @retry(times=1, exceptions=ConnectionError)
-    def query(self, query_name: str, variables: dict = {}) -> dict:
+    def query(self, query_name: str, variables: dict = {}) -> QueryResponse:
         """Queries Splatnet 3 and returns the data.
 
         Args:
@@ -196,7 +198,7 @@ class SplatNet_QueryHandler:
                 least one error.
 
         Returns:
-            dict: The data from the query.
+            QueryResponse: The data from the query.
         """
         response = self.__query(query_name, variables)
         if response.status_code != 200:
