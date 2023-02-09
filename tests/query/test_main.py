@@ -28,7 +28,7 @@ class TestQueryMap:
             QueryMap.get("invalid")
 
 
-class TestSplatNet3Scraper:
+class TestSplatNetQuery:
     def test_from_config_file(self, monkeypatch: pytest.MonkeyPatch):
 
         # No config file

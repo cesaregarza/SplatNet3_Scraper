@@ -19,9 +19,6 @@ class QueryResponse:
         self,
         data: dict[str, Any] | list[dict[str, Any]],
         metadata: dict[str, Any] | None = None,
-        *args,
-        query: str | None = None,
-        timestamp: float | None = None,
     ) -> None:
         """Initializes a QueryResponse.
 
@@ -29,13 +26,6 @@ class QueryResponse:
             data (dict[str, Any]): The data from the response.
             metadata (dict[str, Any] | None): The metadata from the response.
                 Possible keys are "query" and "timestamp". Defaults to None.
-            *args: These are ignored.
-            query (str | None): The query that was used to get the data. If
-                provided, it will override the metadata dictionary. Defaults to
-                None.
-            timestamp (float | None): The timestamp of the response. If
-                provided, it will override the metadata dictionary. Defaults to
-                None.
         """
         self._data = data
 
