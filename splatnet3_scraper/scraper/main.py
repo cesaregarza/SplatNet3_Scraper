@@ -80,6 +80,8 @@ class SplatNet_Scraper:
 
         Args:
             query (str): The query to run.
+            variables (dict): The variables to pass to the query. Defaults to
+                an empty dict.
 
         Returns:
             QueryResponse: The QueryResponse.
@@ -87,7 +89,11 @@ class SplatNet_Scraper:
         return self._query_handler.query(query, variables)
 
     def __detailed_vs_or_coop(
-        self, query: str, coop: bool, limit: int | None = None
+        self,
+        query: str,
+        coop: bool,
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
     ) -> tuple[QueryResponse, list[QueryResponse]]:
         """Gets the detailed results for a vs battle or coop battle.
 
@@ -95,6 +101,11 @@ class SplatNet_Scraper:
             coop (bool): Whether to get coop battles or not.
             limit (int | None): The maximum number of battles to get. If None,
                 it will get all battles. Defaults to None.
+            existing_ids (list[str] | str | None): The existing IDs to check
+                against. If a string is passed, it will return the results
+                upon finding the first match. If a list is passed, it will
+                return the results of all matches not in the list. If None,
+                it will return all results. Defaults to None.
 
         Returns:
             tuple:
@@ -124,6 +135,15 @@ class SplatNet_Scraper:
                     return out
                 idx += 1
                 game_id = game["id"]
+
+                if isinstance(existing_ids, str):
+                    if game_id == existing_ids:
+                        return summary_query, out
+                elif isinstance(existing_ids, list):
+                    if game_id in existing_ids:
+                        idx -= 1
+                        continue
+
                 variables = {variable_name: game_id}
                 detailed_game = self.__query(detail_query, variables)
                 out.append(detailed_game)
