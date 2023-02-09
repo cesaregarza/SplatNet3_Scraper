@@ -7,13 +7,13 @@ import pytest
 import pytest_mock
 import requests
 
-from splatnet3_scraper.base.exceptions import (
+from splatnet3_scraper.auth.exceptions import (
     NintendoException,
-    SplatnetException,
+    SplatNetException,
 )
-from splatnet3_scraper.base.graph_ql_queries import GraphQLQueries
-from splatnet3_scraper.base.tokens.nso import NSO
-from splatnet3_scraper.base.tokens.token_manager import Token, TokenManager
+from splatnet3_scraper.auth.graph_ql_queries import GraphQLQueries
+from splatnet3_scraper.auth.nso import NSO
+from splatnet3_scraper.auth.token_manager import Token, TokenManager
 from tests.mock import MockNSO
 
 
@@ -23,7 +23,7 @@ def mock_token(token_type):
 
 
 base_path = pathlib.Path(__file__).parent.parent / "fixtures" / "config_files"
-token_manager_path = "splatnet3_scraper.base.tokens.token_manager.TokenManager"
+token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 
 
 class TestToken:
@@ -196,7 +196,7 @@ class TestTokenManager:
         token_manager = TokenManager()
         token_manager.add_session_token("test_session_token")
         token_manager.nso._invalid_tokens = ["bullet_token"]
-        with pytest.raises(SplatnetException):
+        with pytest.raises(SplatNetException):
             token_manager.generate_bullet_token()
 
     def test_generate_all_tokens(self, monkeypatch: pytest.MonkeyPatch):

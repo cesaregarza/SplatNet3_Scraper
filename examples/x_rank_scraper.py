@@ -2,8 +2,8 @@ import sqlite3
 import time
 from typing import Any
 
-from splatnet3_scraper import SplatNet3_Scraper
-from splatnet3_scraper.scraper import QueryResponse
+from splatnet3_scraper import SplatNet_QueryHandler
+from splatnet3_scraper.query import QueryResponse
 
 
 class XRankScraper:
@@ -15,7 +15,9 @@ class XRankScraper:
     detailed_x_query = "DetailTabViewXRanking%sRefetchQuery"
     detailed_weapon_query = "DetailTabViewWeaponTops%sRefetchQuery"
 
-    def __init__(self, scraper: SplatNet3_Scraper, db_path: str = None) -> None:
+    def __init__(
+        self, scraper: SplatNet_QueryHandler, db_path: str = None
+    ) -> None:
         self.scraper = scraper
         self.db_path = db_path if db_path else "x_rank.db"
 

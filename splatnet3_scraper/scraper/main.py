@@ -1,294 +1,260 @@
-import json
-from typing import ParamSpec, TypeVar
+from typing import Literal, cast, overload
 
-import requests
-
-from splatnet3_scraper.base.exceptions import SplatnetException
-from splatnet3_scraper.base.graph_ql_queries import queries
-from splatnet3_scraper.base.tokens import NSO, TokenManager
-from splatnet3_scraper.constants import TOKENS
-from splatnet3_scraper.scraper.config import Config
+from splatnet3_scraper.query import QueryResponse, SplatNet_QueryHandler
 from splatnet3_scraper.scraper.query_map import QueryMap
-from splatnet3_scraper.scraper.responses import QueryResponse
-from splatnet3_scraper.utils import retry
-
-T = TypeVar("T")
-P = ParamSpec("P")
 
 
-class SplatNet3_Scraper:
-    """This class implements all of the classes and functions defined in the
-    splatnet3_scraper.base module and can be seen as an example of how to put
-    them together. While the class has a method to create the session token, a
-    full implementation with a CLI is outside the scope of this project.
+class SplatNet_Scraper:
+    """This class offers a user-level interface for pulling data from SplatNet
+    3. It is built upon the SplatNet_QueryHandler class and provides a top-level
+    API that orchestrates multiple queries together to reduce the amount of work
+    needed to pull data that users are likely to want.
     """
 
-    def __init__(self, config: Config) -> None:
-        """Initializes the class, it is not meant to be instantiated directly,
-        but rather through one of the available factory methods. Still, it can
-        be instantiated directly if the user wants to use a custom Config class.
+    def __init__(self, query_handler: SplatNet_QueryHandler) -> None:
+        """Initializes a SplatNet_Scraper.
 
         Args:
-            config (Config): The configuration to use.
+            query_handler (SplatNet_QueryHandler): The query handler to use.
         """
-        self.config = config
+        self._query_handler = query_handler
 
     @staticmethod
-    def from_config_file(config_file: str | None = None) -> "SplatNet3_Scraper":
-        """Creates a new instance of the class using a configuration file. If
-        no configuration file is provided, the default configuration file,
-        .splatnet3_scraper, will be used.
+    def from_session_token(session_token: str) -> "SplatNet_Scraper":
+        """Creates a SplatNet_Scraper instance using the given session token.
 
         Args:
-            config_file (str | None): The path to the configuration file. If
-                None, the default configuration file will be used. Defaults to
-                None.
+            session_token (str): The session token to use.
 
         Returns:
-            SplatNet3_Scraper: A new instance of the class.
+            SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        config = Config(config_file)
-        return SplatNet3_Scraper(config)
+        query_handler = SplatNet_QueryHandler.from_session_token(session_token)
+        return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def generate_session_token_url(
-        user_agent: str | None = None,
-    ) -> tuple[str, bytes, bytes]:
-        """Generates the URL to use to get the session token.
+    def from_config_file(config_path: str | None = None) -> "SplatNet_Scraper":
+        """Creates a SplatNet_Scraper instance using the given config file.
 
         Args:
-            user_agent (str | None): The user agent to use. If None, the default
-                user agent will be used. Defaults to None.
+            config_path (str | None): The path to the config file. If None, it
+                will look for ".splatnet3_scraper" in the current working
+                directory.
 
         Returns:
-            tuple:
-                str: The URL to use to get the session token.
-                bytes: The state ID.
-                bytes: The challenge solution.
+            SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        nso = NSO.new_instance()
-        url = nso.generate_login_url(user_agent)
-        return url, nso.state, nso.verifier
+        query_handler = SplatNet_QueryHandler.from_config_file(config_path)
+        return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def from_session_token(session_token: str) -> "SplatNet3_Scraper":
-        """Creates a new instance of the class using a session token.
+    def from_env() -> "SplatNet_Scraper":
+        """Creates a SplatNet_Scraper instance using the environment variables.
 
-        Args:
-            session_token (str): The session token.
+        Environment variables:
+            SN3S_SESSION_TOKEN: The session token to use.
+            SN3S_GTOKEN: The gtoken to use.
+            SN3S_BULLET_TOKEN: The bullet token to use.
 
         Returns:
-            SplatNet3_Scraper: A new instance of the class.
+            SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        token_manager = TokenManager.from_session_token(session_token)
-        token_manager.generate_all_tokens()
-        config = Config(token_manager=token_manager)
-        return SplatNet3_Scraper(config)
+        query_handler = SplatNet_QueryHandler.from_env()
+        return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def from_env() -> "SplatNet3_Scraper":
-        """Creates a new instance of the class using the environment
-        variables.
-
-        Returns:
-            SplatNet3_Scraper: A new instance of the class.
-        """
-        config = Config.from_env()
-        return SplatNet3_Scraper(config)
-
-    @staticmethod
-    def from_s3s_config(path: str) -> "SplatNet3_Scraper":
-        """Creates a new instance of the class using the s3s config file.
+    def from_s3s_config(config_path: str) -> "SplatNet_Scraper":
+        """Creates a SplatNet_Scraper instance using the config file from s3s.
 
         Args:
-            path (str): The path to the s3s config file.
+            config_path (str): The path to the config file.
 
         Returns:
-            SplatNet3_Scraper: A new instance of the class.
+            SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        config = Config.from_s3s_config(path)
-        return SplatNet3_Scraper(config)
+        query_handler = SplatNet_QueryHandler.from_s3s_config(config_path)
+        return SplatNet_Scraper(query_handler)
 
-    def __query(
-        self, query_name: str, variables: dict = {}
-    ) -> requests.Response:
-        """Internal method to query Splatnet 3, it does all of the heavy lifting
-        and is used by the other methods to get the data.
+    def __query(self, query: str, variables: dict = {}) -> QueryResponse:
+        """Convenience function for querying.
 
         Args:
-            query_name (str): The name of the query to use.
-            variables (dict): The variables to use in the query. Defaults to {}.
+            query (str): The query to run.
+            variables (dict): The variables to pass to the query. Defaults to
+                an empty dict.
 
         Returns:
-            requests.Response: The response from the query.
+            QueryResponse: The QueryResponse.
         """
-        return queries.query(
-            query_name,
-            self.config.get_token(TOKENS.BULLET_TOKEN),
-            self.config.get_token(TOKENS.GTOKEN),
-            self.config.get_data("language"),
-            self.config.get("user_agent"),
-            variables=variables,
-        )
+        return self._query_handler.query(query, variables)
 
-    def __get_query(self, query_name: str) -> dict:
-        """Internal method to get the data from a query. If the query fails, it
-        will try to generate all of the tokens and only once more. Not
-        recommended to wrap this method in the retry decorator generator.
-
-        Args:
-            query_name (str): The name of the query to use.
-
-        Returns:
-            dict: The data from the query.
-        """
-        response = self.__query(query_name)
-        if response.status_code != 200:
-            self.config.token_manager.generate_all_tokens()
-            response = self.__query(query_name)
-        return response.json()["data"]
-
-    def __get_detailed_query(self, game_id: str, versus: bool = True) -> dict:
-        """Internal method to get the data from a detailed query. If the query
-        fails, it will try to generate all of the tokens and only once more.
-        Not recommended to wrap this method in the retry decorator generator.
-
-        Args:
-            game_id (str): The ID of the game to get the details from.
-            versus (bool): Whether the game is a versus game or not. Defaults
-                to True.
-
-        Returns:
-            dict: The data from the query.
-        """
-        name = QueryMap.VS_DETAIL if versus else QueryMap.SALMON_DETAIL
-        variable_name = "vsResultId" if versus else "coopHistoryDetailId"
-        response = self.__query(name, variables={variable_name: game_id})
-        if response.status_code != 200:
-            self.config.token_manager.generate_all_tokens()
-            response = self.__query(name, variables={variable_name: game_id})
-        return response.json()["data"]
-
-    def get_mode_summary(
+    def __detailed_vs_or_coop(
         self,
-        mode: str,
-        detailed: bool = False,
-        detailed_limit: int | None = None,
-    ) -> QueryResponse:
-        """Gets the summary for a specific mode.
+        query: str,
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> tuple[QueryResponse, list[QueryResponse]]:
+        """Gets the detailed results for a vs battle or coop battle.
 
         Args:
-            mode (str): The mode to get the summary for.
-            detailed (bool): Whether to get the detailed summary or not.
-                Defaults to False.
-            detailed_limit (int | None): The maximum number of detailed
-                matches to get. If None, all of the matches will be returned.
+            query (str): The query to run.
+            limit (int | None): The maximum number of battles to get. If None,
+                it will get all battles. Defaults to None.
+            existing_ids (list[str] | str | None): The existing IDs to check
+                against. If a string is passed, it will return the results
+                upon finding the first match. If a list is passed, it will
+                return the results of all matches not in the list. If None,
+                it will return all results. Defaults to None.
 
         Raises:
-            ValueError: If the mode is invalid.
-
-        Returns:
-            QueryResponse: The summary for the mode.
-        """
-        try:
-            query_name = QueryMap.get(mode)
-        except AttributeError:
-            raise ValueError(f"Invalid mode: {mode}")
-
-        if not detailed:
-            data = self.__get_query(query_name)
-            return QueryResponse(data=data)
-        summary, detailed_data = self.__vs_with_details(
-            query_name, detailed_limit
-        )
-        return QueryResponse(data=summary, additional_data=detailed_data)
-
-    def get_vs_detail(self, game_id: str) -> dict:
-        """Gets the details of a versus game.
-
-        Args:
-            game_id (str): The ID of the game to get the details from.
-
-        Returns:
-            dict: The details of the game.
-        """
-        return self.__get_detailed_query(game_id)
-
-    def get_salmon_detail(self, game_id: str) -> dict:
-        """Gets the details of a salmon run game.
-
-        Args:
-            game_id (str): The ID of the game to get the details from.
-
-        Returns:
-            dict: The details of the game.
-        """
-        return self.__get_detailed_query(game_id, False)
-
-    def __vs_with_details(
-        self, query_name: str, limit: int | None = None
-    ) -> tuple[dict, list[dict]]:
-        """Internal method to get the data from a query and add the details to
-        the data. If the query fails, it will try to generate all of the tokens
-        and only once more. Not recommended to wrap this method in the retry
-        decorator generator.
-
-        Args:
-            query_name (str): The name of the query to use.
-            limit (int | None): The maximum number of detailed matches to get.
-                If None, all of the matches will be returned. Defaults to None.
+            ValueError: If the query is not a vs battle or coop battle.
 
         Returns:
             tuple:
-                dict: The data from the query.
-                list[dict]: The details of the games, in order.
+                QueryResponse: The summary query response.
+                list[QueryResponse]: The list of detailed query responses
+                    associated with each battle until the limit is reached.
         """
-        data = self.__get_query(query_name)
-        if limit is None:
-            limit = -1
-        # Top level key depends on the game mode but there is only one top level
-        # key so we can just get the first one.
-        key = list(data.keys())[0]
-        base = data[key]["historyGroups"]["nodes"]
-        out: list[dict] = []
+        if query not in (
+            QueryMap.SALMON,
+            QueryMap.TURF,
+            QueryMap.ANARCHY,
+            QueryMap.XBATTLE,
+            QueryMap.PRIVATE,
+        ):
+            raise ValueError(f"Invalid query: {query}")
+
+        if query in (QueryMap.SALMON, QueryMap.SALMON_DETAIL):
+            detail_query = QueryMap.SALMON_DETAIL
+            variable_name = "coopHistoryDetailId"
+        else:
+            detail_query = QueryMap.VS_DETAIL
+            variable_name = "vsHistoryDetailId"
+
+        _limit = -1 if limit is None else limit
+
+        # Get the list of battles
+        summary_query = self.__query(query)
+
+        # Top level key depends on the game mode, but there is only one.
+        top_level_key = summary_query.keys()[0]
+        history_groups = summary_query[top_level_key, "historyGroups", "nodes"]
+        out: list[QueryResponse] = []
         idx = 0
-        for group in base:
-            for game in group["historyDetails"]["nodes"]:
-                if idx == limit:
-                    return data, out
+
+        for group in history_groups:
+            group = cast(QueryResponse, group)
+            for game in group["historyDetails", "nodes"]:
+                game = cast(QueryResponse, game)
+                if idx == _limit:
+                    return summary_query, out
                 idx += 1
                 game_id = game["id"]
-                detailed_game = self.get_vs_detail(game_id)
-                out.append(detailed_game)
-        return data, out
 
-    @retry(times=1, exceptions=ConnectionError)
-    def query(self, query_name: str, variables: dict = {}) -> dict:
-        """Queries Splatnet 3 and returns the data.
+                if isinstance(existing_ids, str):
+                    if game_id == existing_ids:
+                        return summary_query, out
+                elif isinstance(existing_ids, list):
+                    if game_id in existing_ids:
+                        idx -= 1
+                        continue
+
+                variables = {variable_name: game_id}
+                detailed_game = self.__query(detail_query, variables)
+                out.append(detailed_game)
+
+        return summary_query, out
+
+    @overload
+    def get_vs_battles(
+        self,
+        mode: str,
+        detail: Literal[False],
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> QueryResponse:
+        ...
+
+    @overload
+    def get_vs_battles(
+        self,
+        mode: str,
+        detail: Literal[True],
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> tuple[QueryResponse, list[QueryResponse]]:
+        ...
+
+    @overload
+    def get_vs_battles(
+        self,
+        mode: str,
+        detail: bool = False,
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
+        ...
+
+    def get_vs_battles(
+        self,
+        mode: str,
+        detail: bool = False,
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
+        """Gets the vs battles.
 
         Args:
-            query_name (str): The name of the query to use.
-            variables (dict): The variables to use in the query. Defaults to {}.
+            mode (str): The mode to get the battles for. Some values are:
+                "turf", "anarchy", "xbattle", "private",
+            detail (bool): Whether to get the detailed results or not.
+                Defaults to False.
+            limit (int | None): The maximum number of battles to get. If None,
+                it will get all battles. Defaults to None.
+            existing_ids (list[str] | str | None): The existing IDs to check
+                against. If a string is passed, it will return the results
+                upon finding the first match. If a list is passed, it will
+                return the results of all matches not in the list. If None,
+                it will return all results. Defaults to None.
 
         Raises:
-            SplatnetException: If the query was successful but returned at
-                least one error.
+            ValueError: If the mode is not valid.
 
         Returns:
-            dict: The data from the query.
+            QueryResponse : The summary response.
+            tuple:
+                QueryResponse: The summary query response.
+                list[QueryResponse]: The list of detailed query responses
+                    associated with each battle until the limit is reached.
         """
-        response = self.__query(query_name, variables)
-        if response.status_code != 200:
-            self.config.token_manager.generate_all_tokens()
-            response = self.__query(query_name, variables)
+        mapped_query = QueryMap.get(mode)
+        if mapped_query == QueryMap.SALMON:
+            raise ValueError("Use get_coop_battles for salmon run battles.")
 
-        if "errors" in response.json():
-            errors = response.json()["errors"]
-            error_message = (
-                "Query was successful but returned at least one error."
-            )
+        if mapped_query not in (
+            QueryMap.TURF_DETAIL,
+            QueryMap.ANARCHY_DETAIL,
+            QueryMap.XBATTLE_DETAIL,
+            QueryMap.PRIVATE_DETAIL,
+        ):
+            non_detail_map = {
+                QueryMap.TURF_DETAIL: QueryMap.TURF,
+                QueryMap.ANARCHY_DETAIL: QueryMap.ANARCHY,
+                QueryMap.XBATTLE_DETAIL: QueryMap.XBATTLE,
+                QueryMap.PRIVATE_DETAIL: QueryMap.PRIVATE,
+            }
+            mapped_query = non_detail_map[mapped_query]
+            detail = True
 
-            error_message += " Errors: " + json.dumps(errors, indent=4)
-            raise SplatnetException(error_message)
+        if mapped_query not in (
+            QueryMap.TURF,
+            QueryMap.ANARCHY,
+            QueryMap.XBATTLE,
+            QueryMap.PRIVATE,
+        ):
+            raise ValueError(f"Invalid mode: {mode}")
 
-        return QueryResponse(data=response.json()["data"])
+        if detail:
+            return self.__detailed_vs_or_coop(mapped_query, limit, existing_ids)
+        else:
+            return self.__query(mapped_query)

@@ -4,12 +4,12 @@ import os
 import pytest
 import requests
 
-from splatnet3_scraper.base.exceptions import (
+from splatnet3_scraper.auth.exceptions import (
     FTokenException,
     NintendoException,
-    SplatnetException,
+    SplatNetException,
 )
-from splatnet3_scraper.base.tokens.nso import NSO
+from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.constants import APP_VERSION_FALLBACK
 from tests.mock import MockResponse
 
@@ -437,9 +437,9 @@ class TestNSO:
                 nso.get_bullet_token("gtoken", user_info)
 
         # Failures
-        generate_and_mock_post(401, {}, SplatnetException)
-        generate_and_mock_post(403, {}, SplatnetException)
-        generate_and_mock_post(204, {}, SplatnetException)
+        generate_and_mock_post(401, {}, SplatNetException)
+        generate_and_mock_post(403, {}, SplatNetException)
+        generate_and_mock_post(204, {}, SplatNetException)
         generate_and_mock_post(200, {}, NintendoException)
 
         # Success

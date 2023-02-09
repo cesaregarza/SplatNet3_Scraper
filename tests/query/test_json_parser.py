@@ -6,11 +6,11 @@ import pyarrow as pa
 import pytest
 import pytest_mock
 
-from splatnet3_scraper.scraper.json_parser import JSONParser, LinearJSON
+from splatnet3_scraper.query.json_parser import JSONParser, LinearJSON
 from tests.mock import MockLinearJSON, MockPyArrowTable
 
 # Paths
-json_path = "splatnet3_scraper.scraper.json_parser"
+json_path = "splatnet3_scraper.query.json_parser"
 mock_path = "tests.mock"
 linear_json_path = json_path + ".LinearJSON"
 json_parser_path = json_path + ".JSONParser"

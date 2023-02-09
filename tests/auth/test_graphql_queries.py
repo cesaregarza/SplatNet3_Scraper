@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 import requests
 
-from splatnet3_scraper.base.graph_ql_queries import GraphQLQueries
+from splatnet3_scraper.auth.graph_ql_queries import GraphQLQueries
 from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
     GRAPHQL_URL,
@@ -11,7 +11,7 @@ from splatnet3_scraper.constants import (
 )
 
 utils_path = "splatnet3_scraper.utils"
-test_graphql_path = "splatnet3_scraper.base.graph_ql_queries.GraphQLQueries"
+test_graphql_path = "splatnet3_scraper.auth.graph_ql_queries.GraphQLQueries"
 
 
 class TestGraphQLQueries:

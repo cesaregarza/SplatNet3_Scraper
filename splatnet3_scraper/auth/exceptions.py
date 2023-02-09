@@ -10,7 +10,7 @@ class FTokenException(Exception):
     pass
 
 
-class SplatnetException(Exception):
+class SplatNetException(Exception):
     """Base class for all Splatnet exceptions."""
 
     pass
