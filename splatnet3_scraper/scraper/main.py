@@ -124,7 +124,7 @@ class SplatNet_Scraper:
         ):
             raise ValueError(f"Invalid query: {query}")
 
-        if query == QueryMap.SALMON:
+        if query in (QueryMap.SALMON, QueryMap.SALMON_DETAIL):
             detail_query = QueryMap.SALMON_DETAIL
             variable_name = "coopHistoryDetailId"
         else:

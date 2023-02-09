@@ -163,6 +163,7 @@ class MockPyArrowTable:
     def from_arrays(*args, **kwargs):
         return MockPyArrowTable()
 
+
 class MockQueryResponse:
     pass
 
@@ -187,6 +188,6 @@ class MockQueryHandler:
     @staticmethod
     def from_s3s_config(*args, **kwargs):
         return MockQueryHandler()
-    
+
     def query(self, *args, **kwargs):
         return MockQueryResponse()
