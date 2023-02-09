@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast, overload
 
 from splatnet3_scraper.query import QueryResponse, SplatNet_QueryHandler
 from splatnet3_scraper.scraper.query_map import QueryMap
@@ -91,14 +91,13 @@ class SplatNet_Scraper:
     def __detailed_vs_or_coop(
         self,
         query: str,
-        coop: bool,
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
     ) -> tuple[QueryResponse, list[QueryResponse]]:
         """Gets the detailed results for a vs battle or coop battle.
 
         Args:
-            coop (bool): Whether to get coop battles or not.
+            query (str): The query to run.
             limit (int | None): The maximum number of battles to get. If None,
                 it will get all battles. Defaults to None.
             existing_ids (list[str] | str | None): The existing IDs to check
@@ -107,14 +106,30 @@ class SplatNet_Scraper:
                 return the results of all matches not in the list. If None,
                 it will return all results. Defaults to None.
 
+        Raises:
+            ValueError: If the query is not a vs battle or coop battle.
+
         Returns:
             tuple:
                 QueryResponse: The summary query response.
                 list[QueryResponse]: The list of detailed query responses
                     associated with each battle until the limit is reached.
         """
-        detail_query = QueryMap.SALMON_DETAIL if coop else QueryMap.VS_DETAIL
-        variable_name = "coopHistoryDetailId" if coop else "vsHistoryDetailId"
+        if query not in (
+            QueryMap.SALMON,
+            QueryMap.TURF,
+            QueryMap.ANARCHY,
+            QueryMap.XBATTLE,
+            QueryMap.PRIVATE,
+        ):
+            raise ValueError(f"Invalid query: {query}")
+
+        if query == QueryMap.SALMON:
+            detail_query = QueryMap.SALMON_DETAIL
+            variable_name = "coopHistoryDetailId"
+        else:
+            detail_query = QueryMap.VS_DETAIL
+            variable_name = "vsHistoryDetailId"
 
         _limit = -1 if limit is None else limit
 
@@ -149,3 +164,96 @@ class SplatNet_Scraper:
                 out.append(detailed_game)
 
         return summary_query, out
+
+    @overload
+    def get_vs_battles(
+        self,
+        detail: Literal[False],
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> QueryResponse:
+        ...
+
+    @overload
+    def get_vs_battles(
+        self,
+        detail: Literal[True],
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> tuple[QueryResponse, list[QueryResponse]]:
+        ...
+
+    @overload
+    def get_vs_battles(
+        self,
+        detail: bool = ...,
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
+        ...
+
+    def get_vs_battles(
+        self,
+        mode: str,
+        detail: bool = False,
+        limit: int | None = None,
+        existing_ids: list[str] | str | None = None,
+    ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
+        """Gets the vs battles.
+
+        Args:
+            mode (str): The mode to get the battles for. Some values are:
+                "turf", "anarchy", "xbattle", "private",
+            detail (bool): Whether to get the detailed results or not.
+                Defaults to False.
+            limit (int | None): The maximum number of battles to get. If None,
+                it will get all battles. Defaults to None.
+            existing_ids (list[str] | str | None): The existing IDs to check
+                against. If a string is passed, it will return the results
+                upon finding the first match. If a list is passed, it will
+                return the results of all matches not in the list. If None,
+                it will return all results. Defaults to None.
+
+        Raises:
+            ValueError: If the mode is not valid.
+
+        Returns:
+            QueryResponse : The summary response.
+            tuple:
+                QueryResponse: The summary query response.
+                list[QueryResponse]: The list of detailed query responses
+                    associated with each battle until the limit is reached.
+        """
+        mapped_query = QueryMap.get(mode)
+        if mapped_query == QueryMap.SALMON:
+            raise ValueError("Use get_coop_battles for salmon run battles.")
+
+        if mapped_query not in (
+            QueryMap.TURF_DETAIL,
+            QueryMap.ANARCHY_DETAIL,
+            QueryMap.XBATTLE_DETAIL,
+            QueryMap.PRIVATE_DETAIL,
+        ):
+            non_detail_map = {
+                QueryMap.TURF_DETAIL: QueryMap.TURF,
+                QueryMap.ANARCHY_DETAIL: QueryMap.ANARCHY,
+                QueryMap.XBATTLE_DETAIL: QueryMap.XBATTLE,
+                QueryMap.PRIVATE_DETAIL: QueryMap.PRIVATE,
+            }
+            mapped_query = non_detail_map[mapped_query]
+            detail = True
+
+        if mapped_query not in (
+            QueryMap.TURF,
+            QueryMap.ANARCHY,
+            QueryMap.XBATTLE,
+            QueryMap.PRIVATE,
+        ):
+            raise ValueError(f"Invalid mode: {mode}")
+
+        if detail:
+            return self.__detailed_vs_or_coop(
+                mapped_query, False, limit, existing_ids
+            )
+        else:
+            return self.__query(mapped_query)

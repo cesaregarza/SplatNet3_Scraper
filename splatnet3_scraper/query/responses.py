@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Iterator, Literal, TypedDict, overload
+from typing import Any, Iterator, Literal, TypedDict, cast, overload
 
 from splatnet3_scraper.query.json_parser import JSONParser
 
@@ -18,7 +18,7 @@ class QueryResponse:
     def __init__(
         self,
         data: dict[str, Any] | list[dict[str, Any]],
-        metadata: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | MetaData | None = None,
     ) -> None:
         """Initializes a QueryResponse.
 
@@ -31,7 +31,18 @@ class QueryResponse:
 
         self._metadata = self.__parse_metadata(metadata)
 
-    def __parse_metadata(self, metadata: dict) -> MetaData | None:
+    def __parse_metadata(
+        self, metadata: dict[str, Any] | MetaData | None
+    ) -> MetaData | None:
+        """Parses the metadata from the response.
+
+        Args:
+            metadata (dict[str, Any] | MetaData | None): The metadata from the
+                response.
+
+        Returns:
+            MetaData | None: The parsed metadata.
+        """
         if metadata is None:
             return None
 
@@ -42,9 +53,14 @@ class QueryResponse:
                 _metadata[key] = value
         if len(_metadata) == 0:
             return None
-        return MetaData(_metadata)
+        return MetaData(_metadata)  # type: ignore
 
     def __top_level_is_list(self) -> bool:
+        """Returns whether the top level of the data is a list.
+
+        Returns:
+            bool: Whether the top level is a list.
+        """
         return isinstance(self._data, list)
 
     @property
@@ -64,7 +80,7 @@ class QueryResponse:
             ValueError: If no metadata was provided at initialization.
 
         Returns:
-            dict[str, Any]: The metadata.
+            MetaData: The metadata.
         """
         if self._metadata is None:
             raise ValueError("No metadata was provided.")
@@ -130,6 +146,7 @@ class QueryResponse:
         for key, value in self._metadata.items():
             # Intercept if key is "timestamp" and convert to datetime
             if key == "timestamp":
+                value = cast(float, value)
                 out_value = datetime.fromtimestamp(value).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
@@ -174,7 +191,8 @@ class QueryResponse:
         """
         if self.__top_level_is_list():
             return list(range(len(self)))
-        return list(self._data.keys())
+        data = cast(dict[str, Any], self._data)
+        return list(data.keys())
 
     def values(self) -> list[Any]:
         """Returns a list of values in the data.
@@ -191,8 +209,9 @@ class QueryResponse:
             list[tuple[str, Any]]: The items in the data.
         """
         if self.__top_level_is_list():
-            return list(enumerate(self))
-        return list(self._data.items())
+            return list(enumerate(self))  # type: ignore
+        data = cast(dict[str, Any], self._data)
+        return list(data.items())
 
     def __iter__(self) -> Iterator[Any]:
         keys = self.keys()
@@ -200,18 +219,16 @@ class QueryResponse:
             yield self[key]
 
     @overload
-    def show(self, return_value: bool = Literal[False]) -> None:
+    def show(self, return_value: Literal[False]) -> None:
         ...
 
     @overload
-    def show(self, return_value: bool = Literal[True]) -> dict[str, Any]:
+    def show(self, return_value: Literal[True]) -> dict[str, Any]:
         ...
 
-    @overload
-    def show(self, return_value: bool = ...) -> None | dict[str, Any]:
-        ...
-
-    def show(self, return_value: bool = False) -> None | dict[str, Any]:
+    def show(
+        self, return_value: bool = False
+    ) -> dict[str, Any] | list[dict[str, Any]] | None:
         """Prints the data to the console. If return_value is True, returns the
         data as a dict instead.
 
@@ -220,9 +237,10 @@ class QueryResponse:
                 the data will be returned instead of printed. Defaults to False.
 
         Returns:
-            None | dict[str, Any]: The data as a dict if return_value is True,
-                otherwise None.
+            dict[str, Any] | list[dict[str, Any]] | None: The data. If
+                return_value is False, this will be None.
         """
         if return_value:
             return self._data
         print(self._data)
+        return None

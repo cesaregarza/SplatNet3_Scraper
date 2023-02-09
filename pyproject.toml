@@ -57,7 +57,7 @@ skip_glob = "^(tests|splatnet3_scraper)"
 python_version = "3.10"
 ignore_missing_imports = true
 pretty = true
-exclude = [".venv", "tests", "docs"]
+exclude = [".venv", "tests", "docs", "examples"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"
