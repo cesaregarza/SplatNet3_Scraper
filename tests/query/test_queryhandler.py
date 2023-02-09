@@ -16,7 +16,7 @@ nso_path = "splatnet3_scraper.auth.nso.NSO"
 token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 
 
-class TestSplatNetQuery:
+class TestSplatNetQueryHandler:
     def test_from_config_file(self, monkeypatch: pytest.MonkeyPatch):
 
         # No config file

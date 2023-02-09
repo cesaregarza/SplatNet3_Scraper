@@ -162,3 +162,31 @@ class MockPyArrowTable:
     @staticmethod
     def from_arrays(*args, **kwargs):
         return MockPyArrowTable()
+
+class MockQueryResponse:
+    pass
+
+
+class MockQueryHandler:
+    def __init__(self, *args, **kwargs) -> None:
+        self._mocked = True
+        self._data = None
+
+    @staticmethod
+    def from_session_token(*args, **kwargs):
+        return MockQueryHandler()
+
+    @staticmethod
+    def from_config(*args, **kwargs):
+        return MockQueryHandler()
+
+    @staticmethod
+    def from_env(*args, **kwargs):
+        return MockQueryHandler()
+
+    @staticmethod
+    def from_s3s_config(*args, **kwargs):
+        return MockQueryHandler()
+    
+    def query(self, *args, **kwargs):
+        return MockQueryResponse()

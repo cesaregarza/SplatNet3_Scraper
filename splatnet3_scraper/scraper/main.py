@@ -33,7 +33,7 @@ class SplatNet_Scraper:
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def from_config(config_path: str | None = None) -> "SplatNet_Scraper":
+    def from_config_file(config_path: str | None = None) -> "SplatNet_Scraper":
         """Creates a SplatNet_Scraper instance using the given config file.
 
         Args:
