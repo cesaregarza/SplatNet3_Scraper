@@ -7,7 +7,6 @@ import pytest_mock
 from splatnet3_scraper.auth.exceptions import SplatNetException
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.query.query import SplatNet_Query
-from splatnet3_scraper.query.query_map import QueryMap
 from splatnet3_scraper.query.responses import QueryResponse
 from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
@@ -15,17 +14,6 @@ config_path = "splatnet3_scraper.query.config.Config"
 query_response_path = "splatnet3_scraper.query.responses.QueryResponse"
 nso_path = "splatnet3_scraper.auth.nso.NSO"
 token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
-
-
-class TestQueryMap:
-    def test_get(self):
-        # Valid
-        assert QueryMap.get("ANARCHY") == QueryMap.ANARCHY
-        # lowercase
-        assert QueryMap.get("anarchy") == QueryMap.ANARCHY
-        # Invalid
-        with pytest.raises(AttributeError):
-            QueryMap.get("invalid")
 
 
 class TestSplatNetQuery:
