@@ -147,7 +147,7 @@ class SplatNet_Scraper:
             for game in group["historyDetails", "nodes"]:
                 game = cast(QueryResponse, game)
                 if idx == _limit:
-                    return out
+                    return summary_query, out
                 idx += 1
                 game_id = game["id"]
 
@@ -168,6 +168,7 @@ class SplatNet_Scraper:
     @overload
     def get_vs_battles(
         self,
+        mode: str,
         detail: Literal[False],
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
@@ -177,6 +178,7 @@ class SplatNet_Scraper:
     @overload
     def get_vs_battles(
         self,
+        mode: str,
         detail: Literal[True],
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
@@ -186,7 +188,8 @@ class SplatNet_Scraper:
     @overload
     def get_vs_battles(
         self,
-        detail: bool = ...,
+        mode: str,
+        detail: bool = False,
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
     ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
@@ -252,8 +255,6 @@ class SplatNet_Scraper:
             raise ValueError(f"Invalid mode: {mode}")
 
         if detail:
-            return self.__detailed_vs_or_coop(
-                mapped_query, False, limit, existing_ids
-            )
+            return self.__detailed_vs_or_coop(mapped_query, limit, existing_ids)
         else:
             return self.__query(mapped_query)
