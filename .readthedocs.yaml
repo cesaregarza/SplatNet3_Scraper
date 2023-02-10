@@ -13,6 +13,7 @@ build:
       - poetry config virtualenvs.create false
     post_install:
       - poetry install
+      - pip install sphinx-immaterial
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
