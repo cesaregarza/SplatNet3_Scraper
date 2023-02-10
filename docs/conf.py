@@ -5,6 +5,9 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+import pathlib
+import sys
+sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 import splatnet3_scraper
 
 project = "SplatNet 3 Scraper"
@@ -15,10 +18,7 @@ release = splatnet3_scraper.__version__
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-import pathlib
-import sys
 
-sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
 extensions = [
     "sphinx.ext.autodoc",
