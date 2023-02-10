@@ -1,21 +1,21 @@
 from typing import Literal, cast, overload
 
-from splatnet3_scraper.query import QueryResponse, SplatNet_QueryHandler
+from splatnet3_scraper.query import QueryHandler, QueryResponse
 from splatnet3_scraper.scraper.query_map import QueryMap
 
 
 class SplatNet_Scraper:
     """This class offers a user-level interface for pulling data from SplatNet
-    3. It is built upon the SplatNet_QueryHandler class and provides a top-level
+    3. It is built upon the QueryHandler class and provides a top-level
     API that orchestrates multiple queries together to reduce the amount of work
     needed to pull data that users are likely to want.
     """
 
-    def __init__(self, query_handler: SplatNet_QueryHandler) -> None:
+    def __init__(self, query_handler: QueryHandler) -> None:
         """Initializes a SplatNet_Scraper.
 
         Args:
-            query_handler (SplatNet_QueryHandler): The query handler to use.
+            query_handler (QueryHandler): The query handler to use.
         """
         self._query_handler = query_handler
 
@@ -29,7 +29,7 @@ class SplatNet_Scraper:
         Returns:
             SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        query_handler = SplatNet_QueryHandler.from_session_token(session_token)
+        query_handler = QueryHandler.from_session_token(session_token)
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
@@ -44,7 +44,7 @@ class SplatNet_Scraper:
         Returns:
             SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        query_handler = SplatNet_QueryHandler.from_config_file(config_path)
+        query_handler = QueryHandler.from_config_file(config_path)
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
@@ -59,7 +59,7 @@ class SplatNet_Scraper:
         Returns:
             SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        query_handler = SplatNet_QueryHandler.from_env()
+        query_handler = QueryHandler.from_env()
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
@@ -72,7 +72,7 @@ class SplatNet_Scraper:
         Returns:
             SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        query_handler = SplatNet_QueryHandler.from_s3s_config(config_path)
+        query_handler = QueryHandler.from_s3s_config(config_path)
         return SplatNet_Scraper(query_handler)
 
     def __query(self, query: str, variables: dict = {}) -> QueryResponse:

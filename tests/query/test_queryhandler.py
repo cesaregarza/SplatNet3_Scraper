@@ -6,7 +6,7 @@ import pytest_mock
 
 from splatnet3_scraper.auth.exceptions import SplatNetException
 from splatnet3_scraper.auth.nso import NSO
-from splatnet3_scraper.query.handler import SplatNet_QueryHandler
+from splatnet3_scraper.query.handler import QueryHandler
 from splatnet3_scraper.query.responses import QueryResponse
 from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
@@ -24,9 +24,9 @@ class TestSplatNetQueryHandler:
             monkeypatch.context() as m,
             patch(config_path + ".__init__") as mock_config,
         ):
-            m.setattr(SplatNet_QueryHandler, "__init__", lambda x, y: None)
+            m.setattr(QueryHandler, "__init__", lambda x, y: None)
             mock_config.return_value = None
-            SplatNet_QueryHandler.from_config_file()
+            QueryHandler.from_config_file()
             mock_config.assert_called_once()
 
         # Config file
@@ -34,9 +34,9 @@ class TestSplatNetQueryHandler:
             monkeypatch.context() as m,
             patch(config_path + ".__init__") as mock_config,
         ):
-            m.setattr(SplatNet_QueryHandler, "__init__", lambda x, y: None)
+            m.setattr(QueryHandler, "__init__", lambda x, y: None)
             mock_config.return_value = None
-            SplatNet_QueryHandler.from_config_file("test_config_path")
+            QueryHandler.from_config_file("test_config_path")
             mock_config.assert_called_once_with("test_config_path")
 
     def test_generate_session_token_url(self, monkeypatch: pytest.MonkeyPatch):
@@ -46,7 +46,7 @@ class TestSplatNetQueryHandler:
             url,
             state,
             verifier,
-        ) = SplatNet_QueryHandler.generate_session_token_url()
+        ) = QueryHandler.generate_session_token_url()
         assert url == "test_url"
         assert state == b"test_state"
         assert verifier == b"test_verifier"
@@ -63,22 +63,22 @@ class TestSplatNetQueryHandler:
         ):
             mock_from_token.return_value = MockTokenManager()
             mock_config.return_value = None
-            SplatNet_QueryHandler.from_session_token("test_token")
+            QueryHandler.from_session_token("test_token")
             mock_from_token.assert_called_once_with("test_token")
             mock_generate.assert_called_once()
 
     def test_from_env(self):
         with patch(config_path + ".from_env") as mock_from_env:
             mock_from_env.return_value = MockConfig()
-            SplatNet_QueryHandler.from_env()
+            QueryHandler.from_env()
             mock_from_env.assert_called_once()
 
     def test_query(self):
-        scraper = SplatNet_QueryHandler(MockConfig())
+        scraper = QueryHandler(MockConfig())
         mock_json = {"data": "test_data"}
         # 200 response
         with (
-            patch.object(scraper, "_SplatNet_QueryHandler__query") as mock_get,
+            patch.object(scraper, "_QueryHandler__query") as mock_get,
             patch.object(
                 MockTokenManager, "generate_all_tokens"
             ) as mock_generate,
@@ -92,7 +92,7 @@ class TestSplatNetQueryHandler:
 
         # 200 response, with errors
         with (
-            patch.object(scraper, "_SplatNet_QueryHandler__query") as mock_get,
+            patch.object(scraper, "_QueryHandler__query") as mock_get,
             patch.object(
                 MockTokenManager, "generate_all_tokens"
             ) as mock_generate,
@@ -107,7 +107,7 @@ class TestSplatNetQueryHandler:
 
         # Not 200 response
         with (
-            patch.object(scraper, "_SplatNet_QueryHandler__query") as mock_get,
+            patch.object(scraper, "_QueryHandler__query") as mock_get,
             patch.object(
                 MockTokenManager, "generate_all_tokens"
             ) as mock_generate,
@@ -120,13 +120,11 @@ class TestSplatNetQueryHandler:
             mock_generate.assert_called_once()
 
     def test_query_hash(self):
-        scraper = SplatNet_QueryHandler(MockConfig())
+        scraper = QueryHandler(MockConfig())
         mock_json = {"data": "test_data"}
         # 200 response
         with (
-            patch.object(
-                scraper, "_SplatNet_QueryHandler__query_hash"
-            ) as mock_get,
+            patch.object(scraper, "_QueryHandler__query_hash") as mock_get,
             patch.object(
                 MockTokenManager, "generate_all_tokens"
             ) as mock_generate,
@@ -140,9 +138,7 @@ class TestSplatNetQueryHandler:
 
         # 200 response, with errors
         with (
-            patch.object(
-                scraper, "_SplatNet_QueryHandler__query_hash"
-            ) as mock_get,
+            patch.object(scraper, "_QueryHandler__query_hash") as mock_get,
             patch.object(
                 MockTokenManager, "generate_all_tokens"
             ) as mock_generate,
@@ -157,9 +153,7 @@ class TestSplatNetQueryHandler:
 
         # Not 200 response
         with (
-            patch.object(
-                scraper, "_SplatNet_QueryHandler__query_hash"
-            ) as mock_get,
+            patch.object(scraper, "_QueryHandler__query_hash") as mock_get,
             patch.object(
                 MockTokenManager, "generate_all_tokens"
             ) as mock_generate,

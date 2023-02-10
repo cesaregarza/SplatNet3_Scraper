@@ -3,14 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
-from splatnet3_scraper.query.handler import SplatNet_QueryHandler
+from splatnet3_scraper.query.handler import QueryHandler
 from splatnet3_scraper.query.responses import QueryResponse
 from splatnet3_scraper.scraper.main import SplatNet_Scraper
 from splatnet3_scraper.scraper.query_map import QueryMap
 from tests.mock import MockQueryHandler
 
 param = pytest.mark.parametrize
-query_handler_path = "splatnet3_scraper.query.handler.SplatNet_QueryHandler"
+query_handler_path = "splatnet3_scraper.query.handler.QueryHandler"
 scraper_path = "splatnet3_scraper.scraper.main.SplatNet_Scraper"
 scraper_mangled_path = scraper_path + "._SplatNet_Scraper"
 
@@ -39,7 +39,7 @@ class TestSplatNetScraper:
     )
     def test_from_methods(self, method, args, monkeypatch: pytest.MonkeyPatch):
         with monkeypatch.context() as m:
-            m.setattr(SplatNet_QueryHandler, method, MockQueryHandler)
+            m.setattr(QueryHandler, method, MockQueryHandler)
             if args is None:
                 scraper = getattr(SplatNet_Scraper, method)()
             else:

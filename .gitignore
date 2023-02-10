@@ -166,5 +166,3 @@ tokens.ini
 !tests/fixtures/*.csv
 !reports/junit/*.html
 reports/flake8/*.css
-
-docs/

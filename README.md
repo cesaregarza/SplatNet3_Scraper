@@ -43,25 +43,25 @@ This module is currently under active development and is not yet complete. Pleas
 
 The `query` module is an easy-to-use module that enables fast and painless querying to the SplatNet 3 API. It handles authentication and query handling automagically, and provides a simple interface for accessing the response data. The `query` module is designed to be used by advanced users who need more control over the queries they make to the SplatNet 3 API. If you are looking for a simple way to get data from the SplatNet 3 API, you should use the `scraper` module instead.
 
-The `query` module provides the `SplatNet_QueryHandler` class, which is used to make queries to the SplatNet 3 API. The `SplatNet_QueryHandler` class can be instantiated in one of a few ways: by providing a session token, by providing the path to a configuration file, or by loading environment variables.
+The `query` module provides the `QueryHandler` class, which is used to make queries to the SplatNet 3 API. The `QueryHandler` class can be instantiated in one of a few ways: by providing a session token, by providing the path to a configuration file, or by loading environment variables.
 
-#### Instantiating the `SplatNet_QueryHandler` class by providing a session token
+#### Instantiating the `QueryHandler` class by providing a session token
 
 ```python
-from splatnet3_scraper.query import SplatNet_QueryHandler
-handler = SplatNet_QueryHandler.from_session_token("session_token")
+from splatnet3_scraper.query import QueryHandler
+handler = QueryHandler.from_session_token("session_token")
 handler.query("StageScheduleQuery")
 ```
 
-#### Instantiating the `SplatNet_QueryHandler` class by providing the path to a configuration file
+#### Instantiating the `QueryHandler` class by providing the path to a configuration file
 
 ```python
-from splatnet3_scraper.query import SplatNet_QueryHandler
-handler = SplatNet_QueryHandler.from_config_file(".splatnet3_scraper")
+from splatnet3_scraper.query import QueryHandler
+handler = QueryHandler.from_config_file(".splatnet3_scraper")
 handler.query("StageScheduleQuery")
 ```
 
-#### Instantiating the `SplatNet_QueryHandler` class by loading environment variables
+#### Instantiating the `QueryHandler` class by loading environment variables
 
 The following environment variables are supported:
 
@@ -70,18 +70,18 @@ The following environment variables are supported:
 * `SN3S_BULLET_TOKEN`
 
 ```python
-from splatnet3_scrape.query import SplatNet_QueryHandler
-handler = SplatNet_QueryHandler.from_env()
+from splatnet3_scrape.query import QueryHandler
+handler = QueryHandler.from_env()
 handler.query("StageScheduleQuery")
 ```
 
 #### Querying the SplatNet 3 API
 
-The `SplatNet_QueryHandler` class provides a `query` method that can be used to make queries to the SplatNet 3 API. The `query` method takes a single argument, which is the name of the query to make. The `query` method returns a `QueryResponse` object, which contains the response data from the SplatNet 3 API. The `QueryResponse` object provides a `data` property that can be used to access the response data. The `QueryResponse` module also supports numpy-style indexing, which can be used to quickly and clearly access specific parts of the response data. For example, the following code will print the game mode name of the the current stage rotation schedule:
+The `QueryHandler` class provides a `query` method that can be used to make queries to the SplatNet 3 API. The `query` method takes a single argument, which is the name of the query to make. The `query` method returns a `QueryResponse` object, which contains the response data from the SplatNet 3 API. The `QueryResponse` object provides a `data` property that can be used to access the response data. The `QueryResponse` module also supports numpy-style indexing, which can be used to quickly and clearly access specific parts of the response data. For example, the following code will print the game mode name of the the current stage rotation schedule:
 
 ```python
-from splatnet3_scraper.query import SplatNet_QueryHandler
-scraper = SplatNet_QueryHandler.from_env()
+from splatnet3_scraper.query import QueryHandler
+scraper = QueryHandler.from_env()
 response = scraper.query("StageScheduleQuery")
 print(response["xSchedules", "nodes", 0, "vsRule", "name"])
 ```
@@ -100,8 +100,8 @@ Note: csv and parquet formats work by converting the response data from a nested
 The following code will save the response data to a file named `response.json` in the current directory:
 
 ```python
-from splatnet3_scraper.query import SplatNet_QueryHandler
-handler = SplatNet_QueryHandler.from_env()
+from splatnet3_scraper.query import QueryHandler
+handler = QueryHandler.from_env()
 response = handler.query("StageScheduleQuery")
 response.parsed_json().to_json("response.json")
 ```
@@ -143,4 +143,4 @@ parser = JSONParser.from_json("response.json")
 
 This project currently uses the standard library heavily, and as such it is not compatible with the `python:alpine` Docker image. I have no plans to change this. Use the `python:slim` image instead.
 
-SplatNet_QueryHandler is licensed under the GPLv3. See the LICENSE file for more details.
+QueryHandler is licensed under the GPLv3. See the LICENSE file for more details.

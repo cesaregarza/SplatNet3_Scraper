@@ -1,10 +1,1 @@
-import pathlib
-import re
-
-__version__ = "0.5.0"
-
-from splatnet3_scraper.query import (
-    JSONParser,
-    QueryResponse,
-    SplatNet_QueryHandler,
-)
+__version__ = "0.5.1"
