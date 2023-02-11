@@ -7,6 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import pathlib
 import sys
+
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
 project = "SplatNet 3 Scraper"
@@ -16,7 +17,6 @@ release = "0.5.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
 
 
 extensions = [
