@@ -92,8 +92,10 @@ check back later for more examples or more features to be built-in to the
 shown function, :func:`SplatNet_Scraper.get_vs_battles`.
 
 .. _query_example:
+
 Query Example
 -------------
+
 Let's say we want to access data not currently supported by the :doc:`../api/scraper/scraper`
 module, such as the stage rotation schedule. We can use the :doc:`../api/query/query`
 to create our own queries. The :doc:`../api/query/query` provides a high-level

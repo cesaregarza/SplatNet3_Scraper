@@ -91,4 +91,4 @@ html_static_path = ["_static"]
 # Other options
 autodoc_typehints = "description"
 
-master_doc = "source/index"
+master_doc = "index"

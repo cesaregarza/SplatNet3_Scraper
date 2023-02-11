@@ -313,6 +313,7 @@ class JSONParser:
         ... }
 
         The following CSV file will be created with spaces added for clarity:
+
         >>> "a, b.c, b.d, e;0, e;1, e;2, f;0.g, f;0.h, f;1.g, f;1.h"
         ... "1, 2, 3, 4, 5, 6, 7, 8, 9, 10"
 

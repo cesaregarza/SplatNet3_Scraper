@@ -221,11 +221,12 @@ class SplatNet_Scraper:
             ValueError: If the mode is not valid.
 
         Returns:
-            QueryResponse : The summary response.
-            tuple:
-                QueryResponse: The summary query response.
-                list[QueryResponse]: The list of detailed query responses
-                    associated with each battle until the limit is reached.
+            QueryResponse : The summary query response, returned regardless of
+                the value of detail.
+            (list[QueryResponse]): The list of detailed query responses 
+                associated with each battle until the limit is reached. Only
+                returned if detail is True, along with the summary query
+                response.
         """
         mapped_query = QueryMap.get(mode)
         if mapped_query == QueryMap.SALMON:

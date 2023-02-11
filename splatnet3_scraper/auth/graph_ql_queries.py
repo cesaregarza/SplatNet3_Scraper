@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import requests
 
@@ -91,13 +92,13 @@ class GraphQLQueries:
         return headers
 
     def query_body_hash(
-        self, query_hash: str | bytes, variables: dict[str, str] = {}
+        self, query_hash: str | bytes, variables: dict[str, Any] = {}
     ) -> str:
         """Gets the body for the GraphQL queries, as a string.
 
         Args:
             query_hash (str | bytes): The hash of the query.
-            variables (dict[str, str]): The variables for the query.
+            variables (dict[str, Any]): The variables for the query.
 
         Returns:
             str: The body for the GraphQL queries, as a string.
@@ -135,8 +136,8 @@ class GraphQLQueries:
         gtoken: str,
         language: str,
         user_agent: str | None = None,
-        variables: dict[str, str] = {},
-        override: dict[str, str] = {},
+        variables: dict[str, Any] = {},
+        override: dict[str, Any] = {},
     ) -> requests.Response:
         """Makes a GraphQL query using the persisted query hash.
 
@@ -147,9 +148,9 @@ class GraphQLQueries:
             language (str): The language code to use.
             user_agent (str | None): The user agent to use. If None, the default
                 user agent will be used. Defaults to None.
-            variables (dict[str, str]): The variables for the query. Defaults to
+            variables (dict[str, Any]): The variables for the query. Defaults to
                 an empty dictionary.
-            override (dict[str, str]): The headers to override. Defaults to an
+            override (dict[str, Any]): The headers to override. Defaults to an
                 empty dictionary.
 
         Returns:
@@ -171,8 +172,8 @@ class GraphQLQueries:
         gtoken: str,
         language: str,
         user_agent: str | None = None,
-        variables: dict[str, str] = {},
-        override: dict[str, str] = {},
+        variables: dict[str, Any] = {},
+        override: dict[str, Any] = {},
     ) -> requests.Response:
         """Makes a GraphQL query using the query name to get the hash.
 
@@ -183,9 +184,9 @@ class GraphQLQueries:
             language (str): The language code to use.
             user_agent (str | None): The user agent to use. If None, the default
                 user agent will be used. Defaults to None.
-            variables (dict[str, str]): The variables for the query. Defaults to
+            variables (dict[str, Any]): The variables for the query. Defaults to
                 an empty dictionary.
-            override (dict[str, str]): The headers to override. Defaults to an
+            override (dict[str, Any]): The headers to override. Defaults to an
                 empty dictionary.
 
         Returns:

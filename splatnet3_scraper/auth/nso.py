@@ -33,6 +33,7 @@ class NSO:
     """The NSO class contains all the logic to proceed through the login flow.
     This class also holds various properties that are used to make requests to
     the Nintendo Switch Online API. Login flow is roughly as follows:
+    
         1.  Initialize a requests session and store it.
         2.  Generate a random state and S256 code challenge that will be used
                 to obtain the "session_token". Store them for later use.
