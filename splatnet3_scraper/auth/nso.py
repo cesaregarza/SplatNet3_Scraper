@@ -819,11 +819,16 @@ class NSO:
         response = self.session.post(url, headers=header, cookies=cookies)
 
         if response.status_code == 401:
-            raise SplatNetException("Invalid gtoken")
+            raise SplatNetException(
+                "Error 401: Invalid Game Web Token (gtoken)"
+            )
         elif response.status_code == 403:
-            raise SplatNetException("Obsolete Version")
+            raise SplatNetException("Error 403: Outdated Version")
         elif response.status_code == 204:
-            raise SplatNetException("No Content")
+            raise SplatNetException(
+                "Error 204: User Not Registered. Please play at least one match"
+                + " of Splatoon 3 before using this library."
+            )
 
         try:
             return response.json()["bulletToken"]
