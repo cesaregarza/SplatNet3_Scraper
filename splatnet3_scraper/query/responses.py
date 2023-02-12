@@ -10,9 +10,17 @@ class MetaData(TypedDict, total=False):
 
 
 class QueryResponse:
-    """Represents a response from the API. This class provides convenience
-    methods for interacting with the returned data. It also provides a
-    JSONParser object for more advanced usage, if needed.
+    """The QueryResponse class represents a response from the SplatNet 3 API.
+    The class provides various convenience methods for interacting with the
+    returned data and contains metadata about the response. The metadata
+    contains the query that was used to get the data and the timestamp of the
+    response. Additional metadata may be added in the future. Using the getitem
+    method on the response will return another QueryResponse with the data from
+    the key. If the data is a list, the getitem method will generate a
+    QueryResponse for each item in the list. The QueryResponse class also
+    provides a parse_json method that returns a JSONParser object for the
+    response data. This is currently not used by the library, so it may be
+    removed in the future.
     """
 
     def __init__(
@@ -23,7 +31,10 @@ class QueryResponse:
         """Initializes a QueryResponse.
 
         Args:
-            data (dict[str, Any]): The data from the response.
+            data (dict[str, Any]): The data from the response as a dictionary.
+                If the data is a list, the data should be a list of
+                dictionaries. The data should be some sort of JSON object of
+                nested dictionaries and lists.
             metadata (dict[str, Any] | None): The metadata from the response.
                 Possible keys are "query" and "timestamp". Defaults to None.
         """
@@ -65,10 +76,14 @@ class QueryResponse:
 
     @property
     def data(self) -> dict[str, Any] | list[dict[str, Any]]:
-        """The data from the response.
+        """The raw data from the response. This is the data that was passed to
+        the QueryResponse at initialization.
+
+        This property, as opposed to the __getitem__ method, will return the
+        raw data from the response without any parsing.
 
         Returns:
-            dict[str, Any]: The data.
+            dict[str, Any] | list[dict[str, Any]]: The raw data.
         """
         return self._data
 
@@ -138,6 +153,17 @@ class QueryResponse:
         return JSONParser(self._data)
 
     def __repr__(self) -> str:
+        """Returns a string representation of the `QueryResponse`.
+
+        Representation includes the metadata, if it exists. If the metadata
+        exists, the representation will include the query and the timestamp.
+        This method also iterates over the `MetaData` dictionary and adds it to
+        the representation. This method should not need updating if new
+        metadata fields are added.
+
+        Returns:
+            str: The string representation of the `QueryResponse`.
+        """        
         out_str = "QueryResponse("
         if self._metadata is None:
             return out_str + ")"
@@ -162,6 +188,18 @@ class QueryResponse:
         return out_str[:-2] + ")"
 
     def __eq__(self, other: object) -> bool:
+        """Returns whether the `QueryResponse` is equal to another object.
+
+        Explicitly, this method checks whether the other object is a
+        `QueryResponse` and whether the data and metadata are the same as the
+        ones found in the `QueryResponse`.
+
+        Args:
+            other (object): The object to compare to.
+
+        Returns:
+            bool: Whether the `QueryResponse` is equal to the other object.
+        """        
         if not isinstance(other, QueryResponse):
             return False
         return self._data == other._data and self._metadata == other._metadata
@@ -172,6 +210,22 @@ class QueryResponse:
     def __getitem__(
         self, key: str | int | tuple[str | int, ...]
     ) -> "QueryResponse":
+        """Returns a `QueryResponse` object containing the data at the given
+        key. If the key is a tuple, this method will treat it as taking multiple
+        keys in order to get to the data. For example, the following two are
+        equivalent:
+
+        >>> query_response["key1"]["key2"] == query_response["key1", "key2"]
+
+        This method will then return a `QueryResponse` object containing the
+        data at the given key.
+
+        Args:
+            key (str | int | tuple[str  |  int, ...]): The key to get the data
+
+        Returns:
+            QueryResponse: The `QueryResponse` object containing the data.
+        """        
         if isinstance(key, tuple):
             for k in key:
                 self = self[k]
@@ -184,7 +238,8 @@ class QueryResponse:
 
     def keys(self) -> list[str | int]:
         """Returns a list of keys in the data. If the top level of the data is
-        a list, this method will return a list of integers.
+        a list, this method will return a list of integers from 0 to the length
+        of the list.
 
         Returns:
             list[str | int]: The keys in the data.
@@ -203,7 +258,15 @@ class QueryResponse:
         return list(self)
 
     def items(self) -> list[tuple[str, Any]]:
-        """Returns a list of items in the data.
+        """Returns a list of items in the data. If the top level of the data is
+        a list, this method will return a list of integers from 0 to the length
+        as the keys.
+
+        Done to match the behavior of `dict.items()`, which returns a list of
+        tuples of the form `(key, value)`. This method will return a list of
+        tuples of the form `(key, value)` where the key can be an integer if
+        the top level of the data is a list, otherwise it works the same as
+        `dict.items()`.
 
         Returns:
             list[tuple[str, Any]]: The items in the data.
@@ -214,6 +277,15 @@ class QueryResponse:
         return list(data.items())
 
     def __iter__(self) -> Iterator[Any]:
+        """Returns an iterator over the values in the data.
+
+        This method simply calls `self.keys()` and iterates over over
+        `self[key]` for each key in the list of keys. This method is used to
+        implement `self.values()`.
+
+        Yields:
+            Iterator[Any]: The values in the data.
+        """        
         keys = self.keys()
         for key in keys:
             yield self[key]
