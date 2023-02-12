@@ -114,7 +114,7 @@ class NSO:
                 to make requests to the Nintendo Switch Online API. The session
                 object is passed in to the NSO class so that the same session
                 object can be used to make requests to the SplatNet API.
-        """        
+        """
         self.session = session
         self._state: bytes | None = None
         self._verifier: bytes | None = None
@@ -239,7 +239,7 @@ class NSO:
 
         Returns:
             str: The session token.
-        """        
+        """
         if self._session_token is None:
             raise ValueError("Session token is not set.")
         return self._session_token
@@ -276,7 +276,7 @@ class NSO:
 
         Returns:
             dict[str, str]: The headers to use for the Nintendo Switch Online
-            requests. 
+            requests.
         """
         return {
             "Host": "accounts.nintendo.com",
@@ -524,7 +524,7 @@ class NSO:
         Note that this is a third party method, and is not officially
         sanctioned by Nintendo. The default ftoken generation URL used by this
         library is provided by `imink <https://github.com/imink-app>`_. In
-        the interest of transparency, the following is the entirety of the 
+        the interest of transparency, the following is the entirety of the
         request header sent to the ftoken generation URL:
 
         >>> {
@@ -594,18 +594,30 @@ class NSO:
         user_info: dict[str, str],
         f_token_url: str,
     ) -> requests.Response:
-        """Given the user access token response and user information, returns
-        the response from the first step of f token generation. This step
-        is retried once if it fails.
+        """Given the user access token response and the dictionary of user info
+        returned by `get_user_info`, returns the response from the first step
+        of the f token generation process. This step is retried once if it
+        fails. This step is used to get the `splatoon_token` from Nintendo's
+        servers, which is used to get the `gtoken`. This step is retried once if
+        it fails before raising an exception.
 
         Args:
-            user_access_response (requests.Response): The response from the
-                user access token request.
-            user_info (dict[str, str]): The user information.
-            f_token_url (str): The url to get the f token from.
+            user_access_response (requests.Response): The response from the user
+                access token request. A different object can be passed in for
+                this parameter, but it must have a `json` method that returns a
+                dictionary with a `id_token` key that maps to the id token
+                provided by Nintendo.
+            user_info (dict[str, str]): The dictionary of user info returned by
+                `get_user_info`. This must contain the keys `language`,
+                `birthday`, and `country`.
+            f_token_url (str): URL to use for f token generation. This package
+                provides a default URL, but you can provide your own. The
+                default URL is provided by `imink`.
 
         Returns:
-            requests.Response: The response.
+            requests.Response: The response containing the `splatoon_token`.
+            This response contains a JSON with the following path to the token:
+            `result.webApiServerCredential.accessToken`.
         """
         id_token = user_access_response.json()["id_token"]
         f_token, request_id, timestamp = self.get_ftoken(
@@ -636,12 +648,20 @@ class NSO:
         id_token: str,
         f_token_url: str,
     ) -> str:
-        """Final step of gtoken generation. This step is retried once if it
-        fails.
+        """Final step of gtoken generation, which returns the gtoken. This step
+        is retried once if it fails. This step obtains the second f token, which
+        is passed to Nintendo's servers to get the gtoken. This step is retried
+        once if it fails before raising an exception.
 
         Args:
-            id_token (str): splatoon id token
-            f_token_url (str): The url to get the f token from.
+            id_token (str): The id token from the first step of the f token
+                generation process. This will be renamed in a future version of
+                this package, so that it is not confused with the id token from
+                the user access token response. As such, it is preferred to pass
+                this parameter as a positional and not a keyword argument.
+            f_token_url (str): URL to use for f token generation. This package
+                provides a default URL, but you can provide your own. The
+                default URL is provided by `imink`.
 
         Returns:
             str: The gtoken from the response.
@@ -674,6 +694,37 @@ class NSO:
         return gtoken
 
     def get_splatoon_token(self, body: dict) -> requests.Response:
+        """Given the body of the request to get the splatoon token, returns the
+        response from Nintendo's servers containing the splatoon token.
+
+        The body of the request must contain the following keys:
+        >>> body = {
+        ...     "parameter": {
+        ...         "f": f_token,
+        ...         "language": user_info["language"],
+        ...         "naBirthday": user_info["birthday"],
+        ...         "naCountry": user_info["country"],
+        ...         "requestId": request_id,
+        ...         "timestamp": timestamp,
+        ...     }
+        ... }
+
+        Where `f_token`, `request_id`, and `timestamp` are the f token, request
+        id, and timestamp returned by `get_ftoken`. The `user_info` dictionary
+        must contain the keys `language`, `birthday`, and `country` and must
+        align with the values set in the user's Nintendo account.
+
+        Args:
+            body (dict): The body of the request to get the splatoon token. This
+                must be a dictionary with the keys `parameter` and `f` as shown
+                above.
+
+        Returns:
+            requests.Response: The response from Nintendo's servers containing
+            the splatoon token. This response contains a JSON with the following
+            path to the token:
+            `result.webApiServerCredential.accessToken`.
+        """
         f_token = body["parameter"]["f"]
         header = {
             "X-Platform": "Android",
@@ -695,25 +746,56 @@ class NSO:
         user_info: dict,
         user_agent: str | None = None,
     ) -> str:
-        """Given the gtoken and user information, returns the bullet token.
+        """Given the gtoken and user information, send a request to SplatNet 3
+        to obtain the bullet token. This token is required to make any requests
+        to SplatNet 3, and is valid for 6 hours and 30 minutes after it is
+        obtained.
 
-        Bullet token is given by Splatnet and is required to access Splatnet.
+        The gtoken is obtained by calling `get_gtoken` and the user information
+        is obtained by calling `get_user_info`. The user information must
+        contain the keys `language`, `birthday`, and `country` and must align
+        with the values set in the user's Nintendo account. The user agent is
+        optional, and if not provided, the default user agent will be used. It
+        is not recommended to change the user agent from the default unless you
+        know what you are doing.
 
         Args:
             gtoken (str): GameWebToken, also known as gtoken. Given by Nintendo.
-            user_info (dict): User information. Given by Nintendo.
-            user_agent (str | None): User agent. If None, the default user agent
-                will be used. Defaults to None.
+                This token is required to make any requests to Nintendo Switch
+                Online services and is valid for 2 hours after it is obtained.
+            user_info (dict): Dictionary containing the user's information. This
+                must contain the keys `language`, `birthday`, and `country` and
+                must align with the values set in the user's Nintendo account.
+                These values are verified by Nintendo, so if they do not align,
+                no bullet token will be generated.
+            user_agent (str | None): User agent to use for the request. This is
+                optional, and if not provided, the default user agent will be
+                used. It is not recommended to change the user agent from the
+                default unless you know what you are doing. The default user
+                agent can be found in `constants.py` as `DEFAULT_USER_AGENT`.
+                Defaults to None.
 
         Raises:
-            SplatNetException: If the provided gtoken is invalid.
-            SplatNetException: If the version of Splatnet is obsolete.
-            SplatNetException: If no content is returned, indicating that the
-                user has not accessed online services before.
-            NintendoException: If Nintendo returns an invalid response.
+            SplatNetException: Error 401, `ERROR_INVALID_GAME_WEB_TOKEN`. This
+                indicates that the gtoken is invalid. This can happen if the
+                gtoken is expired or if the provided gtoken was never valid.
+            SplatNetException: Error 403 `ERROR_OBSOLETE_VERSION`. This
+                indicates that the version provided in request header key
+                `X-Web-View-Ver` is outdated. This can happen if the version
+                provided is too old.
+            SplatNetException: Error 204, `USER_NOT_REGISTERED`. This indicates
+                that there is no game user associated with Splatoon 3, and that
+                the user must play at least one match of Splatoon 3 before
+                using this library.
+            NintendoException: If the request does not fail with one of the
+                above errors, this indicates that the request failed for some
+                other reason and this exception will be raised to indicate that
+                the request failed silently.
 
         Returns:
-            str: The bullet token.
+            str: The bullet token. This token is required to make any requests
+            to SplatNet 3, and is valid for 6 hours and 30 minutes after it is
+            obtained.
         """
         user_agent = (
             user_agent if user_agent is not None else DEFAULT_USER_AGENT
@@ -750,6 +832,14 @@ class NSO:
 
     @property
     def splatnet_web_version(self) -> str:
+        """Get the web view version for SplatNet 3. This is used in the request
+        header key `X-Web-View-Ver` to indicate the version of the web view
+        that is being used. This is required to make any requests to SplatNet
+        3. If the version cannot be obtained, a fallback version will be used.
+
+        Returns:
+            str: The web view version for SplatNet 3.
+        """
         if self._web_view_version is not None:
             return self._web_view_version
         try:
