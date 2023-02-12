@@ -223,7 +223,7 @@ class SplatNet_Scraper:
         Returns:
             QueryResponse : The summary query response, returned regardless of
                 the value of detail.
-            (list[QueryResponse]): The list of detailed query responses 
+            (list[QueryResponse]): The list of detailed query responses
                 associated with each battle until the limit is reached. Only
                 returned if detail is True, along with the summary query
                 response.
