@@ -48,7 +48,7 @@ class Token:
                 determines the expiration time of the token.
             timestamp (float): The time the token was created, in seconds since
                 the epoch. This is used to determine if the token is expired.
-        """        
+        """
         self.token = token
         self.token_type = token_type
         self.timestamp = timestamp
@@ -66,7 +66,7 @@ class Token:
         Returns:
             bool: True if the token is valid (not None and not an empty string)
             False otherwise.
-        """        
+        """
         return (self.token is not None) and (self.token != "")
 
     @property
@@ -79,7 +79,7 @@ class Token:
 
         Returns:
             bool: True if the token is expired, False otherwise.
-        """        
+        """
         return self.time_left <= 0
 
     @property
@@ -91,7 +91,7 @@ class Token:
 
         Returns:
             float: The time left before the token expires.
-        """        
+        """
         return self.expiration - time.time()
 
     @property
@@ -140,22 +140,33 @@ class Token:
 
 
 class TokenManager:
-    """Manages tokens. Can be used to add tokens, generate tokens from the NSO
-    class, check if tokens are expired, load tokens from a config file or
-    environment variables, save tokens to a config file, and display the time
-    left before tokens expire.
+    """Class that manages tokens. This class can be used to add tokens, generate
+    tokens from the NSO class, check if tokens are expired, load tokens from a
+    configuration file or environment variables, save tokens to disk, and
+    display the time left before tokens expire among other things.
     """
 
     def __init__(self, nso: NSO | None = None) -> None:
+        """Initializes a TokenManager object. This will create a new instance
+        of the NSO class if one is not provided.
+
+        Args:
+            nso (NSO | None, optional): An instance of the NSO class. If one is
+                not provided, a new instance will be created. Defaults to None.
+        """
         nso = nso if nso is not None else NSO.new_instance()
         self.nso = nso
         self._tokens: dict[str, Token] = {}
         self._data: dict[str, str] = {}
 
     def flag_origin(self, origin: str, data: str | None = None) -> None:
-        """Flags the origin of the token manager. This is used to determine
-        whether the token manager was loaded from a config file or environment
-        variables.
+        """Flags the origin of the token manager. This is used to identify where
+        the token manager was loaded from, if anywhere. This is used to help
+        keep track of whether the user wants to save the tokens to disk or not,
+        but can potentially be used for other things in the future. This is
+        called automatically when the token manager is loaded from a config
+        file or environment variables. Subsequent calls to this method will
+        overwrite the previous origin.
 
         Args:
             origin (str): The origin of the token manager.
@@ -173,34 +184,48 @@ class TokenManager:
         token_type: str | None = None,
         timestamp: float | None = None,
     ) -> None:
-        """Adds a token to the manager. If the token is a string, the token
-        type must be provided. If the token is a Token object, the object will
-        be added to the manager.
+        """Adds a token to the manager. If the token provided is a `string`, the
+        token type must be provided as well. The manager will then create a new
+        Token object and add it to its internal dictionary. If the token
+        provided is a `Token` object, the object will be added to the manager as
+        is.
+
+        If the token type is `session_token`, the token will
 
         Args:
-            token (str | Token): The token to add.
+            token (str | Token): The token to add to the manager. If a string,
+                the token type must be provided as well. If a `Token` object,
+                the token type will be ignored. This field might also be known
+                as the "access token" or "auth token" among other names.
             token_type (str | None): The type of token. If token is an instance
-                of Token, this will be ignored. If token is a string, this must
-                be provided.
+                of `Token`, this will be ignored. If token is a string, this
+                must be provided. Currently the only supported token types that
+                are recognized by the manager are "session_token", "gtoken", and
+                "bullet_token". Defaults to None, which will cause an error to
+                be raised if `token` is a string.
             timestamp (float | None): The time the token was created. If not
                 provided, the current time will be used.
 
         Raises:
-            ValueError: If token is a string and token_type is not provided.
+            ValueError: If the `token` provided is a string and `token_type` is
+                not provided.
         """
-        if isinstance(token, Token):
-            self._tokens[token.token_type] = token
-            if token.token_type == TOKENS.GTOKEN:
-                self.nso._gtoken = token.token
-            return
-        if token_type is None:
-            raise ValueError("token_type must be provided if token is a str.")
         if timestamp is None:
             timestamp = time.time()
-        token_obj = Token(token, token_type, timestamp)
-        if token_obj.token_type == TOKENS.GTOKEN:
-            self.nso._gtoken = token_obj.token
-        self._tokens[token_type] = token_obj
+        if isinstance(token, str) and token_type is None:
+            raise ValueError(
+                "arg token_type must be provided if token is a str."
+            )
+        elif isinstance(token, str):
+            token = Token(token, token_type, timestamp)
+
+        self._tokens[token.token_type] = token
+        if token.token_type == TOKENS.GTOKEN:
+            self.nso._gtoken = token.token
+        elif token.token_type == TOKENS.SESSION_TOKEN:
+            self.nso._session_token = token.token
+
+        return
 
     @overload
     def get(self, token_type: str, full_token: Literal[False] = ...) -> str:
