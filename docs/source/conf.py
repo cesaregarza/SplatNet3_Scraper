@@ -9,11 +9,12 @@ import pathlib
 import sys
 
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
+import splatnet3_scraper
 
 project = "SplatNet 3 Scraper"
 copyright = "2023, Cesar Eduardo Garza"
 author = "Cesar Eduardo Garza"
-release = "0.5.1"
+release = splatnet3_scraper.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
