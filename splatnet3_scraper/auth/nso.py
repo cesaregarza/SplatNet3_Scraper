@@ -186,7 +186,7 @@ class NSO:
 
         Returns:
             bytes: The auth state, without padding. This is used within the
-            login flow to verify that the user is who they say they are.
+                login flow to verify that the user is who they say they are.
         """
         if self._state is None:
             self._state = self.generate_new_state()
@@ -197,7 +197,7 @@ class NSO:
 
         Returns:
             bytes: The auth state, without padding. A random 36 byte string
-            that is base64url encoded.
+                that is base64url encoded.
         """
         return base64.urlsafe_b64encode(os.urandom(36))
 
@@ -211,7 +211,7 @@ class NSO:
 
         Returns:
             bytes: The code verifier, without padding. This is used within the
-            login flow to verify that the user is who they say they are.
+                login flow to verify that the user is who they say they are.
         """
         if self._verifier is None:
             self._verifier = self.generate_new_verifier()
@@ -276,7 +276,7 @@ class NSO:
 
         Returns:
             dict[str, str]: The headers to use for the Nintendo Switch Online
-            requests.
+                requests.
         """
         return {
             "Host": "accounts.nintendo.com",
@@ -346,7 +346,7 @@ class NSO:
 
         Returns:
             str: The session token code. This is *NOT* the session token, but is
-            used to obtain the session token.
+                used to obtain the session token.
         """
         return uri.split("&")[1][len("session_token_code=") :]
 
@@ -397,10 +397,11 @@ class NSO:
 
         Returns:
             requests.Response: The response from Nintendo's servers. This is
-            *NOT* the user access token, the full response is returned since it
-            contains more information than just the user access token that is
-            used elsewhere in the authentication process, specifically the
-            ``id_token`` which is used to obtain the user's gtoken.
+                *NOT* the user access token, the full response is returned since
+                it contains more information than just the user access token
+                that is used elsewhere in the authentication process,
+                specifically the ``id_token`` which is used to obtain the user's
+                gtoken.
         """
         header = {
             "Host": "accounts.nintendo.com",
@@ -433,7 +434,7 @@ class NSO:
 
         Returns:
             dict[str, str]: The user information. This includes the user's set
-            language, country, and birthday.
+                language, country, and birthday.
         """
         # Get user information
         url = "https://api.accounts.nintendo.com/2.0.0/users/me"
@@ -486,7 +487,7 @@ class NSO:
 
         Returns:
             str: The gtoken. This is used to authenticate requests to the
-            Nintendo Switch Online API. This token is valid for 2 hours.
+                Nintendo Switch Online API. This token is valid for 2 hours.
         """
         f_token_url = f_token_url if f_token_url is not None else IMINK_URL
         # Get user access token
@@ -616,8 +617,8 @@ class NSO:
 
         Returns:
             requests.Response: The response containing the `splatoon_token`.
-            This response contains a JSON with the following path to the token:
-            `result.webApiServerCredential.accessToken`.
+                This response contains a JSON with the following path to the
+                token: `result.webApiServerCredential.accessToken`.
         """
         id_token = user_access_response.json()["id_token"]
         f_token, request_id, timestamp = self.get_ftoken(
@@ -721,9 +722,9 @@ class NSO:
 
         Returns:
             requests.Response: The response from Nintendo's servers containing
-            the splatoon token. This response contains a JSON with the following
-            path to the token:
-            `result.webApiServerCredential.accessToken`.
+                the splatoon token. This response contains a JSON with the
+                following path to the token: 
+                `result.webApiServerCredential.accessToken`.
         """
         f_token = body["parameter"]["f"]
         header = {
@@ -794,8 +795,8 @@ class NSO:
 
         Returns:
             str: The bullet token. This token is required to make any requests
-            to SplatNet 3, and is valid for 6 hours and 30 minutes after it is
-            obtained.
+                to SplatNet 3, and is valid for 6 hours and 30 minutes after it
+                is obtained.
         """
         user_agent = (
             user_agent if user_agent is not None else DEFAULT_USER_AGENT

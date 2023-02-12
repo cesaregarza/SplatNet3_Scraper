@@ -65,7 +65,7 @@ class Token:
 
         Returns:
             bool: True if the token is valid (not None and not an empty string)
-            False otherwise.
+                False otherwise.
         """
         return (self.token is not None) and (self.token != "")
 
@@ -105,7 +105,7 @@ class Token:
 
         Returns:
             str: A string representation of the time left before the token
-            expires.
+                expires.
         """
         time_left = self.time_left
         if time_left <= 0:
@@ -257,7 +257,7 @@ class TokenManager:
 
         Returns:
             str | Token: The token, either as a string or a `Token` object as
-            defined by the `full_token` argument.
+                defined by the `full_token` argument.
         """
         token_obj = self._tokens.get(token_type, None)
         if token_obj is None:
@@ -448,7 +448,7 @@ class TokenManager:
 
         Returns:
             TokenManager: A newly created token manager with the tokens loaded
-            and the origin of the token manager set to "config_file".
+                and the origin of the token manager set to "config_file".
         """
         config = configparser.ConfigParser()
         config.read(path)

@@ -49,8 +49,8 @@ class GraphQLQueries:
 
         Returns:
             dict[str, str]: The hashes for the GraphQL queries. The keys are
-            the names of the queries and the values are the most up to date
-            hashes for the queries.
+                the names of the queries and the values are the most up to date
+                hashes for the queries.
         """
         response = self.session.get(GRAPH_QL_REFERENCE_URL)
         hash_map = response.json()["graphql"]["hash_map"]
