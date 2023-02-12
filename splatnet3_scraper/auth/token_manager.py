@@ -3,7 +3,7 @@ import json
 import os
 import re
 import time
-from typing import Literal, cast, overload, Any
+from typing import Any, Literal, cast, overload
 
 import requests
 
@@ -478,7 +478,7 @@ class TokenManager:
     def from_text_file(cls, path: str) -> "TokenManager":
         """Loads tokens from a text file, particularly s3s config files. Not
         recommended for use, but here for compatibility with s3s config files.
-        
+
         Requires the text file to be a JSON file that contains a "session_token"
         key. The value of the "session_token" key will be used as the session
         token. If the text file also contains an "acc_loc" key, the value of
@@ -614,8 +614,8 @@ class TokenManager:
         return token.is_valid
 
     def test_tokens(self, user_agent: str | None = None) -> None:
-        """Tests the tokens. 
-        
+        """Tests the tokens.
+
         Checks using the `token_is_valid` method` to see whether the tokens need
         to be regenerated. If so, the tokens will be regenerated with the
         appropriate `generate_*` method. Once the tokens are regenerated, it

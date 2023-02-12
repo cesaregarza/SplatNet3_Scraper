@@ -32,7 +32,7 @@ class GraphQLQueries:
         GraphQL queries and stores them in the hash_map attribute. The hashes
         are stored in a dictionary where the keys are the names of the queries
         and the values are the hashes.
-        """        
+        """
         self.session = requests.Session()
         self.hash_map = self.get_hashes()
 

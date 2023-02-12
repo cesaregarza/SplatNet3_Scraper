@@ -271,8 +271,8 @@ class NSO:
 
         Args:
             user_agent (str): The user agent to use. Any user agent can be used,
-            but it is recommended to use the default user agent provided by
-            ``splatnet3_scraper.constants.DEFAULT_USER_AGENT``.
+                but it is recommended to use the default user agent provided by
+                ``splatnet3_scraper.constants.DEFAULT_USER_AGENT``.
 
         Returns:
             dict[str, str]: The headers to use for the Nintendo Switch Online
