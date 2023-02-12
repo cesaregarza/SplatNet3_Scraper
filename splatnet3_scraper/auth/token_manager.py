@@ -3,7 +3,7 @@ import json
 import os
 import re
 import time
-from typing import Literal, cast, overload
+from typing import Literal, cast, overload, Any
 
 import requests
 
@@ -240,19 +240,24 @@ class TokenManager:
         ...
 
     def get(self, token_type: str, full_token: bool = False) -> str | Token:
-        """Gets a token from the manager. If full_token is True, the Token
-        object will be returned. Otherwise, the token string will be returned.
+        """Gets a token from the manager given a token type.
+
+        If `full_token` is True, the full `Token` object will be returned.
+        Otherwise, just the value of the token will be returned. If the token
+        type is not found, a ValueError will be raised.
 
         Args:
-            token_type (str): The type of token to get.
-            full_token (bool): Whether to return the full Token object or just
-                the token string.
+            token_type (str): The type of the token to get, as defined in the
+                `Token.token_type` field.
+            full_token (bool): Whether to return the full `Token` object or just
+                the value of the token. Defaults to False.
 
         Raises:
-            ValueError: If the token type is not found.
+            ValueError: If the given token type is not found in the manager.
 
         Returns:
-            str | Token: The token or Token object.
+            str | Token: The token, either as a string or a `Token` object as
+            defined by the `full_token` argument.
         """
         token_obj = self._tokens.get(token_type, None)
         if token_obj is None:
@@ -262,30 +267,45 @@ class TokenManager:
         return token_obj.token
 
     @property
-    def data(self) -> dict[str, str]:
-        """Returns the data stored in the manager.
+    def data(self) -> dict[str, Any]:
+        """Returns the full data stored in the manager as a dictionary. This
+        data is not the same as the tokens stored in the manager, but rather
+        additional data that can be used in other places. Examples of keys that
+        might be stored in this dictionary are the user's `country`, and
+        `language` as defined by the Nintendo Account.
 
         Returns:
-            dict[str, str]: The data stored in the manager.
+            dict[str, Any]: The data stored in the manager as a dictionary.
         """
         return self._data
 
     def add_session_token(self, token: str) -> None:
-        """Adds a session token to the manager.
+        """Adds a session token to the manager. This is a convenience method
+        that will also set the session token in the NSO class. This
+        functionality is already present in the `add_token` method, so this
+        method might be removed in the future.
 
         Args:
-            token (str): The session token to add.
+            token (str): The session token to add to the manager. This field
+                might also be known as the "access token" or "auth token" among
+                other names. This token is used to authenticate with Nintendo
+                services, and is required to query the SplatNet 3 API.
         """
         self.add_token(token, TOKENS.SESSION_TOKEN)
         self.nso._session_token = token
 
     def generate_gtoken(self) -> None:
-        """Generates a gtoken from the NSO class and adds it to the manager.
-        Requires a session token to already be set.
+        """Generates a new gtoken from the internal NSO class and adds it to the
+        manager. This is a convenience method that will also set the gtoken in
+        the NSO class. This function requires a session token to already be
+        set, and will raise a ValueError if it is not.
 
         Raises:
             ValueError: If the session token has not been set.
-            NintendoException: If the user info could not be retrieved.
+            NintendoException: In the unlikely event that the gtoken has made it
+                through the NSO class but the user info was not set, this error
+                provides a safety net to identify that there was a problem with
+                the gtoken generation. Should not be raised in normal use.
         """
         if TOKENS.SESSION_TOKEN not in self._tokens:
             raise ValueError(
@@ -306,10 +326,12 @@ class TokenManager:
 
     @retry(times=1, exceptions=SplatNetException)
     def generate_bullet_token(self) -> None:
-        """Generates a bullet token from the NSO class and adds it to the
-        manager. If a gtoken has not been generated, one will be generated
-        before generating the bullet token. Requires a session token to already
-        be set.
+        """Generates a new bullet token from the internal NSO class and adds it
+        to the manager. This is a convenience method that will also generate a
+        gtoken if one has not already been generated, or if the user info has
+        not been set. This function requires a session token to already be set,
+        and will raise a ValueError if it is not. If the bullet token is
+        unable to be generated, a SplatNetException will be raised.
 
         Raises:
             ValueError: If the session token has not been set.
@@ -333,8 +355,11 @@ class TokenManager:
             )
 
     def generate_all_tokens(self) -> None:
-        """Generates all tokens from the NSO class and adds them to the
-        manager. Requires a session token to already be set.
+        """Generates all tokens that can be generated from the manager. This
+        is a convenience method that will call the `generate_gtoken` and
+        `generate_bullet_token` methods in order. This function requires a
+        session token to already be set, and will raise the errors that those
+        methods raise if a session token is not set.
         """
         self.generate_gtoken()
         self.generate_bullet_token()
@@ -343,8 +368,14 @@ class TokenManager:
     def from_session_token(cls, session_token: str) -> "TokenManager":
         """Creates a token manager from a session token.
 
+        Given a session token, this method will create a token manager and add
+        a session token to it. Additionally, it will flag the origin of the
+        session token as "session_token" so that it can be saved to a config
+        file later.
+
         Args:
-            session_token (str): The session token to use.
+            session_token (str): The session token to use to instantiate the
+                `TokenManager`.
 
         Returns:
             TokenManager: The token manager with the session token added.
@@ -385,14 +416,39 @@ class TokenManager:
     def from_config_file(cls, path: str) -> "TokenManager":
         """Loads tokens from a config file.
 
+        Given a path to a config file, this method will create a token manager
+        and add the tokens found in the config file to it. Additionally, it
+        will flag the origin of the tokens as "config_file" so that they can be
+        saved to a config file later. The config file must be in the format of
+        the standard `configparser` library, and must have a "tokens" section.
+        The "tokens" section must have a "session_token" option, and may have
+        "gtoken" and "bullet_token" options. An example config file is shown
+        below:
+
+        >>> [tokens]
+        ... session_token = SESSION_TOKEN
+        ... gtoken = GTOKEN
+        ... bullet_token = BULLET_TOKEN
+        ...
+        ... [data]
+        ... country = US
+        ... language = en-US
+        ...
+        ... [options]
+        ... user_agent = USER_AGENT
+
+        Tests the tokens before returning the token manager using the
+        `test_tokens` method.
+
         Args:
             path (str): The path to the config file.
 
         Raises:
-            ValueError: If the config file does not have a 'tokens' section.
+            ValueError: If the config file does not have a `tokens` section.
 
         Returns:
-            TokenManager: The token manager with the tokens loaded.
+            TokenManager: A newly created token manager with the tokens loaded
+            and the origin of the token manager set to "config_file".
         """
         config = configparser.ConfigParser()
         config.read(path)
@@ -420,14 +476,23 @@ class TokenManager:
 
     @classmethod
     def from_text_file(cls, path: str) -> "TokenManager":
-        """Loads tokens from a text file. Not recommended, but here for
-        compatability with s3s config files.
+        """Loads tokens from a text file, particularly s3s config files. Not
+        recommended for use, but here for compatibility with s3s config files.
+        
+        Requires the text file to be a JSON file that contains a "session_token"
+        key. The value of the "session_token" key will be used as the session
+        token. If the text file also contains an "acc_loc" key, the value of
+        the "acc_loc" key will be used to set the language and country of the
+        data in the token manager.
+
+        Tests the tokens before returning the token manager using the
+        `test_tokens` method.
 
         Args:
             path (str): The path to the text file.
 
         Raises:
-            ValueError: If the session token is not found in the text file.
+            ValueError: If the session token is not found in the JSON file.
 
         Returns:
             TokenManager: The token manager with the tokens loaded.
@@ -455,6 +520,21 @@ class TokenManager:
     @classmethod
     def from_env(cls) -> "TokenManager":
         """Loads tokens from environment variables.
+
+        This method will create a token manager and add the tokens found in the
+        environment variables to it. The environment variables that are
+        supported are:
+
+        - SN3S_SESSION_TOKEN
+        - SN3S_GTOKEN
+        - SN3S_BULLET_TOKEN
+
+        The session token environment variable is required, and if it is not
+        set, a `ValueError` will be raised. The other environment variables are
+        optional and will be generated if they are not set.
+
+        Tests the tokens before returning the token manager using the
+        `test_tokens` method.
 
         Raises:
             ValueError: If the session token environment variable is not set.
@@ -484,6 +564,14 @@ class TokenManager:
     def save(self, path: str | None = None) -> None:
         """Saves the tokens to a config file.
 
+        Uses the `configparser` module to save the tokens to a config file.
+        The config file will be saved to the path specified by the `path`
+        argument. If the `path` argument is not specified, the config file
+        will be saved to the current working directory with the name
+        `.splatnet3_scraper`. Does not consider the origin of the tokens, as it
+        is assumed that this method will only be called when the user wants to
+        save the tokens to disk.
+
         Args:
             path (str): The path to the config file.
         """
@@ -503,7 +591,15 @@ class TokenManager:
             config.write(configfile)
 
     def token_is_valid(self, token_type: str) -> bool:
-        """Checks if a token is valid.
+        """Given a token type, checks if the token is valid.
+
+        This method will check if the token is valid by checking if the token
+        is expired. This method will not regenerate the token if it is invalid.
+        As mentioned in the `Token.is_valid` property, this method will not
+        check if the token is valid by making a request to the API, but rather
+        checks if the token is likely to be expired by comparing the known
+        expiration time of the token to the current time. If the token type is
+        not found, this method will return False.
 
         Args:
             token_type (str): The type of token to check.
@@ -518,11 +614,20 @@ class TokenManager:
         return token.is_valid
 
     def test_tokens(self, user_agent: str | None = None) -> None:
-        """Tests the tokens by making a request to the GraphQL endpoint and
-        regenerate tokens if they are invalid.
+        """Tests the tokens. 
+        
+        Checks using the `token_is_valid` method` to see whether the tokens need
+        to be regenerated. If so, the tokens will be regenerated with the
+        appropriate `generate_*` method. Once the tokens are regenerated, it
+        will make a request to the API to check if the tokens are valid. If the
+        request fails, the `generate_all_tokens` method will be called. If the
+        requests succeeds, nothing will happen. Once this method is called, the
+        `TokenManager` can be assumed to have valid tokens and can be used to
+        make requests to the API.
 
         Args:
-            user_agent (str): The user agent to use for the request.
+            user_agent (str): The user agent to use when making the request to
+                the API. If not specified, the default user agent will be used.
 
         Raises:
             ValueError: If the session token is not set.
