@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import re
-from typing import cast
+from typing import Callable, TypeAlias, cast
 
 import requests
 
@@ -28,37 +28,48 @@ version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
 )
 
+FToken_Gen: TypeAlias = Callable[[str, str, str], tuple[str, str, str]]
+
 
 class NSO:
     """The NSO class contains all the logic to proceed through the login flow.
     This class also holds various properties that are used to make requests to
-    the Nintendo Switch Online API. Login flow is roughly as follows:
+    the Nintendo Switch Online API. Login flow is roughly as follows, assuming
+    the user has never generated a session token before:
 
         1.  Initialize a requests session and store it.
         2.  Generate a random state and S256 code challenge that will be used
-                to obtain the "session_token". Store them for later use.
+            to obtain the "session_token". Store them for later use.
         3.  Generate a login URL using the state and code challenge that the
-                user will open in their browser. The user will then copy a link
-                and feed it back to the program.
+            user will open in their browser. The user will then copy a link and
+            feed it back to the program.
         4.  Parse the URI to obtain the session token code, then use it
-                alongside the code challenge to obtain the "session_token".
-                Store it for later use. The session token is valid for 2 years
-                and can be revoked by the user.
-        5.  Use the session token to obtain a user access response. Store it for
-                later use. The user access response contains two tokens: an "id"
-                token and a "user access" token.
+            alongside the code challenge to obtain the "session_token". Store it
+            for later use. The session token is valid for 2 years and can be
+            revoked by the user.
+        5.  Use the session token to obtain a user access response from
+            Nintendo. This response will contain an "id" token and a user access
+            token. Store the full response for later use.
         6.  Use the user access token to obtain the user information. This is
-                required to obtain the "f" token. Store it for later use.
-        7.  Use the user information to obtain an "f" token using the first
-                hashing method. This will also return a request ID and a
-                timestamp. These do not need to be stored.
-        8.  Use the "f" token, user information, and the id token to obtain a
-                splatoon token. This token will contain a new "id" token.
-        9.  Use the new "id" token to obtain the g token using the second
-                hashing method. Store it for later use. The g token is valid for
-                6 hours and 30 minutes.
-        10. Use the g token and user information to obtain a bullet token. This
-                token is valid for 2 hours.
+            required to obtain the first "f" token, for the Nintendo Switch
+            Online API. This is a message authentication code generated from the
+            timestamp and id token in an obscure manner and will be necessary
+            to generate the API access token.
+        7.  Use the Nintendo-obtained "id" token to obtain the first "f" token,
+            for the Nintendo Switch Online API. The "f" token will also return a
+            timestamp and a request ID.
+        8.  Use the first "f" token, user information, and the id token to
+            obtain the API access token.
+        9.  Use the new API token to obtain the second "f" token, for the
+            Splatoon API. This is a message authentication code generated from
+            the timestamp and id token in an obscure manner and will be
+            necessary to generate the Splatoon API access token. This is a
+            different "f" token than the one obtained in step 7, and is not
+            interchangeable, do not try to use the first "f" token here.
+        10. Use the second "f" token, the id token, the request ID and timestamp
+            from step 9, and the id ``4834290508791808`` to obtain the G token.
+        11. Use the g token and user information to obtain a bullet token. This
+            token is valid for 2 hours.
 
     Once the login flow is complete, the NSO class contains all the necessary
     values to regenerate the tokens. To minimize the number of objects to track,
@@ -125,6 +136,7 @@ class NSO:
         self._id_token: str | None = None
         self._gtoken: str | None = None
         self._user_info: dict[str, str] | None = None
+        self._f_token_function: FToken_Gen = self.get_ftoken
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -516,6 +528,46 @@ class NSO:
         self._gtoken = gtoken
         return gtoken
 
+    def set_new_f_token_function(
+        self, new_function: FToken_Gen | None = None
+    ) -> None:
+        """Sets the function used to generate the ftoken.
+
+        This method will set the function used to generate the ftoken. The
+        function must take the following arguments:
+
+        1. The ftoken generation url.
+        2. The user's id token.
+        3. The step number (either 1 or 2)
+
+        The function must return a tuple containing the following:
+
+        1. The ftoken.
+        2. The request id.
+        3. The timestamp.
+
+        Args:
+            new_function (FToken_Gen): The new function to use to generate the
+                ftoken. This function must take the following arguments:
+
+                1. The ftoken generation url.
+                2. The user's id token.
+                3. The step number (either 1 or 2)
+
+                The function must return a tuple containing the following:
+
+                1. The ftoken.
+                2. The request id.
+                3. The timestamp.
+
+            If this argument is not provided, the default ftoken generation
+            method will be restored.
+        """
+        if new_function is None:
+            self._f_token_function = self.get_ftoken
+        else:
+            self._f_token_function = new_function
+
     def get_ftoken(
         self, f_token_url: str, id_token: str, step: int
     ) -> tuple[str, str, str]:
@@ -621,7 +673,7 @@ class NSO:
                 token: `result.webApiServerCredential.accessToken`.
         """
         id_token = user_access_response.json()["id_token"]
-        f_token, request_id, timestamp = self.get_ftoken(
+        f_token, request_id, timestamp = self._f_token_function(
             f_token_url, id_token, 1
         )
 
@@ -667,7 +719,7 @@ class NSO:
         Returns:
             str: The gtoken from the response.
         """
-        f_token, request_id, timestamp = self.get_ftoken(
+        f_token, request_id, timestamp = self._f_token_function(
             f_token_url, id_token, 2
         )
 
@@ -723,7 +775,7 @@ class NSO:
         Returns:
             requests.Response: The response from Nintendo's servers containing
                 the splatoon token. This response contains a JSON with the
-                following path to the token: 
+                following path to the token:
                 `result.webApiServerCredential.accessToken`.
         """
         f_token = body["parameter"]["f"]

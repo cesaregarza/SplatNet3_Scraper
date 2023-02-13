@@ -163,7 +163,7 @@ class QueryResponse:
 
         Returns:
             str: The string representation of the `QueryResponse`.
-        """        
+        """
         out_str = "QueryResponse("
         if self._metadata is None:
             return out_str + ")"
@@ -199,7 +199,7 @@ class QueryResponse:
 
         Returns:
             bool: Whether the `QueryResponse` is equal to the other object.
-        """        
+        """
         if not isinstance(other, QueryResponse):
             return False
         return self._data == other._data and self._metadata == other._metadata
@@ -225,7 +225,7 @@ class QueryResponse:
 
         Returns:
             QueryResponse: The `QueryResponse` object containing the data.
-        """        
+        """
         if isinstance(key, tuple):
             for k in key:
                 self = self[k]
@@ -285,7 +285,7 @@ class QueryResponse:
 
         Yields:
             Iterator[Any]: The values in the data.
-        """        
+        """
         keys = self.keys()
         for key in keys:
             yield self[key]

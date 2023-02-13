@@ -32,6 +32,7 @@ Enter your Nintendo Switch Online credentials and you will be redirected to a
 page that looks like this:
 
 .. image:: ../../assets/login_url.png
+    :align: center
 
 Right-click on the red "Select this account" button and select "Copy link
 address". You may click the button if you wish, but it will not work as the URL
