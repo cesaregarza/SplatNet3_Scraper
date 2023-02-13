@@ -454,13 +454,14 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "post", mock_post)
         bullet_token = nso.get_bullet_token("gtoken", user_info)
         assert bullet_token == "bullet_token"
-    
+
     def test_set_new_f_token_function(self):
         nso = NSO.new_instance()
         assert nso._f_token_function == nso.get_ftoken
-        
+
         def new_function(*args, **kwargs):
             return "new_function"
+
         # Set
         nso.set_new_f_token_function(new_function)
         assert nso._f_token_function == new_function

@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import re
-from typing import Callable, TypeAlias, cast
+from typing import Callable, Literal, TypeAlias, cast
 
 import requests
 
@@ -28,7 +28,9 @@ version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
 )
 
-FToken_Gen: TypeAlias = Callable[[str, str, str], tuple[str, str, str]]
+FToken_Gen: TypeAlias = Callable[
+    [str, str, Literal[1] | Literal[2]], tuple[str, str, str]
+]
 
 
 class NSO:
@@ -118,6 +120,11 @@ class NSO:
             -   ``_user_info``: A stored user information dictionary. This is
                 obtained during the login flow and is used to obtain the "f"
                 token.
+            -   ``_f_token_function``: A stored function that is used to obtain
+                the "f" token. This function is set to the ``get_ftoken``
+                method by default, and can be set with the
+                ``set_new_f_token_function`` method to use a user-defined
+                function if desired.
 
 
         Args:
@@ -569,7 +576,7 @@ class NSO:
             self._f_token_function = new_function
 
     def get_ftoken(
-        self, f_token_url: str, id_token: str, step: int
+        self, f_token_url: str, id_token: str, step: Literal[1] | Literal[2]
     ) -> tuple[str, str, str]:
         """Given the f_token_url, id_token, and step, returns the f_token,
         request_id, and timestamp from the response.
@@ -607,8 +614,9 @@ class NSO:
                 identify the user. This cannot be used to identify the user
                 without the user's access token, which is not provided to the
                 ftoken generation URL.
-            step (int): Step number, 1 or 2. This is used by the ftoken
-                generation URL to determine which step to perform.
+            step (Literal[1] | Literal[2]): The step number. This is either 1
+                or 2. This is used to identify the step in the ftoken
+                generation process.
 
         Raises:
             FTokenException: In the case that the ftoken cannot be obtained

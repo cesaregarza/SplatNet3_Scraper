@@ -216,14 +216,16 @@ class TokenManager:
             raise ValueError(
                 "arg token_type must be provided if token is a str."
             )
-        elif isinstance(token, str):
-            token = Token(token, token_type, timestamp)
+        elif isinstance(token, str) and token_type is not None:
+            token_object = Token(token, token_type, timestamp)
+        elif isinstance(token, Token):
+            token_object = token
 
-        self._tokens[token.token_type] = token
-        if token.token_type == TOKENS.GTOKEN:
-            self.nso._gtoken = token.token
-        elif token.token_type == TOKENS.SESSION_TOKEN:
-            self.nso._session_token = token.token
+        self._tokens[token_object.token_type] = token_object
+        if token_object.token_type == TOKENS.GTOKEN:
+            self.nso._gtoken = token_object.token
+        elif token_object.token_type == TOKENS.SESSION_TOKEN:
+            self.nso._session_token = token_object.token
 
         return
 
