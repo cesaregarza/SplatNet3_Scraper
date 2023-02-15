@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "splatnet3_scraper"
-version = "0.5.2"
+version = "0.5.3"
 description = "Scraper for SplatNet 3 for Splatoon 3"
 authors = ["Cesar E Garza <cesar@cegarza.com>"]
 readme = "README.md"

@@ -1,5 +1,6 @@
 import hashlib
 import os
+from unittest.mock import patch
 
 import pytest
 import requests
@@ -10,11 +11,21 @@ from splatnet3_scraper.auth.exceptions import (
     SplatNetException,
 )
 from splatnet3_scraper.auth.nso import NSO
-from splatnet3_scraper.constants import APP_VERSION_FALLBACK
+from splatnet3_scraper.constants import APP_VERSION_FALLBACK, IMINK_URL
 from tests.mock import MockResponse
+
+nso_path = "splatnet3_scraper.auth.nso.NSO"
+nso_mangled = "splatnet3_scraper.auth.nso.NSO._NSO"
 
 
 class TestNSO:
+
+    mock_user_data = {
+        "language": "test_language",
+        "country": "test_country",
+        "birthday": "test_birthday",
+    }
+
     def get_new_nso(
         self,
         state: str | None = None,
@@ -44,10 +55,12 @@ class TestNSO:
         for key in nso_variables:
             if key == "session":
                 assert isinstance(nso_variables[key], requests.Session)
+            elif key == "_f_token_function":
+                assert nso_variables[key] == nso.get_ftoken
             else:
                 assert nso_variables[key] is None
 
-    def test_generate_version(self, monkeypatch):
+    def test_generate_version(self, monkeypatch: pytest.MonkeyPatch):
         test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
         def mock_get(*args, **kwargs):
@@ -66,7 +79,7 @@ class TestNSO:
         version = nso.get_version()
         assert version == APP_VERSION_FALLBACK
 
-    def test_version_property(self, monkeypatch):
+    def test_version_property(self, monkeypatch: pytest.MonkeyPatch):
         test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
         def mock_get(*args, **kwargs):
@@ -206,7 +219,7 @@ class TestNSO:
         nso = NSO.new_instance()
         assert nso.generate_login_url() == "https://test.com/"
 
-    def test_get_session_token(self, monkeypatch):
+    def test_get_session_token(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get(*args, **kwargs):
             return MockResponse(200, json={"session_token": "test"})
 
@@ -216,17 +229,18 @@ class TestNSO:
         session_token = nso.get_session_token("session_code")
         assert session_token == "test"
 
-    def test_get_user_access_token(self, monkeypatch):
+    def test_get_user_access_token(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get(*args, **kwargs):
-            return requests.Response()
+            return MockResponse(200, json={"access_token": "test"})
 
         monkeypatch.setattr(requests.Session, "post", mock_get)
         nso = self.get_new_nso()
 
         access_token = nso.get_user_access_token("test")
-        assert isinstance(access_token, requests.Response)
+        assert isinstance(access_token, dict)
+        assert access_token["access_token"] == "test"
 
-    def test_user_info(self, monkeypatch):
+    def test_user_info(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get(*args, **kwargs):
             return MockResponse(200, json={"test": "test"})
 
@@ -235,7 +249,7 @@ class TestNSO:
         user_info = nso.get_user_info("test")
         assert user_info == {"test": "test"}
 
-    def test_get_ftoken(self, monkeypatch):
+    def test_get_ftoken(self, monkeypatch: pytest.MonkeyPatch):
         def mock_post(*args, **kwargs):
             out_json = {
                 "f": "test_f",
@@ -260,165 +274,133 @@ class TestNSO:
         with pytest.raises(FTokenException):
             nso.get_ftoken("test", "test", "test")
 
-    def test_get_splatoon_token(self, monkeypatch):
+    def test_get_web_service_access_token(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         def mock_post(*args, **kwargs):
-            return MockResponse(200, json={})
+            out_json = {
+                "result": {"webApiServerCredential": {"accessToken": "test"}}
+            }
+            return MockResponse(200, json=out_json)
 
         nso = self.get_new_nso(version="5.0.0")
         monkeypatch.setattr(requests.Session, "post", mock_post)
 
-        splatoon_token = nso.get_splatoon_token({"parameter": {"f": "test"}})
-        assert isinstance(splatoon_token, MockResponse)
-        assert splatoon_token.json() == {}
+        access_token = nso.get_web_service_access_token(
+            "test_id_token",
+            self.mock_user_data,
+            "test_f_token",
+            "test_request_id",
+            "test_timestamp",
+        )
+        assert access_token == "test"
 
-    def test_f_token_generation_step_1(self, monkeypatch):
-        user_access_response = MockResponse(200, json={"id_token": "id_token"})
-
-        def mock_get_ftoken(*args, **kwargs):
-            # Make sure it's using the correct hash method
-            assert args[3] == 1
-            return "f_token", "request_id", "timestamp"
-
-        def generate_mock_get_splatoon_token(out_json):
-            def mock_get_splatoon_token(self, body):
-                assert "parameter" in body
-                assert body["parameter"]["f"] == "f_token"
-                assert body["parameter"]["language"] == "language"
-                assert body["parameter"]["naBirthday"] == "birthday"
-                assert body["parameter"]["naCountry"] == "country"
-                assert body["parameter"]["naIdToken"] == "id_token"
-                assert body["parameter"]["requestId"] == "request_id"
-                assert body["parameter"]["timestamp"] == "timestamp"
-
-                return MockResponse(200, json=out_json)
-
-            return mock_get_splatoon_token
-
-        valid_json = {
-            "result": {
-                "webApiServerCredential": {
-                    "accessToken": "access_token",
-                }
-            }
-        }
-        mock_get_splatoon_token = generate_mock_get_splatoon_token(valid_json)
-        monkeypatch.setattr(NSO, "get_ftoken", mock_get_ftoken)
-        monkeypatch.setattr(NSO, "get_splatoon_token", mock_get_splatoon_token)
-
+    def test_g_token_generation_phase_1(self):
         nso = self.get_new_nso()
 
-        user_info = {
-            "language": "language",
-            "birthday": "birthday",
-            "country": "country",
-        }
-
-        ftoken = nso.f_token_generation_step_1(
-            user_access_response, user_info, "test_url"
-        )
-        assert isinstance(ftoken, MockResponse)
-        assert (
-            ftoken.json()["result"]["webApiServerCredential"]["accessToken"]
-            == "access_token"
-        )
-
-        # Fail
-        invalid_json = {"result": {}}
-        mock_get_splatoon_token = generate_mock_get_splatoon_token(invalid_json)
-        monkeypatch.setattr(NSO, "get_splatoon_token", mock_get_splatoon_token)
-        with pytest.raises(KeyError):
-            nso.f_token_generation_step_1(
-                user_access_response, user_info, "test_url"
+        with (
+            patch.object(nso, "_f_token_function") as mock_f_token_function,
+            patch(nso_path + ".get_web_service_access_token") as mock_get_wsat,
+        ):
+            mock_f_token_function.return_value = (
+                "test_f_token",
+                "test_request_id",
+                "test_timestamp",
+            )
+            mock_get_wsat.return_value = "test_access_token"
+            wsat = nso.g_token_generation_phase_1(
+                "test_id_token", self.mock_user_data, "test_f_token_url"
+            )
+            assert wsat == "test_access_token"
+            mock_f_token_function.assert_called_once_with(
+                "test_f_token_url", "test_id_token", 1
+            )
+            mock_get_wsat.assert_called_once_with(
+                "test_id_token",
+                self.mock_user_data,
+                "test_f_token",
+                "test_request_id",
+                "test_timestamp",
             )
 
-    def test_f_token_generation_step_2(self, monkeypatch):
-        def mock_get_ftoken(*args, **kwargs):
-            # Make sure it's using the correct hash method
-            assert args[3] == 2
-            return "f_token", "request_id", "timestamp"
-
-        def mock_post(*args, **kwargs):
-            # Make sure it's using the correct id
-            assert kwargs["json"]["parameter"]["id"] == 4834290508791808
-            out_json = {
-                "result": {
-                    "accessToken": "gtoken",
-                }
-            }
-            return MockResponse(200, json=out_json)
-
-        monkeypatch.setattr(NSO, "get_ftoken", mock_get_ftoken)
-        monkeypatch.setattr(requests.Session, "post", mock_post)
-
-        nso = self.get_new_nso(version="5.0.0")
-        gtoken = nso.f_token_generation_step_2("test_id", "test_url")
-        assert gtoken == "gtoken"
-
-    def test_get_gtoken(self, monkeypatch):
-        # User access failure
-        def mock_get_user_access_token(*args, **kwargs):
-            return MockResponse(400, json={})
-
-        monkeypatch.setattr(
-            NSO, "get_user_access_token", mock_get_user_access_token
-        )
+    def test_g_token_generation_phase_2(self):
         nso = self.get_new_nso()
-        with pytest.raises(NintendoException):
+
+        with (
+            patch.object(nso, "_f_token_function") as mock_f_token_function,
+            patch(nso_path + ".get_gtoken_request") as mock_get_gtoken,
+        ):
+            mock_f_token_function.return_value = (
+                "test_f_token",
+                "test_request_id",
+                "test_timestamp",
+            )
+            mock_get_gtoken.return_value = "test_gtoken"
+            wsat = nso.g_token_generation_phase_2(
+                "test_wsat", "test_f_token_url"
+            )
+            assert wsat == "test_gtoken"
+            mock_f_token_function.assert_called_once_with(
+                "test_f_token_url", "test_wsat", 2
+            )
+            mock_get_gtoken.assert_called_once_with(
+                "test_wsat",
+                "test_f_token",
+                "test_request_id",
+                "test_timestamp",
+            )
+
+    @pytest.mark.parametrize(
+        "f_token_url",
+        [
+            "test_url",
+            None,
+        ],
+        ids=[
+            "url_provided",
+            "url_not_provided",
+        ],
+    )
+    def test_get_gtoken(self, f_token_url):
+        expected_url = (IMINK_URL if f_token_url is None else f_token_url)
+        # User Access Failure
+        with (
+            patch(nso_path + ".get_user_access_token") as mock_guat,
+            pytest.raises(NintendoException),
+        ):
+            mock_guat.return_value = None
+            nso = self.get_new_nso()
             nso.get_gtoken("test")
 
-        def mock_get_user_access_token(*args, **kwargs):
-            out_json = {
-                "id_token": "id_token",
-                "access_token": "user_access_token",
+        # Success
+        with (
+            patch(nso_path + ".get_user_access_token") as mock_guat,
+            patch(nso_path + ".get_user_info") as mock_gui,
+            patch(nso_path + ".g_token_generation_phase_1") as mock_gtp1,
+            patch(nso_path + ".g_token_generation_phase_2") as mock_gtp2,
+        ):
+            mock_guat.return_value = {
+                "access_token": "test_user_access_token",
+                "id_token": "test_id_token",
             }
-            return MockResponse(200, json=out_json)
+            mock_gui.return_value = self.mock_user_data
+            mock_gtp1.return_value = "test_wsat"
+            mock_gtp2.return_value = "test_gtoken"
 
-        monkeypatch.setattr(
-            NSO, "get_user_access_token", mock_get_user_access_token
-        )
+            gtoken = nso.get_gtoken("test_session_token", f_token_url)
+            assert gtoken == "test_gtoken"
+            mock_guat.assert_called_once_with("test_session_token")
+            mock_gui.assert_called_once_with("test_user_access_token")
+            mock_gtp1.assert_called_once_with(
+                "test_id_token", self.mock_user_data, expected_url
+            )
+            mock_gtp2.assert_called_once_with("test_wsat", expected_url)
+            assert nso._user_access_token == "test_user_access_token"
+            assert nso._id_token == "test_id_token"
+            assert nso._user_info == self.mock_user_data
+            assert nso._gtoken == "test_gtoken"
 
-        def mock_get_user_info(*args, **kwargs):
-            return {
-                "language": "language",
-                "birthday": "birthday",
-                "country": "country",
-            }
-
-        monkeypatch.setattr(NSO, "get_user_info", mock_get_user_info)
-
-        def mock_f_token_generation_step_1(*args, **kwargs):
-            out_json = {
-                "result": {
-                    "webApiServerCredential": {
-                        "accessToken": "access_token",
-                    }
-                }
-            }
-            return MockResponse(200, json=out_json)
-
-        monkeypatch.setattr(
-            NSO, "f_token_generation_step_1", mock_f_token_generation_step_1
-        )
-
-        def mock_f_token_generation_step_2(*args, **kwargs):
-            assert args[1] == "access_token"
-            return "gtoken"
-
-        monkeypatch.setattr(
-            NSO, "f_token_generation_step_2", mock_f_token_generation_step_2
-        )
-
-        nso = self.get_new_nso()
-        gtoken = nso.get_gtoken("test")
-        assert gtoken == "gtoken"
-        assert nso._user_access_token == "user_access_token"
-        assert nso._id_token == "id_token"
-        assert nso._user_info["language"] == "language"
-        assert nso._user_info["birthday"] == "birthday"
-        assert nso._user_info["country"] == "country"
-        assert nso._gtoken == "gtoken"
-
-    def test_get_bullet_token(self, monkeypatch):
+    def test_get_bullet_token(self, monkeypatch: pytest.MonkeyPatch):
         user_info = {
             "language": "language",
             "birthday": "birthday",
@@ -452,6 +434,20 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "post", mock_post)
         bullet_token = nso.get_bullet_token("gtoken", user_info)
         assert bullet_token == "bullet_token"
+
+    def test_set_new_f_token_function(self):
+        nso = NSO.new_instance()
+        assert nso._f_token_function == nso.get_ftoken
+
+        def new_function(*args, **kwargs):
+            return "new_function"
+
+        # Set
+        nso.set_new_f_token_function(new_function)
+        assert nso._f_token_function == new_function
+        # Reset
+        nso.set_new_f_token_function()
+        assert nso._f_token_function == nso.get_ftoken
 
     # TODO: cgarza - test splatnet_web_version. This is tricky because it's a
     # decorated function, so we need to mock the underlying function without

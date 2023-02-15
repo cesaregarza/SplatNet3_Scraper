@@ -2,11 +2,11 @@ Obtaining A Session Token
 =========================
 
 To use this package, you must first obtain a valid Nintendo session token. This
-requires a Nintendo Switch Online membership and having played at least one
-online match in Splatoon 3. Neither the ``scraper`` module nor the ``query``
-module currently provide any functionality for obtaining a session token, but
-the ``auth`` module provides the functions necessary to do so through the
-:class:`NSO` class. The following example shows the first step in obtaining
+requires a Nintendo Switch Online membership and does not require having played
+at least one online match in Splatoon 3. Neither the ``scraper`` module nor the
+``query`` module currently provide any functionality for obtaining a session
+token, but the ``auth`` module provides the functions necessary to do so through
+the :class:`NSO` class. The following example shows the first step in obtaining
 a session token, which is to obtain a login URL. Details of the login flow can
 be found in the :doc:`login_flow` page.
 
@@ -32,6 +32,7 @@ Enter your Nintendo Switch Online credentials and you will be redirected to a
 page that looks like this:
 
 .. image:: ../../assets/login_url.png
+    :align: center
 
 Right-click on the red "Select this account" button and select "Copy link
 address". You may click the button if you wish, but it will not work as the URL

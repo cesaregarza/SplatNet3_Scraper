@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import re
-from typing import cast
+from typing import Callable, Literal, TypeAlias, cast
 
 import requests
 
@@ -28,37 +28,50 @@ version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
 )
 
+FToken_Gen: TypeAlias = Callable[
+    [str, str, Literal[1] | Literal[2]], tuple[str, str, str]
+]
+
 
 class NSO:
     """The NSO class contains all the logic to proceed through the login flow.
     This class also holds various properties that are used to make requests to
-    the Nintendo Switch Online API. Login flow is roughly as follows:
+    the Nintendo Switch Online API. Login flow is roughly as follows, assuming
+    the user has never generated a session token before:
 
         1.  Initialize a requests session and store it.
         2.  Generate a random state and S256 code challenge that will be used
-                to obtain the "session_token". Store them for later use.
+            to obtain the "session_token". Store them for later use.
         3.  Generate a login URL using the state and code challenge that the
-                user will open in their browser. The user will then copy a link
-                and feed it back to the program.
+            user will open in their browser. The user will then copy a link and
+            feed it back to the program.
         4.  Parse the URI to obtain the session token code, then use it
-                alongside the code challenge to obtain the "session_token".
-                Store it for later use. The session token is valid for 2 years
-                and can be revoked by the user.
-        5.  Use the session token to obtain a user access response. Store it for
-                later use. The user access response contains two tokens: an "id"
-                token and a "user access" token.
+            alongside the code challenge to obtain the "session_token". Store it
+            for later use. The session token is valid for 2 years and can be
+            revoked by the user.
+        5.  Use the session token to obtain a user access response from
+            Nintendo. This response will contain an "id" token and a user access
+            token. Store the full response for later use.
         6.  Use the user access token to obtain the user information. This is
-                required to obtain the "f" token. Store it for later use.
-        7.  Use the user information to obtain an "f" token using the first
-                hashing method. This will also return a request ID and a
-                timestamp. These do not need to be stored.
-        8.  Use the "f" token, user information, and the id token to obtain a
-                splatoon token. This token will contain a new "id" token.
-        9.  Use the new "id" token to obtain the g token using the second
-                hashing method. Store it for later use. The g token is valid for
-                6 hours and 30 minutes.
-        10. Use the g token and user information to obtain a bullet token. This
-                token is valid for 2 hours.
+            required to obtain the first "f" token, for the Nintendo Switch
+            Online API. This is a message authentication code generated from the
+            timestamp and id token in an obscure manner and will be necessary
+            to generate the API access token.
+        7.  Use the Nintendo-obtained "id" token to obtain the first "f" token,
+            for the Nintendo Switch Online API. The "f" token will also return a
+            timestamp and a request ID.
+        8.  Use the first "f" token, user information, and the id token to
+            obtain the API access token.
+        9.  Use the new API token to obtain the second "f" token, for the
+            Splatoon API. This is a message authentication code generated from
+            the timestamp and id token in an obscure manner and will be
+            necessary to generate the Splatoon API access token. This is a
+            different "f" token than the one obtained in step 7, and is not
+            interchangeable, do not try to use the first "f" token here.
+        10. Use the second "f" token, the id token, the request ID and timestamp
+            from step 9, and the id ``4834290508791808`` to obtain the G token.
+        11. Use the g token and user information to obtain a bullet token. This
+            token is valid for 2 hours.
 
     Once the login flow is complete, the NSO class contains all the necessary
     values to regenerate the tokens. To minimize the number of objects to track,
@@ -107,6 +120,11 @@ class NSO:
             -   ``_user_info``: A stored user information dictionary. This is
                 obtained during the login flow and is used to obtain the "f"
                 token.
+            -   ``_f_token_function``: A stored function that is used to obtain
+                the "f" token. This function is set to the ``get_ftoken``
+                method by default, and can be set with the
+                ``set_new_f_token_function`` method to use a user-defined
+                function if desired.
 
 
         Args:
@@ -125,6 +143,7 @@ class NSO:
         self._id_token: str | None = None
         self._gtoken: str | None = None
         self._user_info: dict[str, str] | None = None
+        self._f_token_function: FToken_Gen = self.get_ftoken
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -387,21 +406,22 @@ class NSO:
         self._session_token = session_token
         return session_token
 
-    def get_user_access_token(self, session_token: str) -> requests.Response:
+    def get_user_access_token(self, session_token: str) -> dict:
         """Obtains the user access token from the session token.
 
-        This method will obtain the user access token from the session token.
+        This method sends a request to Nintendo's servers containing the session
+        token to obtain the user access token and the ``id_token``. The user
+        access token is then used to obtain the user's data, while the
+        ``id_token`` is used to obtain the user's gtoken.
 
         Args:
             session_token (str): The session token.
 
         Returns:
-            requests.Response: The response from Nintendo's servers. This is
-                *NOT* the user access token, the full response is returned since
-                it contains more information than just the user access token
-                that is used elsewhere in the authentication process,
-                specifically the ``id_token`` which is used to obtain the user's
-                gtoken.
+            dict: The response from Nintendo's servers. This contains two keys
+                of interest: ``access_token`` and ``id_token``. The
+                ``access_token`` is used to obtain the user's data, while the
+                ``id_token`` is used to obtain the user's gtoken.
         """
         header = {
             "Host": "accounts.nintendo.com",
@@ -420,7 +440,7 @@ class NSO:
             ),
         }
         uri = "https://accounts.nintendo.com/connect/1.0.0/api/token"
-        return self.session.post(uri, headers=header, json=body)
+        return self.session.post(uri, headers=header, json=body).json()
 
     def get_user_info(self, user_access_token: str) -> dict[str, str]:
         """Obtains the user information from the user access token.
@@ -492,32 +512,70 @@ class NSO:
         f_token_url = f_token_url if f_token_url is not None else IMINK_URL
         # Get user access token
         user_access_response = self.get_user_access_token(session_token)
-        user_access_json = user_access_response.json()
         try:
             self._user_access_token = cast(
-                str, user_access_json["access_token"]
+                str, user_access_response["access_token"]
             )
-            self._id_token = user_access_json["id_token"]
+            self._id_token = cast(str, user_access_response["id_token"])
         except (KeyError, TypeError, AttributeError):
             raise NintendoException(
                 "Failed to get user access token. "
-                + f"Response: {user_access_json}"
+                + f"Response: {user_access_response}"
             )
 
         user_info = self.get_user_info(self._user_access_token)
         self._user_info = user_info
-        splatoon_response = self.f_token_generation_step_1(
-            user_access_response, user_info, f_token_url
+        web_service_access_token = self.g_token_generation_phase_1(
+            self._id_token, user_info, f_token_url
         )
-        id_token = splatoon_response.json()["result"]["webApiServerCredential"][
-            "accessToken"
-        ]
-        gtoken = self.f_token_generation_step_2(id_token, f_token_url)
+        gtoken = self.g_token_generation_phase_2(
+            web_service_access_token, f_token_url
+        )
         self._gtoken = gtoken
         return gtoken
 
+    def set_new_f_token_function(
+        self, new_function: FToken_Gen | None = None
+    ) -> None:
+        """Sets the function used to generate the ftoken.
+
+        This method will set the function used to generate the ftoken. The
+        function must take the following arguments:
+
+        1. The ftoken generation url.
+        2. The user's id token.
+        3. The step number (either 1 or 2)
+
+        The function must return a tuple containing the following:
+
+        1. The ftoken.
+        2. The request id.
+        3. The timestamp.
+
+        Args:
+            new_function (FToken_Gen): The new function to use to generate the
+                ftoken. This function must take the following arguments:
+
+                1. The ftoken generation url.
+                2. The user's id token.
+                3. The step number (either 1 or 2)
+
+                The function must return a tuple containing the following:
+
+                1. The ftoken.
+                2. The request id.
+                3. The timestamp.
+
+            If this argument is not provided, the default ftoken generation
+            method will be restored.
+        """
+        if new_function is None:
+            self._f_token_function = self.get_ftoken
+        else:
+            self._f_token_function = new_function
+
     def get_ftoken(
-        self, f_token_url: str, id_token: str, step: int
+        self, f_token_url: str, id_token: str, step: Literal[1] | Literal[2]
     ) -> tuple[str, str, str]:
         """Given the f_token_url, id_token, and step, returns the f_token,
         request_id, and timestamp from the response.
@@ -555,8 +613,9 @@ class NSO:
                 identify the user. This cannot be used to identify the user
                 without the user's access token, which is not provided to the
                 ftoken generation URL.
-            step (int): Step number, 1 or 2. This is used by the ftoken
-                generation URL to determine which step to perform.
+            step (Literal[1] | Literal[2]): The step number. This is either 1
+                or 2. This is used to identify the step in the ftoken
+                generation process.
 
         Raises:
             FTokenException: In the case that the ftoken cannot be obtained
@@ -589,25 +648,29 @@ class NSO:
         return (f_token, request_id, timestamp)
 
     @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
-    def f_token_generation_step_1(
+    def g_token_generation_phase_1(
         self,
-        user_access_response: requests.Response,
+        id_token: str,
         user_info: dict[str, str],
         f_token_url: str,
-    ) -> requests.Response:
-        """Given the user access token response and the dictionary of user info
-        returned by `get_user_info`, returns the response from the first step
-        of the f token generation process. This step is retried once if it
-        fails. This step is used to get the `splatoon_token` from Nintendo's
-        servers, which is used to get the `gtoken`. This step is retried once if
-        it fails before raising an exception.
+    ) -> str:
+        """First phase of the ``gtoken`` generation process.
+
+        This is the first phase of the ``gtoken`` generation process. This is
+        abstracted away into a separate method to allow the request to be
+        retried once in the event of a failure. This phase involves two steps:
+        first, the ``id_token`` is sent to the ``f_token_url`` in a request to
+        obtain the ``f_token``, which is a ``HMAC`` necessary to obtain the
+        ``gtoken``. The response contains three values: the ``f_token``, the
+        ``request_id``, and the ``timestamp``. These values are then sent to
+        Nintendo's servers along with the  ``id_token`` to obtain the
+        ``gtoken``.
 
         Args:
-            user_access_response (requests.Response): The response from the user
-                access token request. A different object can be passed in for
-                this parameter, but it must have a `json` method that returns a
-                dictionary with a `id_token` key that maps to the id token
-                provided by Nintendo.
+            id_token (str): ID token from user access token response. This is
+                obtained from the user access token response, and is used to
+                identify the user to Nintendo's servers. However, this cannot
+                be used to identify the user by a third party by itself.
             user_info (dict[str, str]): The dictionary of user info returned by
                 `get_user_info`. This must contain the keys `language`,
                 `birthday`, and `country`.
@@ -616,50 +679,37 @@ class NSO:
                 default URL is provided by `imink`.
 
         Returns:
-            requests.Response: The response containing the `splatoon_token`.
-                This response contains a JSON with the following path to the
-                token: `result.webApiServerCredential.accessToken`.
+            str: The Web Service Credential Access Token.
         """
-        id_token = user_access_response.json()["id_token"]
-        f_token, request_id, timestamp = self.get_ftoken(
+        f_token, request_id, timestamp = self._f_token_function(
             f_token_url, id_token, 1
         )
-
-        body = {
-            "parameter": {
-                "f": f_token,
-                "language": user_info["language"],
-                "naBirthday": user_info["birthday"],
-                "naCountry": user_info["country"],
-                "naIdToken": id_token,
-                "requestId": request_id,
-                "timestamp": timestamp,
-            }
-        }
-        splatoon_response = self.get_splatoon_token(body)
-        # Check if the response is valid
-        splatoon_response.json()["result"]["webApiServerCredential"][
-            "accessToken"
-        ]
-        return splatoon_response
+        return self.get_web_service_access_token(
+            id_token, user_info, f_token, request_id, timestamp
+        )
 
     @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
-    def f_token_generation_step_2(
+    def g_token_generation_phase_2(
         self,
-        id_token: str,
+        web_service_access_token: str,
         f_token_url: str,
     ) -> str:
-        """Final step of gtoken generation, which returns the gtoken. This step
-        is retried once if it fails. This step obtains the second f token, which
-        is passed to Nintendo's servers to get the gtoken. This step is retried
-        once if it fails before raising an exception.
+        """Final phase of the ``gtoken`` generation process.
+
+        This is the second phase of the ``gtoken`` generation process. This is
+        abstracted away into a separate method to allow the request to be
+        retried once in the event of a failure. This phase involves two steps:
+        first, the ``web_service_access_token`` is sent to the ``f_token_url``
+        in a request to obtain the ``f_token``, which is a ``HMAC`` necessary to
+        obtain the ``gtoken``. The response contains three values: the
+        ``f_token``, the ``request_id``, and the ``timestamp``. These values are
+        then sent to Nintendo's servers along with the
+        ``web_service_access_token`` to obtain the ``gtoken``.
 
         Args:
-            id_token (str): The id token from the first step of the f token
-                generation process. This will be renamed in a future version of
-                this package, so that it is not confused with the id token from
-                the user access token response. As such, it is preferred to pass
-                this parameter as a positional and not a keyword argument.
+            web_service_access_token (str): The Web Service Credential Access
+                Token obtained from the first half of the gtoken generation
+                process.
             f_token_url (str): URL to use for f token generation. This package
                 provides a default URL, but you can provide your own. The
                 default URL is provided by `imink`.
@@ -667,66 +717,45 @@ class NSO:
         Returns:
             str: The gtoken from the response.
         """
-        f_token, request_id, timestamp = self.get_ftoken(
-            f_token_url, id_token, 2
+        f_token, request_id, timestamp = self._f_token_function(
+            f_token_url, web_service_access_token, 2
         )
 
-        header = {
-            "X-Platform": "Android",
-            "X-ProductVersion": self.version,
-            "Authorization": f"Bearer {id_token}",
-            "Content-Type": "application/json; charset=utf-8",
-            "Content-Length": "391",
-            "Accept-Encoding": "gzip",
-            "User-Agent": f"com.nintendo.znca/{self.version}(Android/7.1.2)",
-        }
-        body = {
-            "parameter": {
-                "f": f_token,
-                "id": 4834290508791808,
-                "registrationToken": id_token,
-                "requestId": request_id,
-                "timestamp": timestamp,
-            }
-        }
-        url = "https://api-lp1.znc.srv.nintendo.net/v2/Game/GetWebServiceToken"
-        response = self.session.post(url, headers=header, json=body).json()
-        gtoken = cast(str, response["result"]["accessToken"])
-        return gtoken
+        return self.get_gtoken_request(
+            web_service_access_token, f_token, request_id, timestamp
+        )
 
-    def get_splatoon_token(self, body: dict) -> requests.Response:
-        """Given the body of the request to get the splatoon token, returns the
-        response from Nintendo's servers containing the splatoon token.
+    def get_web_service_access_token(
+        self,
+        id_token: str,
+        user_info: dict[str, str],
+        f_token: str,
+        request_id: str,
+        timestamp: str,
+    ) -> str:
+        """Given the ``id_token``, user data, ``f_token``, ``request_id``, and
+        ``timestamp``, returns the Web Service Credential Access Token.
 
-        The body of the request must contain the following keys:
-        >>> body = {
-        ...     "parameter": {
-        ...         "f": f_token,
-        ...         "language": user_info["language"],
-        ...         "naBirthday": user_info["birthday"],
-        ...         "naCountry": user_info["country"],
-        ...         "requestId": request_id,
-        ...         "timestamp": timestamp,
-        ...     }
-        ... }
-
-        Where `f_token`, `request_id`, and `timestamp` are the f token, request
-        id, and timestamp returned by `get_ftoken`. The `user_info` dictionary
-        must contain the keys `language`, `birthday`, and `country` and must
-        align with the values set in the user's Nintendo account.
+        This is the first step of the ``gtoken`` generation process. This will
+        return the Web Service Credential Access Token from Nintendo's servers,
+        which is then used to obtain the ``gtoken``.
 
         Args:
-            body (dict): The body of the request to get the splatoon token. This
-                must be a dictionary with the keys `parameter` and `f` as shown
-                above.
+            id_token (str): The ``id_token`` from the user access response.
+            user_info (dict[str, str]): The dictionary of user info returned by
+                `get_user_info`. This must contain the keys `language`,
+                `birthday`, and `country`.
+            f_token (str): The ``f_token`` generated from the ``id_token``. It
+                is important that this is the ``f_token`` generated from the
+                ``id_token`` using the first hashing method and not the second.
+            request_id (str): The ``request_id`` returned alongside the
+                ``f_token`` and ``timestamp``.
+            timestamp (str): The ``timestamp`` returned alongside the
+                ``f_token`` and ``request_id``.
 
         Returns:
-            requests.Response: The response from Nintendo's servers containing
-                the splatoon token. This response contains a JSON with the
-                following path to the token: 
-                `result.webApiServerCredential.accessToken`.
+            str: The Web Service Credential Access Token.
         """
-        f_token = body["parameter"]["f"]
         header = {
             "X-Platform": "Android",
             "X-ProductVersion": self.version,
@@ -738,8 +767,76 @@ class NSO:
             + self.version
             + "(Android/7.1.2)",
         }
+        body = {
+            "parameter": {
+                "f": f_token,
+                "language": user_info["language"],
+                "naBirthday": user_info["birthday"],
+                "naCountry": user_info["country"],
+                "naIdToken": id_token,
+                "requestId": request_id,
+                "timestamp": timestamp,
+            }
+        }
         url = "https://api-lp1.znc.srv.nintendo.net/v3/Account/Login"
-        return self.session.post(url, headers=header, json=body)
+        response = self.session.post(url, headers=header, json=body).json()
+        return response["result"]["webApiServerCredential"]["accessToken"]
+
+    def get_gtoken_request(
+        self,
+        web_service_access_token: str,
+        f_token: str,
+        request_id: str,
+        timestamp: str,
+    ) -> str:
+        """Given the ``web_service_access_token``, ``f_token``, ``request_id``,
+        and ``timestamp``, returns the ``gtoken``.
+
+        This is named differently from the other ``get_gtoken`` function to
+        avoid confusion. This function specifically makes the request to
+        Nintendo's servers to obtain the ``gtoken`` given the web service access
+        token, ``f_token``, ``request_id``, and ``timestamp``. The other
+        function only takes the ``session_token`` and generates all of the other
+        intermediate tokens to obtain the ``gtoken`` by finally calling this
+        function.
+
+        Args:
+            web_service_access_token (str): The ``web_service_access_token``
+                obtained from the first half of the ``gtoken`` generation
+                process.
+            f_token (str): The ``f_token`` generated from the
+                ``web_service_access_token``. It is important that this is the
+                ``f_token`` generated from the ``web_service_access_token``
+                using the second hashing method and not the first.
+            request_id (str): The ``request_id`` returned alongside the
+                ``f_token`` and ``timestamp``.
+            timestamp (str): The ``timestamp`` returned alongside the
+                ``f_token`` and ``request_id``.
+
+        Returns:
+            str: The ``gtoken``.
+        """
+        header = {
+            "X-Platform": "Android",
+            "X-ProductVersion": self.version,
+            "Authorization": f"Bearer {web_service_access_token}",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "391",
+            "Accept-Encoding": "gzip",
+            "User-Agent": f"com.nintendo.znca/{self.version}(Android/7.1.2)",
+        }
+        body = {
+            "parameter": {
+                "f": f_token,
+                "id": 4834290508791808,
+                "registrationToken": web_service_access_token,
+                "requestId": request_id,
+                "timestamp": timestamp,
+            }
+        }
+        url = "https://api-lp1.znc.srv.nintendo.net/v2/Game/GetWebServiceToken"
+        response = self.session.post(url, headers=header, json=body).json()
+        return response["result"]["accessToken"]
 
     def get_bullet_token(
         self,

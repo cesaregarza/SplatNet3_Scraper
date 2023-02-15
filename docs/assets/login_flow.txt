@@ -1,0 +1,81 @@
+This is a sequence diagram of the authentication process of SplatNet 3. It uses
+PlantUML, which is a text-based diagramming tool. The diagram can be viewed
+online at PlantUML's website.
+@startuml
+participant "User" as U #1E90FF
+participant "Nintendo Login Server" as NLS #B22222
+participant "Nintendo Connect API" as NCA #B22222
+participant "imink API" as im #C71585
+participant "SplatNet 3" as SN3 #228B22
+
+autonumber 1
+group Session Token
+    U -[#1E90FF]> U : Generate Session Token Verifier
+    group Session Token Code
+        U -[#1E90FF]> NLS : Session Token Request
+        NLS --[#B22222]> U : Login Page URL
+        U -[#1E90FF]> NLS : Login
+        NLS --[#B22222]> U : Session Token Code
+    end
+    U -[#1E90FF]> NCA : Session Token Code
+    autonumber 6
+    U -[#1E90FF]> NCA : Session Token Verifier
+    NCA --[#B22222]> U : Session Token
+end
+group GameWebToken (GToken)
+    group Web API Server Credential Access Token
+        U -[#1E90FF]> NCA : Session Token
+        NCA --[#B22222]> U : User Access Token
+        autonumber 9
+        NCA --[#B22222]> U : ID Token
+        group User Data
+            U -[#1E90FF]> NCA : User Access Token
+            NCA --[#B22222]> U : User Data (Birthday, Language, Country)
+        end
+        U -[#1E90FF]> im : ID Token
+        im --[#C71585]> U : F Token (App)
+        autonumber 13
+        im --[#C71585]> U : Timestamp
+        autonumber 13
+        im --[#C71585]> U : Request ID
+        U -[#1E90FF]> NCA : F Token (App)
+        autonumber 14
+        U -[#1E90FF]> NCA : Timestamp
+        autonumber 14
+        U -[#1E90FF]> NCA : Request ID
+        autonumber 14
+        U -[#1E90FF]> NCA : User Data (Birthday, Language, Country)
+        autonumber 14
+        U -[#1E90FF]> NCA : ID Token
+        NCA --[#B22222]> U : Web API Server Credential Access Token
+    end
+    group GToken
+        U -[#1E90FF]> im : Web API Server Credential Access Token
+        im --[#C71585]> U : F Token (API)
+        autonumber 17
+        im --[#C71585]> U : Timestamp
+        autonumber 17
+        im --[#C71585]> U : Request ID
+        U -[#1E90FF]> NCA : F Token (API)
+        autonumber 18
+        U -[#1E90FF]> NCA : Timestamp
+        autonumber 18
+        U -[#1E90FF]> NCA : Request ID
+        autonumber 18
+        U -[#1E90FF]> NCA : Web API Server Credential Access Token
+        NCA --[#B22222]> U : GameWebToken
+    end
+end
+group Bullet Token
+    U -[#1E90FF]> SN3 : GameWebToken
+    autonumber 20
+    U -[#1E90FF]> SN3 : User Data (Birthday, Language, Country)
+    SN3 --[#228B22]> U : Bullet Token
+end
+group Query
+    U -[#1E90FF]> SN3 : Bullet Token
+    autonumber 22
+    U -[#1E90FF]> SN3 : Query
+    SN3 --[#228B22]> U : Response
+end
+@enduml

@@ -81,8 +81,8 @@ The `QueryHandler` class provides a `query` method that can be used to make quer
 
 ```python
 from splatnet3_scraper.query import QueryHandler
-scraper = QueryHandler.from_env()
-response = scraper.query("StageScheduleQuery")
+handler = QueryHandler.from_env()
+response = handler.query("StageScheduleQuery")
 print(response["xSchedules", "nodes", 0, "vsRule", "name"])
 ```
 
