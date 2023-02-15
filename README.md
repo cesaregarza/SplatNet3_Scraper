@@ -18,6 +18,7 @@
   * gzip-compressed JSON
   * csv
   * parquet (by installing `splatnet3_scraper[parquet]` or the `pyarrow` library)
+* Heavily documented codebase, with extensive docstrings and type annotations for nearly all functions and classes. The documentation is also available on [Read the Docs](https://splatnet3-scraper.readthedocs.io/en/latest/index.html).
 
 ## Installation
 
