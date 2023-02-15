@@ -1,3 +1,6 @@
+This is a sequence diagram of the authentication process of SplatNet 3. It uses
+PlantUML, which is a text-based diagramming tool. The diagram can be viewed
+online at PlantUML's website.
 @startuml
 participant "User" as U #1E90FF
 participant "Nintendo Login Server" as NLS #B22222
@@ -49,29 +52,29 @@ group GameWebToken (GToken)
     group GToken
         U -[#1E90FF]> im : Web API Server Credential Access Token
         im --[#C71585]> U : F Token (API)
-        autonumber 16
+        autonumber 17
         im --[#C71585]> U : Timestamp
-        autonumber 16
+        autonumber 17
         im --[#C71585]> U : Request ID
         U -[#1E90FF]> NCA : F Token (API)
-        autonumber 17
+        autonumber 18
         U -[#1E90FF]> NCA : Timestamp
-        autonumber 17
+        autonumber 18
         U -[#1E90FF]> NCA : Request ID
-        autonumber 17
+        autonumber 18
         U -[#1E90FF]> NCA : Web API Server Credential Access Token
         NCA --[#B22222]> U : GameWebToken
     end
 end
 group Bullet Token
     U -[#1E90FF]> SN3 : GameWebToken
-    autonumber 19
+    autonumber 20
     U -[#1E90FF]> SN3 : User Data (Birthday, Language, Country)
     SN3 --[#228B22]> U : Bullet Token
 end
 group Query
     U -[#1E90FF]> SN3 : Bullet Token
-    autonumber 21
+    autonumber 22
     U -[#1E90FF]> SN3 : Query
     SN3 --[#228B22]> U : Response
 end
