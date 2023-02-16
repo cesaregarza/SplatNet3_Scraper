@@ -16,7 +16,7 @@ from splatnet3_scraper.utils import get_splatnet_web_version
 
 class GraphQLQueries:
     """The GraphQLQueries class that contains the GraphQL queries used by
-    splatnet3_scraper. The Nintendo Switch Online API only allows persistent
+    ``splatnet3_scraper``. The Nintendo Switch Online API only allows persistent
     queries, so making queries requires using the hashes for said queries. The
     great folks over at `imink` have a GitHub Actions workflow that checks for
     and updates the hashes for the queries every five minutes. The hashes are
@@ -41,11 +41,11 @@ class GraphQLQueries:
 
         Uses requests to get the `imink` GraphQL query hash map JSON file and
         parses it to get the hashes for the queries. The initial request
-        response contains two keys: `hash_map` and `version`. The `hash_map`
-        key is the dictionary that contains the hashes for the queries and is
-        what is returned by this method. The `version` key is the version of
-        the hashes and is used to check if the hashes are up to date, it is
-        used elsewhere in this package, but is not used here.
+        response contains two keys: ``hash_map`` and ``version``. The
+        ``hash_map`` key is the dictionary that contains the hashes for the
+        queries and is what is returned by this method. The `version` key is the
+        version of the hashes and is used to check if the hashes are up to date,
+        it is used elsewhere in this package, but is not used here.
 
         Returns:
             dict[str, str]: The hashes for the GraphQL queries. The keys are
@@ -61,7 +61,7 @@ class GraphQLQueries:
 
         Uses the hash_map attribute to get the hash for the query, which is
         then returned. For more information on the valid queries, see the
-        `queries` page of the documentation.
+        ``queries`` page of the documentation.
 
         Args:
             query_name (str): The name of the query.
@@ -184,9 +184,9 @@ class GraphQLQueries:
     ) -> str:
         """Generates the body for the GraphQL queries, as a string.
 
-        This method is a wrapper around the `query_body_hash` method. It gets
-        the query hash using the `get_query` method and then calls the
-        `query_body_hash` method to generate the body. For more information on
+        This method is a wrapper around the ``query_body_hash`` method. It gets
+        the query hash using the ``get_query`` method and then calls the
+        ``query_body_hash`` method to generate the body. For more information on
         the valid queries, see the `queries` page of the documentation.
 
         Args:
@@ -252,8 +252,8 @@ class GraphQLQueries:
         override: dict[str, Any] = {},
     ) -> requests.Response:
         """Makes a GraphQL query. This method is a wrapper around the
-        `query_hash` method. It gets the query hash using the `get_query`
-        method and then calls the `query_hash` method to make the request. For
+        ``query_hash`` method. It gets the query hash using the ``get_query``
+        method and then calls the ``query_hash`` method to make the request. For
         more information on the valid queries, see the `queries` page of the
         documentation.
 

@@ -12,7 +12,7 @@
 * The `scraper` module provides a user-level API that enables a quick and easy way to get data from the SplatNet 3 API, only requiring the user to provide their session token.
 * The `query` module provides a high-level API that provides a simple way to make queries to the SplatNet 3 API. It automatically handles authentication and query handling, and provides a simple interface for accessing the response data.
 * The `auth` module provides a low level API that allows for more fine-grained control over the scraping process. It greatly simplifies the process of authentication.
-* Configuration file support is compatible with the configuration file format used by `s3s`.
+* Compatibility with the configuration file format used by `s3s`.
 * Responses from the SplatNet 3 API can be saved and loaded from disk, currently supporting the following formats:
   * JSON
   * gzip-compressed JSON

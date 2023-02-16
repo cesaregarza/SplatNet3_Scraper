@@ -46,7 +46,7 @@ class Config:
         self.options = self.config.options("options")
 
     def __post_init__(self, config_path: str | None = None) -> None:
-        """This function is called after the __init__ method and is used to
+        """This function is called after the ``__init__`` method and is used to
         allow the Config class to be initialized with a TokenManager instance,
         which is useful for initial setup.
 

@@ -362,7 +362,7 @@ class TestNSO:
         ],
     )
     def test_get_gtoken(self, f_token_url):
-        expected_url = (IMINK_URL if f_token_url is None else f_token_url)
+        expected_url = IMINK_URL if f_token_url is None else f_token_url
         # User Access Failure
         with (
             patch(nso_path + ".get_user_access_token") as mock_guat,

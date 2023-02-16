@@ -33,12 +33,12 @@ group GameWebToken (GToken)
             NCA --[#B22222]> U : User Data (Birthday, Language, Country)
         end
         U -[#1E90FF]> im : ID Token
-        im --[#C71585]> U : F Token (App)
+        im --[#C71585]> U : F Token (ID Token)
         autonumber 13
         im --[#C71585]> U : Timestamp
         autonumber 13
         im --[#C71585]> U : Request ID
-        U -[#1E90FF]> NCA : F Token (App)
+        U -[#1E90FF]> NCA : F Token (ID Token)
         autonumber 14
         U -[#1E90FF]> NCA : Timestamp
         autonumber 14
@@ -51,12 +51,12 @@ group GameWebToken (GToken)
     end
     group GToken
         U -[#1E90FF]> im : Web API Server Credential Access Token
-        im --[#C71585]> U : F Token (API)
+        im --[#C71585]> U : F Token (Web API Server Credential Access Token)
         autonumber 17
         im --[#C71585]> U : Timestamp
         autonumber 17
         im --[#C71585]> U : Request ID
-        U -[#1E90FF]> NCA : F Token (API)
+        U -[#1E90FF]> NCA : F Token (Web API Server Credential Access Token)
         autonumber 18
         U -[#1E90FF]> NCA : Timestamp
         autonumber 18
