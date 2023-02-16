@@ -28,7 +28,7 @@ If you are unsure of whether your feature request is a good fit for the project,
 
 ## Code style and standards
 
-I want to preface this section by saying that if you are unsure about any of the code style and standards listed below, please open your pull request anyway and I will let you know or guide you through the process. I am not trying to be difficult, but I truly believe in the broken windows theory of code and want to ensure that the codebase remains in the best shape possible.
+I want to preface this section by saying that if you are unsure about any of the code style and standards listed below, please **open your pull request anyway** and I will let you know or guide you through the process. I am not trying to be difficult, but I truly believe in the broken windows theory of code and want to ensure that the codebase remains in the best shape possible.
 
 This project follows the [PEP 8](https://www.python.org/dev/peps/pep-0008/) style guide for the most part with a single exception: line length. The maximum line length is 80 characters instead of 79 characters. This is opinionated, and I will not accept pull requests that change the line length. The easiest way to conform to this style guide is to use an auto-formatter. The recommended auto-formatters are [Black](https://github.com/psf/black) and [isort](https://github.com/PyCQA/isort). Code that does not conform to the style guide will not be accepted, this includes code that does not pass [flake8](https://github.com/PyCQA/flake8)'s linting.
 
