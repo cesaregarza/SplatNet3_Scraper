@@ -38,6 +38,9 @@ class EnvironmentVariablesManager:
         Args:
             variable (str): The environment variable name.
 
+        Raises:
+            KeyError: If the variable is not defined.
+
         Returns:
             str: The token name.
         """
@@ -73,9 +76,6 @@ class EnvironmentVariablesManager:
 
         Args:
             token (str): The token to get the environment variable for.
-
-        Raises:
-            KeyError: If the token is not defined.
 
         Returns:
             str: The environment variable for the given token.

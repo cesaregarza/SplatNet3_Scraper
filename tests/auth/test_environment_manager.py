@@ -46,6 +46,8 @@ class TestEnvironmentVariablesManager:
             manager.variable_to_token(ENV_VAR_NAMES[TOKENS.BULLET_TOKEN])
             == TOKENS.BULLET_TOKEN
         )
+        with pytest.raises(KeyError):
+            manager.variable_to_token("test_variable")
 
     def test_add_token(self):
         manager = EnvironmentVariablesManager()
@@ -71,7 +73,7 @@ class TestEnvironmentVariablesManager:
             test_token = "test_session_token"
             ctx.setenv(ENV_VAR_NAMES[TOKENS.SESSION_TOKEN], test_token)
             assert manager.get(TOKENS.SESSION_TOKEN) == test_token
-            assert manager.get(TOKENS.GTOKEN) == None
+            assert manager.get(TOKENS.GTOKEN) is None
 
     @pytest.mark.parametrize(
         "session_token",
