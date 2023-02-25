@@ -1,7 +1,11 @@
 import configparser
 from typing import Literal, overload
 
-from splatnet3_scraper.auth import Token, TokenManager
+from splatnet3_scraper.auth import (
+    EnvironmentVariablesManager,
+    Token,
+    TokenManager,
+)
 from splatnet3_scraper.constants import DEFAULT_USER_AGENT, IMINK_URL
 
 
@@ -93,13 +97,20 @@ class Config:
             pass
 
     @classmethod
-    def from_env(cls) -> "Config":
+    def from_env(
+        cls, env_manager: EnvironmentVariablesManager | None = None
+    ) -> "Config":
         """Creates a Config instance using the environment variables.
+
+        Args:
+            env_manager (EnvironmentVariablesManager | None): The environment
+                variables manager to use. If None, it will create a new one.
+                Defaults to None.
 
         Returns:
             Config: The Config instance.
         """
-        return cls(token_manager=TokenManager.from_env())
+        return cls(token_manager=TokenManager.from_env(env_manager))
 
     @classmethod
     def from_s3s_config(cls, config_path: str) -> "Config":

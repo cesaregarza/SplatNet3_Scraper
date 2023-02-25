@@ -1,5 +1,6 @@
 import pathlib
 import time
+from typing import Literal
 from unittest.mock import mock_open, patch
 
 import freezegun
@@ -7,6 +8,9 @@ import pytest
 import pytest_mock
 import requests
 
+from splatnet3_scraper.auth.environment_manager import (
+    EnvironmentVariablesManager,
+)
 from splatnet3_scraper.auth.exceptions import (
     NintendoException,
     SplatNetException,
@@ -14,6 +18,7 @@ from splatnet3_scraper.auth.exceptions import (
 from splatnet3_scraper.auth.graph_ql_queries import GraphQLQueries
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.token_manager import Token, TokenManager
+from splatnet3_scraper.constants import ENV_VAR_NAMES, TOKENS
 from tests.mock import MockNSO
 
 
@@ -320,34 +325,89 @@ class TestTokenManager:
             }
             assert token_manager.data == expected_data
 
-    def test_from_env(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize(
+        "session_token",
+        [None, "test_session_token"],
+        ids=["no_session_token", "session_token"],
+    )
+    @pytest.mark.parametrize(
+        "gtoken",
+        [None, "test_gtoken"],
+        ids=["no_gtoken", "gtoken"],
+    )
+    @pytest.mark.parametrize(
+        "bullet_token",
+        [None, "test_bullet_token"],
+        ids=["no_bullet_token", "bullet_token"],
+    )
+    @pytest.mark.parametrize(
+        "extra_token",
+        [None, "test_extra_token"],
+        ids=["no_extra_token", "extra_token"],
+    )
+    @pytest.mark.parametrize(
+        "custom_manager",
+        [True, False],
+        ids=["custom_manager", "default_manager"],
+    )
+    def test_from_env(
+        self,
+        session_token: Literal["test_session_token"] | None,
+        gtoken: Literal["test_gtoken"] | None,
+        bullet_token: Literal["test_bullet_token"] | None,
+        extra_token: Literal["test_extra_token"] | None,
+        custom_manager: bool,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
 
         def mock_test_tokens(*args, **kwargs):
             return True
 
         monkeypatch.setattr(TokenManager, "test_tokens", mock_test_tokens)
+        env_manager = EnvironmentVariablesManager()
+        if custom_manager:
+            env_manager.add_token("extra_token", "test_variable")
 
-        # Test with no environment variables
-        with pytest.raises(ValueError):
-            TokenManager.from_env()
+        with monkeypatch.context() as ctx:
+            if session_token is not None:
+                ctx.setenv(ENV_VAR_NAMES[TOKENS.SESSION_TOKEN], session_token)
+            if gtoken is not None:
+                ctx.setenv(ENV_VAR_NAMES[TOKENS.GTOKEN], gtoken)
+            if bullet_token is not None:
+                ctx.setenv(ENV_VAR_NAMES[TOKENS.BULLET_TOKEN], bullet_token)
+            if extra_token is not None:
+                ctx.setenv("test_variable", extra_token)
 
-        # Test with only session token
-        monkeypatch.setenv("SN3S_SESSION_TOKEN", "test_session_token")
-        token_manager = TokenManager.from_env()
+            if session_token is None:
+                with pytest.raises(ValueError):
+                    TokenManager.from_env(env_manager=env_manager)
+                return
+            else:
+                token_manager = TokenManager.from_env(env_manager=env_manager)
 
-        assert token_manager.nso._session_token == "test_session_token"
-        assert token_manager.get("session_token") == "test_session_token"
-        expected_origin = {"origin": "env", "data": None}
-        assert token_manager._origin == expected_origin
+            expected_origin = {"origin": "env", "data": None}
+            assert token_manager.origin == expected_origin
 
-        # Test with all environment variables
-        monkeypatch.setenv("SN3S_GTOKEN", "test_gtoken")
-        monkeypatch.setenv("SN3S_BULLET_TOKEN", "test_bullet_token")
+            if session_token is not None:
+                assert token_manager.get("session_token") == session_token
+                assert token_manager.nso._session_token == session_token
 
-        token_manager = TokenManager.from_env()
-        assert token_manager.get("gtoken") == "test_gtoken"
-        assert token_manager.get("bullet_token") == "test_bullet_token"
+            if gtoken is not None:
+                assert token_manager.get("gtoken") == gtoken
+                assert token_manager.nso._gtoken == gtoken
+
+            if bullet_token is not None:
+                assert token_manager.get("bullet_token") == bullet_token
+
+            if extra_token is not None and custom_manager:
+                assert token_manager.get("extra_token") == extra_token
+            elif extra_token is not None and not custom_manager:
+                with pytest.raises(ValueError):
+                    token_manager.get("extra_token")
+            else:
+                with pytest.raises(ValueError):
+                    token_manager.get("extra_token")
 
     def test_load(
         self, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockFixture

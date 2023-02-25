@@ -8,12 +8,12 @@ from typing import Any, Literal, cast, overload
 import requests
 
 from splatnet3_scraper import __version__
+from splatnet3_scraper.auth.environment_manager import (
+    EnvironmentVariablesManager,
+)
 from splatnet3_scraper.auth.exceptions import (
     NintendoException,
     SplatNetException,
-)
-from splatnet3_scraper.auth.environment_manager import (
-    EnvironmentVariablesManager,
 )
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.auth.nso import NSO
@@ -590,7 +590,7 @@ class TokenManager:
             TokenManager: The token manager with the tokens loaded.
         """
         nso = NSO.new_instance()
-        tokenmanager = cls(nso, env_manager)
+        tokenmanager = cls(nso, env_manager=env_manager)
         tokens = tokenmanager.env_manager.get_all()
         for token, value in tokens.items():
             if token == TOKENS.SESSION_TOKEN:
