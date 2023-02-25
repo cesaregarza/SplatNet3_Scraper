@@ -201,3 +201,61 @@ class TestSplatNetScraper:
                 query, limit=num_limit, existing_ids=ids
             )
             assert counter == expected_total + 1
+
+    @param(
+        "mode, expect_error, expected_query",
+        [
+            ("regular", False, QueryMap.REGULAR),
+            ("anarchy", False, QueryMap.ANARCHY),
+            ("xbattle", False, QueryMap.XBATTLE),
+            ("private", False, QueryMap.PRIVATE),
+            ("salmon", True, QueryMap.SALMON),
+            ("not_a_mode", True, None),
+        ],
+        ids=[
+            "regular",
+            "anarchy",
+            "x battle",
+            "private",
+            "salmon",
+            "not a mode",
+        ],
+    )
+    @param(
+        "detail",
+        [True, False],
+        ids=["detail", "no detail"],
+    )
+    def test_get_vs_battles(
+        self, mode: str, expect_error: bool, expected_query: str, detail: bool
+    ):
+        scraper = SplatNet_Scraper(MockQueryHandler())
+        with (
+            patch(
+                scraper_mangled_path + "__detailed_vs_or_coop"
+            ) as mock_detailed,
+            patch(scraper_mangled_path + "__query") as mock_query,
+        ):
+            mock_detailed.return_value = "test_detailed"
+            mock_query.return_value = "test_query"
+            if expect_error:
+                if mode == "not_a_mode":
+                    error_type = AttributeError
+                else:
+                    error_type = ValueError
+                with pytest.raises(error_type):
+                    scraper.get_vs_battles(mode, detail)
+                mock_detailed.assert_not_called()
+                mock_query.assert_not_called()
+                return
+
+            expected = "test_detailed" if detail else "test_query"
+            assert scraper.get_vs_battles(mode, detail) == expected
+            if detail:
+                mock_detailed.assert_called_once_with(
+                    expected_query, None, None
+                )
+                mock_query.assert_not_called()
+            else:
+                mock_detailed.assert_not_called()
+                mock_query.assert_called_once_with(expected_query)

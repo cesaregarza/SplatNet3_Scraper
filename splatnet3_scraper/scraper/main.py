@@ -232,7 +232,7 @@ class SplatNet_Scraper:
         if mapped_query == QueryMap.SALMON:
             raise ValueError("Use get_coop_battles for salmon run battles.")
 
-        if mapped_query not in (
+        if mapped_query in (
             QueryMap.TURF_DETAIL,
             QueryMap.ANARCHY_DETAIL,
             QueryMap.XBATTLE_DETAIL,

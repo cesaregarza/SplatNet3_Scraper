@@ -103,7 +103,10 @@ class TestConfig:
         ids=["has_config", "no_config"],
     )
     def test_initialize_options(
-        self, origin: dict[str, str | None] | dict[str, str], has_config: bool, monkeypatch: pytest.MonkeyPatch
+        self,
+        origin: dict[str, str | None] | dict[str, str],
+        has_config: bool,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         token_manager = MockTokenManager()
         MockTokenManager.origin = origin
@@ -218,7 +221,7 @@ class TestConfig:
             # accepted options
             "user_agent": "test_user_agent",
             # deprecated options
-            "api_key": "test_stat_ink_api_key",
+            "api_key": "test_stat_ink_api_token",
             # invalid options
             "invalid_option": "test_invalid_option",
         }
@@ -228,10 +231,10 @@ class TestConfig:
         config.manage_options()
         expected_options = {
             "user_agent": "test_user_agent",
-            "stat.ink_api_key": "test_stat_ink_api_key",
+            "stat.ink_api_token": "test_stat_ink_api_token",
         }
         expected_deprecated = {
-            "api_key": "test_stat_ink_api_key",
+            "api_key": "test_stat_ink_api_token",
         }
         expected_unknown = {
             "invalid_option": "test_invalid_option",
@@ -246,14 +249,14 @@ class TestConfig:
 
         mock_config = MockConfigParser()
         test_options = {
-            "stat.ink_api_key": "test_stat_ink_api_key",
+            "stat.ink_api_token": "test_stat_ink_api_key",
         }
         mock_config["options"] = test_options
         config.config = mock_config
         config.options = mock_config.options("options")
         config.manage_options()
         # Accepted option and set
-        assert config.get("stat.ink_api_key") == "test_stat_ink_api_key"
+        assert config.get("stat.ink_api_token") == "test_stat_ink_api_key"
         # Accepted option, not set, but has default
         assert config.get("user_agent") == DEFAULT_USER_AGENT
         # Accepted option, not set, and no default
@@ -330,9 +333,7 @@ class TestConfig:
     def test_remove_default_options(self):
         token_manager = MockTokenManager()
         config = Config(token_manager=token_manager)
-        base_options = {
-            k:v for k, v in config.DEFAULT_OPTIONS.items()
-        }.copy()
+        base_options = {k: v for k, v in config.DEFAULT_OPTIONS.items()}.copy()
         test_options = {
             f"test_option_{i}": f"test_value_{i}" for i in range(10)
         }

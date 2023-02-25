@@ -49,40 +49,40 @@ class EnvironmentVariablesManager:
                 return token
         raise KeyError(f"Variable {variable} is not defined.")
 
-    def add_token(self, token: str, variable_name: str) -> None:
+    def add_token(self, token_name: str, variable_name: str) -> None:
         """Adds a new token to the environment variables.
 
         Args:
-            token (str): The token name.
+            token_name (str): The token name.
             variable_name (str): The environment variable name.
         """
-        self.variable_names[token] = variable_name
+        self.variable_names[token_name] = variable_name
 
-    def remove_token(self, token: str) -> None:
+    def remove_token(self, token_name: str) -> None:
         """Removes a token from the environment variables.
 
         Args:
-            token (str): The token name.
+            token_name (str): The token name.
 
         Raises:
             ValueError: If the token is a base token.
         """
-        if token in self.BASE_TOKENS:
-            raise ValueError(f"Cannot remove base token {token}.")
-        del self.variable_names[token]
+        if token_name in self.BASE_TOKENS:
+            raise ValueError(f"Cannot remove base token {token_name}.")
+        del self.variable_names[token_name]
 
-    def get(self, token: str) -> str:
+    def get(self, token: str) -> str | None:
         """Gets the environment variable for the given token.
 
         Args:
             token (str): The token to get the environment variable for.
 
         Returns:
-            str: The environment variable for the given token.
+            str | None: The environment variable, or None if it is not set.
         """
         return os.environ.get(self.token_to_variable(token))
 
-    def get_all(self) -> dict[str, str]:
+    def get_all(self) -> dict[str, str | None]:
         """Gets all the environment variables.
 
         Returns:

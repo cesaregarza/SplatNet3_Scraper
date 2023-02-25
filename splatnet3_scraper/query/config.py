@@ -38,6 +38,10 @@ class Config:
                 Keyword argument. If given, it will skip the post-init method.
                 Defaults to None.
         """
+        self.additional_accepted_options: list[str] = []
+        self.additional_deprecated_options: dict[str, str] = {}
+        self.additional_default_options: dict[str, str] = {}
+
         if token_manager is None:
             self.generate_token_manager(config_path)
             return
@@ -46,10 +50,6 @@ class Config:
 
         self.token_manager = token_manager
         self.initialize_options()
-
-        self.additional_accepted_options = []
-        self.additional_deprecated_options = {}
-        self.additional_default_options = {}
 
     def generate_token_manager(self, config_path: str | None = None) -> None:
         """Generates the token manager.
@@ -111,8 +111,9 @@ class Config:
             for token, value in tokens.items():
                 if token in self.token_manager.env_manager.BASE_TOKENS:
                     continue
-                loaded_token = value
-                self.config["options"][token] = loaded_token
+                if value is None:
+                    continue
+                self.config["options"][token] = value
 
             return
 
@@ -210,14 +211,14 @@ class Config:
         "language",
         "lang",
         "country",
-        "stat.ink_api_key",
-        "stat_ink_api_key",
-        "statink_api_key",
+        "stat.ink_api_token",
+        "stat_ink_api_token",
+        "statink_api_token",
         "f_token_url",
     ]
 
     _DEPRECATED_OPTIONS = {
-        "api_key": "stat.ink_api_key",
+        "api_key": "stat.ink_api_token",
         "f_gen": "f_token_url",
     }
 
@@ -230,11 +231,14 @@ class Config:
     @property
     def ACCEPTED_OPTIONS(self) -> list[str]:
         return self._ACCEPTED_OPTIONS + self.additional_accepted_options
-    
+
     @property
     def DEPRECATED_OPTIONS(self) -> dict[str, str]:
-        return {**self._DEPRECATED_OPTIONS, **self.additional_deprecated_options}
-    
+        return {
+            **self._DEPRECATED_OPTIONS,
+            **self.additional_deprecated_options,
+        }
+
     @property
     def DEFAULT_OPTIONS(self) -> dict[str, str]:
         return {**self._DEFAULT_OPTIONS, **self.additional_default_options}
