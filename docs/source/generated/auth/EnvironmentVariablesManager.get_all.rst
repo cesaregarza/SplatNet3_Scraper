@@ -6,5 +6,5 @@
 
 
 
-.. python-apigen-entity-page::  splatnet3_scraper.auth.NSO.f_token_generation_step_2
+.. python-apigen-entity-page::  splatnet3_scraper.auth.EnvironmentVariablesManager.get_all
 

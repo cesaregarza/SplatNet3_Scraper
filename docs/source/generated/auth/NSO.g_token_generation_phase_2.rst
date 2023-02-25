@@ -6,5 +6,5 @@
 
 
 
-.. python-apigen-entity-page::  splatnet3_scraper.auth.NSO.f_token_generation_step_1
+.. python-apigen-entity-page::  splatnet3_scraper.auth.NSO.g_token_generation_phase_2
 

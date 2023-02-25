@@ -6,5 +6,5 @@
 
 
 
-.. python-apigen-entity-page::  splatnet3_scraper.auth.NSO.get_splatoon_token
+.. python-apigen-entity-page::  splatnet3_scraper.query.Config.get
 

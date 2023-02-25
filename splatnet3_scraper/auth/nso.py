@@ -456,7 +456,7 @@ class NSO:
 
         By default, this method will use a third party's ``f_token`` generation
         API to obtain the ``f_token``. The API used by default is provided by
-        `imink <https://github.com/imink-app``_. If you do not trust this URL,
+        `imink <https://github.com/imink-app>`_. If you do not trust this URL,
         you can provide your own URL through the ``f_token_url`` argument, or
         you can replace the ``f_token`` generation method used with your own
         through the use of the ``set_new_f_token_function`` method. See the

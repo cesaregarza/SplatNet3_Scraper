@@ -35,4 +35,6 @@ Submodules
 
 .. python-apigen-entity-summary:: splatnet3_scraper.auth.GraphQLQueries
 
+.. python-apigen-entity-summary:: splatnet3_scraper.auth.EnvironmentVariablesManager
+
 .. python-apigen-entity-summary:: splatnet3_scraper.auth.Token

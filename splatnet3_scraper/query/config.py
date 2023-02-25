@@ -56,6 +56,7 @@ class Config:
         or if the ``token_manager`` argument in the constructor is None. This
         means that the user prefers to use the default loading method for the
         token manager, which is to look for tokens in the following order:
+
             1. the config_path argument
             2. check the current working directory for ".splatnet3_scraper"
             3. check for environment variables for defined tokens

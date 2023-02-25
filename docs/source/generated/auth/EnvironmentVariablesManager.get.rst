@@ -6,5 +6,5 @@
 
 
 
-.. python-apigen-entity-page::  splatnet3_scraper.auth.NSO.header
+.. python-apigen-entity-page::  splatnet3_scraper.auth.EnvironmentVariablesManager.get
 
