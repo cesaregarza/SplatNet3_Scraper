@@ -28,4 +28,6 @@ Submodules
 
 .. python-apigen-entity-summary:: splatnet3_scraper.query.QueryResponse
 
+.. python-apigen-entity-summary:: splatnet3_scraper.query.Config
+
 .. python-apigen-entity-summary:: splatnet3_scraper.query.JSONParser

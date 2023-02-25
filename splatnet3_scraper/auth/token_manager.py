@@ -178,6 +178,27 @@ class TokenManager:
         """
         self._origin = {"origin": origin, "data": data}
 
+    @property
+    def origin(self) -> dict[str, str | None]:
+        """Gets the origin of the token manager.
+
+        This method is a thin wrapper around the ``_origin`` attribute. If the
+        attribute does not exist, this method will return an empty dictionary
+        but will not create the attribute. The attribute will only be created
+        when the ``flag_origin`` method is called.
+
+        Returns:
+            dict[str, str | None]: The origin of the token manager. This will
+                be a dictionary with two keys: ``origin`` and ``data``. The
+                ``origin`` key will contain a string that describes where the
+                token manager was loaded from. The ``data`` key will contain
+                additional data about the origin. For example, if the token
+                manager was loaded from a config file, this would be the path
+                to the config file. On the other hand, if the token manager was
+                loaded from environment variables, this would be None.
+        """
+        return getattr(self, "_origin", {})
+
     def add_token(
         self,
         token: str | Token,

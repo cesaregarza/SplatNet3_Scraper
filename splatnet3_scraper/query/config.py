@@ -78,17 +78,17 @@ class Config:
         with open(config_path, "w") as configfile:
             self.config.write(configfile)
 
-    @staticmethod
-    def from_env() -> "Config":
+    @classmethod
+    def from_env(cls) -> "Config":
         """Creates a Config instance using the environment variables.
 
         Returns:
             Config: The Config instance.
         """
-        return Config(token_manager=TokenManager.from_env())
+        return cls(token_manager=TokenManager.from_env())
 
-    @staticmethod
-    def from_s3s_config(config_path: str) -> "Config":
+    @classmethod
+    def from_s3s_config(cls, config_path: str) -> "Config":
         """Creates a Config instance using the config file from s3s.
 
         Args:
@@ -97,7 +97,7 @@ class Config:
         Returns:
             Config: The Config instance.
         """
-        return Config(token_manager=TokenManager.from_text_file(config_path))
+        return cls(token_manager=TokenManager.from_text_file(config_path))
 
     def save(
         self, path: str | None = None, include_tokens: bool = True
