@@ -103,7 +103,7 @@ class TestConfig:
         ids=["has_config", "no_config"],
     )
     def test_initialize_options(
-        self, origin, has_config, monkeypatch: pytest.MonkeyPatch
+        self, origin: dict[str, str | None] | dict[str, str], has_config: bool, monkeypatch: pytest.MonkeyPatch
     ):
         token_manager = MockTokenManager()
         MockTokenManager.origin = origin
@@ -274,3 +274,69 @@ class TestConfig:
         assert config.config.has_section("data")
         assert config.config["data"]["test_key_1"] == "test_value_1"
         assert config.get_data("test_key_2") == "test_value_2"
+
+    def test_add_accepted_options(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+        base_options = [x for x in config.ACCEPTED_OPTIONS]
+        test_options = [f"test_option_{i}" for i in range(10)]
+        config.add_accepted_options(test_options)
+        assert config.ACCEPTED_OPTIONS == base_options + test_options
+
+    def test_add_deprecated_options(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+        base_options = {k: v for k, v in config.DEPRECATED_OPTIONS.items()}
+        test_options = {
+            f"test_option_{i}": f"test_value_{i}" for i in range(10)
+        }
+        config.add_deprecated_options(test_options)
+        assert config.DEPRECATED_OPTIONS == {**base_options, **test_options}
+
+    def test_add_default_options(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+        base_options = {k: v for k, v in config.DEFAULT_OPTIONS.items()}
+        test_options = {
+            f"test_option_{i}": f"test_value_{i}" for i in range(10)
+        }
+        config.add_default_options(test_options)
+        assert config.DEFAULT_OPTIONS == {**base_options, **test_options}
+
+    def test_remove_accepted_options(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+        base_options = [x for x in config.ACCEPTED_OPTIONS]
+        test_options = [f"test_option_{i}" for i in range(10)]
+        config.add_accepted_options(test_options)
+        assert config.ACCEPTED_OPTIONS == base_options + test_options
+        config.remove_accepted_options(test_options)
+        assert config.ACCEPTED_OPTIONS == base_options
+
+    def test_remove_deprecated_options(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+        base_options = {
+            k: v for k, v in config.DEPRECATED_OPTIONS.items()
+        }.copy()
+        test_options = {
+            f"test_option_{i}": f"test_value_{i}" for i in range(10)
+        }
+        config.add_deprecated_options(test_options)
+        assert config.DEPRECATED_OPTIONS == {**base_options, **test_options}
+        config.remove_deprecated_options(test_options.keys())
+        assert config.DEPRECATED_OPTIONS == base_options
+
+    def test_remove_default_options(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+        base_options = {
+            k:v for k, v in config.DEFAULT_OPTIONS.items()
+        }.copy()
+        test_options = {
+            f"test_option_{i}": f"test_value_{i}" for i in range(10)
+        }
+        config.add_default_options(test_options)
+        assert config.DEFAULT_OPTIONS == {**base_options, **test_options}
+        config.remove_default_options(test_options)
+        assert config.DEFAULT_OPTIONS == base_options
