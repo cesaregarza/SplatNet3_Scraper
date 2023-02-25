@@ -82,10 +82,21 @@ class MockNSO:
         return "test_url"
 
 
+class MockEnvironmentManager:
+    BASE_TOKENS = ["test_key_1", "test_key_2"]
+
+    def __init__(self) -> None:
+        self._mocked = True
+
+    def get_all(self) -> dict[str, str]:
+        return {f"test_key_{i}": f"test_value_{i}" for i in range(1, 5)}
+
+
 class MockTokenManager:
-    def __init__(self, origin: dict = {}) -> None:
+    def __init__(self, origin: dict = {"origin": "mock", "data": None}) -> None:
         self._mocked = True
         self._origin = origin
+        self.env_manager = MockEnvironmentManager()
 
     @staticmethod
     def load():
@@ -101,6 +112,10 @@ class MockTokenManager:
     @property
     def data(self):
         return {"test_key_1": "test_value_1", "test_key_2": "test_value_2"}
+
+    @property
+    def origin(self):
+        return self._origin
 
 
 class MockConfigParser:

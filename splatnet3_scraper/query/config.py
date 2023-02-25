@@ -1,7 +1,11 @@
 import configparser
 from typing import Literal, overload
 
-from splatnet3_scraper.auth import Token, TokenManager
+from splatnet3_scraper.auth import (
+    EnvironmentVariablesManager,
+    Token,
+    TokenManager,
+)
 from splatnet3_scraper.constants import DEFAULT_USER_AGENT, IMINK_URL
 
 
@@ -35,20 +39,28 @@ class Config:
                 Defaults to None.
         """
         if token_manager is None:
-            self.__post_init__(config_path)
+            self.generate_token_manager(config_path)
             return
         else:
             self.config_path = config_path
 
         self.token_manager = token_manager
-        self.config = configparser.ConfigParser()
-        self.config.add_section("options")
-        self.options = self.config.options("options")
+        self.initialize_options()
 
-    def __post_init__(self, config_path: str | None = None) -> None:
-        """This function is called after the ``__init__`` method and is used to
-        allow the Config class to be initialized with a TokenManager instance,
-        which is useful for initial setup.
+    def generate_token_manager(self, config_path: str | None = None) -> None:
+        """Generates the token manager.
+
+        Will only be called if the token manager is not given in the constructor
+        or if the ``token_manager`` argument in the constructor is None. This
+        means that the user prefers to use the default loading method for the
+        token manager, which is to look for tokens in the following order:
+
+            1. the config_path argument
+            2. check the current working directory for ".splatnet3_scraper"
+            3. check for environment variables for defined tokens
+            4. check the current working directory for "tokens.ini"
+
+        If none of these are found, an exception will be raised.
 
         Args:
             config_path (str | None): The path to the config file. If None, it
@@ -78,17 +90,46 @@ class Config:
         with open(config_path, "w") as configfile:
             self.config.write(configfile)
 
-    @staticmethod
-    def from_env() -> "Config":
+    def initialize_options(self) -> None:
+        if getattr(self, "config", None) is not None:
+            return
+
+        origin = self.token_manager.origin
+        self.config = configparser.ConfigParser()
+        self.config.add_section("options")
+        self.options = self.config.options("options")
+
+        if origin["origin"] == "env":
+            # If the tokens are in environment variables, we should check for
+            # any additional tokens in the token's environment manager and add
+            # them to the config variable under the "options" section.
+            tokens = self.token_manager.env_manager.get_all()
+            for token, value in tokens.items():
+                if token in self.token_manager.env_manager.BASE_TOKENS:
+                    continue
+                loaded_token = value
+                self.config["options"][token] = loaded_token
+
+            return
+
+    @classmethod
+    def from_env(
+        cls, env_manager: EnvironmentVariablesManager | None = None
+    ) -> "Config":
         """Creates a Config instance using the environment variables.
+
+        Args:
+            env_manager (EnvironmentVariablesManager | None): The environment
+                variables manager to use. If None, it will create a new one.
+                Defaults to None.
 
         Returns:
             Config: The Config instance.
         """
-        return Config(token_manager=TokenManager.from_env())
+        return cls(token_manager=TokenManager.from_env(env_manager))
 
-    @staticmethod
-    def from_s3s_config(config_path: str) -> "Config":
+    @classmethod
+    def from_s3s_config(cls, config_path: str) -> "Config":
         """Creates a Config instance using the config file from s3s.
 
         Args:
@@ -97,7 +138,7 @@ class Config:
         Returns:
             Config: The Config instance.
         """
-        return Config(token_manager=TokenManager.from_text_file(config_path))
+        return cls(token_manager=TokenManager.from_text_file(config_path))
 
     def save(
         self, path: str | None = None, include_tokens: bool = True

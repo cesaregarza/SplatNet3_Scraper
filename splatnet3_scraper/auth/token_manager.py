@@ -8,6 +8,9 @@ from typing import Any, Literal, cast, overload
 import requests
 
 from splatnet3_scraper import __version__
+from splatnet3_scraper.auth.environment_manager import (
+    EnvironmentVariablesManager,
+)
 from splatnet3_scraper.auth.exceptions import (
     NintendoException,
     SplatNetException,
@@ -146,18 +149,33 @@ class TokenManager:
     display the time left before tokens expire among other things.
     """
 
-    def __init__(self, nso: NSO | None = None) -> None:
+    def __init__(
+        self,
+        nso: NSO | None = None,
+        *args,
+        env_manager: EnvironmentVariablesManager | None = None,
+    ) -> None:
         """Initializes a TokenManager object. This will create a new instance
         of the NSO class if one is not provided.
 
         Args:
             nso (NSO | None, optional): An instance of the NSO class. If one is
                 not provided, a new instance will be created. Defaults to None.
+            *args: Additional arguments to pass to the NSO class, currently not
+                used.
+            env_manager (EnvironmentVariablesManager): An instance of the
+                EnvironmentVariablesManager class or a subclass of it. If not
+                provided, a new instance will be created.
         """
         nso = nso if nso is not None else NSO.new_instance()
         self.nso = nso
         self._tokens: dict[str, Token] = {}
         self._data: dict[str, str] = {}
+        self.env_manager = (
+            env_manager
+            if env_manager is not None
+            else EnvironmentVariablesManager()
+        )
 
     def flag_origin(self, origin: str, data: str | None = None) -> None:
         """Flags the origin of the token manager. This is used to identify where
@@ -177,6 +195,27 @@ class TokenManager:
                 None.
         """
         self._origin = {"origin": origin, "data": data}
+
+    @property
+    def origin(self) -> dict[str, str | None]:
+        """Gets the origin of the token manager.
+
+        This method is a thin wrapper around the ``_origin`` attribute. If the
+        attribute does not exist, this method will return an empty dictionary
+        but will not create the attribute. The attribute will only be created
+        when the ``flag_origin`` method is called.
+
+        Returns:
+            dict[str, str | None]: The origin of the token manager. This will
+                be a dictionary with two keys: ``origin`` and ``data``. The
+                ``origin`` key will contain a string that describes where the
+                token manager was loaded from. The ``data`` key will contain
+                additional data about the origin. For example, if the token
+                manager was loaded from a config file, this would be the path
+                to the config file. On the other hand, if the token manager was
+                loaded from environment variables, this would be None.
+        """
+        return getattr(self, "_origin", {})
 
     def add_token(
         self,
@@ -520,7 +559,9 @@ class TokenManager:
         return token_manager
 
     @classmethod
-    def from_env(cls) -> "TokenManager":
+    def from_env(
+        cls, env_manager: EnvironmentVariablesManager | None = None
+    ) -> "TokenManager":
         """Loads tokens from environment variables.
 
         This method will create a token manager and add the tokens found in the
@@ -538,6 +579,10 @@ class TokenManager:
         Tests the tokens before returning the token manager using the
         ``test_tokens`` method.
 
+        Args:
+            env_manager (EnvironmentVariablesManager): The environment variables
+                manager to use. If not provided, a new one will be created.
+
         Raises:
             ValueError: If the session token environment variable is not set.
 
@@ -545,20 +590,20 @@ class TokenManager:
             TokenManager: The token manager with the tokens loaded.
         """
         nso = NSO.new_instance()
-        tokenmanager = cls(nso)
-        for token in ENV_VAR_NAMES:
-            token_env = os.environ.get(ENV_VAR_NAMES[token])
+        tokenmanager = cls(nso, env_manager=env_manager)
+        tokens = tokenmanager.env_manager.get_all()
+        for token, value in tokens.items():
             if token == TOKENS.SESSION_TOKEN:
-                if token_env is None:
+                if value is None:
                     raise ValueError(
                         "Session token environment variable not set."
                     )
-                tokenmanager.nso._session_token = token_env
-            elif token_env is None:
+                nso._session_token = value
+            elif value is None:
                 continue
             elif token == TOKENS.GTOKEN:
-                tokenmanager.nso._gtoken = token_env
-            tokenmanager.add_token(token_env, token)
+                nso._gtoken = value
+            tokenmanager.add_token(value, token)
         tokenmanager.flag_origin("env")
         tokenmanager.test_tokens()
         return tokenmanager

@@ -17,7 +17,7 @@ token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 class TestConfig:
     def test_init(self, mocker: pytest_mock.MockFixture):
         # token manager is none
-        mock_post_init = mocker.patch.object(Config, "__post_init__")
+        mock_post_init = mocker.patch.object(Config, "generate_token_manager")
         config = Config()
         mock_post_init.assert_called_once_with(None)
         assert not hasattr(config, "config_path")
@@ -32,7 +32,7 @@ class TestConfig:
         assert config.config.sections() == ["options"]
         assert config.options == config.config.options("options")
 
-    def test_post_init(self, monkeypatch: pytest.MonkeyPatch):
+    def test_generate_token_manager(self, monkeypatch: pytest.MonkeyPatch):
         config = Config(token_manager=MockTokenManager())
         # config path is not none
         with (
@@ -46,7 +46,7 @@ class TestConfig:
             patch("configparser.ConfigParser.write") as mock_write,
         ):
             mock_options.return_value = True
-            config.__post_init__("config_path")
+            config.generate_token_manager("config_path")
             mock_from_config_file.assert_called_once_with("config_path")
             mock_read.assert_called_once_with("config_path")
             mock_options.assert_called_once_with("options")
@@ -79,7 +79,7 @@ class TestConfig:
             m.setattr(ConfigParser, "options", options)
             mock_options.return_value = True
             mock_load.return_value = MockTokenManager()
-            config.__post_init__(None)
+            config.generate_token_manager(None)
             mock_from_config_file.assert_not_called()
             mock_load.assert_called_once()
             mock_read.assert_called_once_with(".splatnet3_scraper")
@@ -88,11 +88,60 @@ class TestConfig:
             mock_file.assert_called_once_with(".splatnet3_scraper", "w")
             mock_write.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "origin",
+        [
+            {"origin": "env", "data": None},
+            {"origin": "config", "data": "test_path"},
+            {"origin": "test_origin", "data": "test_data"},
+        ],
+        ids=["env", "config", "test_origin"],
+    )
+    @pytest.mark.parametrize(
+        "has_config",
+        [True, False],
+        ids=["has_config", "no_config"],
+    )
+    def test_initialize_options(
+        self, origin, has_config, monkeypatch: pytest.MonkeyPatch
+    ):
+        token_manager = MockTokenManager()
+        MockTokenManager.origin = origin
+
+        with monkeypatch.context() as m:
+            m.setattr(Config, "__init__", lambda *args, **kwargs: None)
+            config = Config(token_manager=token_manager)
+            config.token_manager = token_manager
+            if has_config:
+                config.config = True
+            config.initialize_options()
+
+            # Test short circuit
+            if has_config:
+                assert config.config is True
+                return
+
+            assert config.config.sections() == ["options"]
+
+            if origin["origin"] == "env":
+                test_key_str = "test_key_%s"
+                test_value_str = "test_value_%s"
+                for i, option in [(i, test_key_str % i) for i in range(3)]:
+                    # assert it's not in the config under options
+                    assert not config.config.has_option("options", option)
+                for i, option in [(i, test_key_str % i) for i in range(3, 5)]:
+                    # assert it's in the config under options
+                    assert config.config.has_option("options", option)
+                    assert (
+                        config.config.get("options", option)
+                        == test_value_str % i
+                    )
+
     def test_from_env(self):
         config = Config(token_manager=MockTokenManager())
         with (
             patch(token_manager_path + ".from_env") as mock_from_env,
-            patch(config_path + ".__post_init__") as mock_post_init,
+            patch(config_path + ".generate_token_manager") as mock_post_init,
         ):
             mock_from_env.return_value = MockTokenManager()
             config.from_env()
