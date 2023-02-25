@@ -88,7 +88,7 @@ class TestSplatNetScraper:
         "query, variable_name",
         [
             (QueryMap.SALMON, "coopHistoryDetailId"),
-            (QueryMap.ANARCHY, "vsHistoryDetailId"),
+            (QueryMap.ANARCHY, "vsResultId"),
         ],
         ids=[
             "coop",

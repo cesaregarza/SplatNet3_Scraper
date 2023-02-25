@@ -129,7 +129,7 @@ class SplatNet_Scraper:
             variable_name = "coopHistoryDetailId"
         else:
             detail_query = QueryMap.VS_DETAIL
-            variable_name = "vsHistoryDetailId"
+            variable_name = "vsResultId"
 
         _limit = -1 if limit is None else limit
 
