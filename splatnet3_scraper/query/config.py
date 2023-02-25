@@ -45,9 +45,7 @@ class Config:
             self.config_path = config_path
 
         self.token_manager = token_manager
-        self.config = configparser.ConfigParser()
-        self.config.add_section("options")
-        self.options = self.config.options("options")
+        self.initialize_options()
 
     def generate_token_manager(self, config_path: str | None = None) -> None:
         """Generates the token manager.
@@ -93,9 +91,26 @@ class Config:
             self.config.write(configfile)
 
     def initialize_options(self) -> None:
+        if getattr(self, "config", None) is not None:
+            return
+
         origin = self.token_manager.origin
-        if origin == "env":
-            pass
+        self.config = configparser.ConfigParser()
+        self.config.add_section("options")
+        self.options = self.config.options("options")
+
+        if origin["origin"] == "env":
+            # If the tokens are in environment variables, we should check for
+            # any additional tokens in the token's environment manager and add
+            # them to the config variable under the "options" section.
+            tokens = self.token_manager.env_manager.get_all()
+            for token, value in tokens.items():
+                if token in self.token_manager.env_manager.BASE_TOKENS:
+                    continue
+                loaded_token = value
+                self.config["options"][token] = loaded_token
+
+            return
 
     @classmethod
     def from_env(

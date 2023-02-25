@@ -32,7 +32,7 @@ class TestConfig:
         assert config.config.sections() == ["options"]
         assert config.options == config.config.options("options")
 
-    def test_post_init(self, monkeypatch: pytest.MonkeyPatch):
+    def test_generate_token_manager(self, monkeypatch: pytest.MonkeyPatch):
         config = Config(token_manager=MockTokenManager())
         # config path is not none
         with (
@@ -87,6 +87,55 @@ class TestConfig:
             mock_manage_options.assert_called_once()
             mock_file.assert_called_once_with(".splatnet3_scraper", "w")
             mock_write.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "origin",
+        [
+            {"origin": "env", "data": None},
+            {"origin": "config", "data": "test_path"},
+            {"origin": "test_origin", "data": "test_data"},
+        ],
+        ids=["env", "config", "test_origin"],
+    )
+    @pytest.mark.parametrize(
+        "has_config",
+        [True, False],
+        ids=["has_config", "no_config"],
+    )
+    def test_initialize_options(
+        self, origin, has_config, monkeypatch: pytest.MonkeyPatch
+    ):
+        token_manager = MockTokenManager()
+        MockTokenManager.origin = origin
+
+        with monkeypatch.context() as m:
+            m.setattr(Config, "__init__", lambda *args, **kwargs: None)
+            config = Config(token_manager=token_manager)
+            config.token_manager = token_manager
+            if has_config:
+                config.config = True
+            config.initialize_options()
+
+            # Test short circuit
+            if has_config:
+                assert config.config == True
+                return
+
+            assert config.config.sections() == ["options"]
+
+            if origin["origin"] == "env":
+                test_key_str = "test_key_%s"
+                test_value_str = "test_value_%s"
+                for i, option in [(i, test_key_str % i) for i in range(3)]:
+                    # assert it's not in the config under options
+                    assert not config.config.has_option("options", option)
+                for i, option in [(i, test_key_str % i) for i in range(3, 5)]:
+                    # assert it's in the config under options
+                    assert config.config.has_option("options", option)
+                    assert (
+                        config.config.get("options", option)
+                        == test_value_str % i
+                    )
 
     def test_from_env(self):
         config = Config(token_manager=MockTokenManager())
