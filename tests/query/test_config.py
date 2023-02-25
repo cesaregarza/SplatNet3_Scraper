@@ -118,7 +118,7 @@ class TestConfig:
 
             # Test short circuit
             if has_config:
-                assert config.config == True
+                assert config.config is True
                 return
 
             assert config.config.sections() == ["options"]
