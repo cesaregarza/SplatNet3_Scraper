@@ -17,7 +17,7 @@ token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 class TestConfig:
     def test_init(self, mocker: pytest_mock.MockFixture):
         # token manager is none
-        mock_post_init = mocker.patch.object(Config, "__post_init__")
+        mock_post_init = mocker.patch.object(Config, "generate_token_manager")
         config = Config()
         mock_post_init.assert_called_once_with(None)
         assert not hasattr(config, "config_path")
@@ -46,7 +46,7 @@ class TestConfig:
             patch("configparser.ConfigParser.write") as mock_write,
         ):
             mock_options.return_value = True
-            config.__post_init__("config_path")
+            config.generate_token_manager("config_path")
             mock_from_config_file.assert_called_once_with("config_path")
             mock_read.assert_called_once_with("config_path")
             mock_options.assert_called_once_with("options")
@@ -79,7 +79,7 @@ class TestConfig:
             m.setattr(ConfigParser, "options", options)
             mock_options.return_value = True
             mock_load.return_value = MockTokenManager()
-            config.__post_init__(None)
+            config.generate_token_manager(None)
             mock_from_config_file.assert_not_called()
             mock_load.assert_called_once()
             mock_read.assert_called_once_with(".splatnet3_scraper")
@@ -92,7 +92,7 @@ class TestConfig:
         config = Config(token_manager=MockTokenManager())
         with (
             patch(token_manager_path + ".from_env") as mock_from_env,
-            patch(config_path + ".__post_init__") as mock_post_init,
+            patch(config_path + ".generate_token_manager") as mock_post_init,
         ):
             mock_from_env.return_value = MockTokenManager()
             config.from_env()

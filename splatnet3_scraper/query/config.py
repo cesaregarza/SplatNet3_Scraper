@@ -35,7 +35,7 @@ class Config:
                 Defaults to None.
         """
         if token_manager is None:
-            self.__post_init__(config_path)
+            self.generate_token_manager(config_path)
             return
         else:
             self.config_path = config_path
@@ -45,10 +45,19 @@ class Config:
         self.config.add_section("options")
         self.options = self.config.options("options")
 
-    def __post_init__(self, config_path: str | None = None) -> None:
-        """This function is called after the ``__init__`` method and is used to
-        allow the Config class to be initialized with a TokenManager instance,
-        which is useful for initial setup.
+    def generate_token_manager(self, config_path: str | None = None) -> None:
+        """Generates the token manager.
+
+        Will only be called if the token manager is not given in the constructor
+        or if the ``token_manager`` argument in the constructor is None. This
+        means that the user prefers to use the default loading method for the
+        token manager, which is to look for tokens in the following order:
+            1. the config_path argument
+            2. check the current working directory for ".splatnet3_scraper"
+            3. check for environment variables for defined tokens
+            4. check the current working directory for "tokens.ini"
+
+        If none of these are found, an exception will be raised.
 
         Args:
             config_path (str | None): The path to the config file. If None, it
