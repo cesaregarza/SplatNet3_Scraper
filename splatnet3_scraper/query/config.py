@@ -87,6 +87,11 @@ class Config:
         with open(config_path, "w") as configfile:
             self.config.write(configfile)
 
+    def initialize_options(self) -> None:
+        origin = self.token_manager.origin
+        if origin == "env":
+            pass
+
     @classmethod
     def from_env(cls) -> "Config":
         """Creates a Config instance using the environment variables.
