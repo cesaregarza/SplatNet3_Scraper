@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Iterator, Literal, TypedDict, cast, overload
+from typing import Any, Iterator, Literal, TypedDict, cast, overload, Callable
 
 from splatnet3_scraper.query.json_parser import JSONParser
 
@@ -317,3 +317,85 @@ class QueryResponse:
             return self._data
         print(self._data)
         return None
+    
+    def apply(self, func: Callable[[Any], "QueryResponse"], key: str | tuple[str | int, ...], recursive: bool = True) -> "QueryResponse":
+        """Applies a function to the data.
+
+        Given a function and a key to apply the function to, this method will
+        apply the function to the data at the given key. If the key is a tuple,
+        this method will treat it as a path. For example, a ``key`` argument of
+        ``(0, "key1")`` will be treated as ``data[0]["key1"]``. If the key is
+        a string, this method will treat it as a key in a dictionary. Integers
+        will be treated as indices in a list, but will raise an error if the
+        last key in the path is an integer. If the ``recursive`` argument is
+        ``True``, this method will apply the function to all keys in the data
+        that match the given key or path. For example, if the ``key`` argument
+        is ``(0, "key1")`` and the ``recursive`` argument is ``True``, this will
+        apply the function to all values within the JSON object where the path
+        is ``...[0]["key1"]``. If the ``recursive`` argument is ``False``, this
+        will only apply the function to the value at the absolute key or path in
+        the data.
+
+
+        Args:
+            func (Callable[[Any], QueryResponse]): The function to apply to the
+                data. The function must take a single argument and return a
+                QueryResponse object. The argument that the function takes will
+                be representative of the value at the given key or path.
+            key (str | tuple[str | int, ...]): The key or path to apply the
+                function to. If the key is a tuple, this method will treat it as
+                a path. For example, a ``key`` argument of ``(0, "key1")`` will
+                be treated as ``data[0]["key1"]``. If the key is a string, this
+                method will treat it as a key in a dictionary. Integers will be
+                treated as indices in a list, but will raise an error if the
+                last key in the path is an integer. If the ``recursive``
+                argument is ``True``, this method will treat a ``key`` argument
+                of ``(0, "key1")`` as ``...[0]["key1"]`` rather than just
+                ``data[0]["key1"]``.
+            recursive (bool): Whether to apply the function to all keys in the
+                data that match the given key or path. For example, if the
+                ``key`` argument is ``(0, "key1")`` and the ``recursive``
+                argument is ``True``, this will apply the function to all values
+                within the JSON object where the path is ``...[0]["key1"]``. If
+                the ``recursive`` argument is ``False``, this will only apply
+                the function to the value at the absolute key or path in the
+                data. Defaults to True.
+        
+        Raises:
+            ValueError: If the ``key`` argument is a tuple and the last key in
+                the path is an integer.
+
+        Returns:
+            QueryResponse: The QueryResponse object containing the transformed
+                data.
+        """
+        self.__validate_key(key)
+        # Rely on the fact that __getitem__ is designed to handle both keys and
+        # paths.
+        # Deal with absolute paths first since they are trivial.
+        if not recursive:
+            return func(self[key])
+        
+        # The easiest way to handle recursive paths is to just iterate over all
+        # of the keys in the data and apply the function to the value at the
+        # given key or path. 
+        
+
+    def __validate_key(self, key: str | int | tuple[str | int, ...]) -> None:
+        """Validates a key or path.
+
+        This method will raise an error if the key or path is invalid. This is
+        abstracted into a separate method to make it much easier to test and
+        maintain.
+
+        Args:
+            key (str | int | tuple[str | int, ...]): The key or path to
+                validate.
+
+        Raises:
+            ValueError: If the ``key`` argument is a tuple and the last key in
+                the path is an integer.
+        """
+        if isinstance(key, tuple):
+            if isinstance(key[-1], int):
+                raise ValueError("The last key in a path cannot be an integer.")
