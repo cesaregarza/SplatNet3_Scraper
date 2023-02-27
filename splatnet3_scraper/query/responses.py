@@ -317,3 +317,30 @@ class QueryResponse:
             return self._data
         print(self._data)
         return None
+
+    def get(
+        self, key: str | int | tuple[str | int], default: Any = None
+    ) -> Any:
+        """Returns the value at the given key. If the key is not found, returns
+        the default value.
+
+        This method is similar to ``self[key]`` except that it will not raise
+        an error if the key is not found. Instead, it will return the default
+        value. This method will still raise a type error if a string key is
+        given and the key's level data is a list.
+
+        Args:
+            key (str | int | tuple[str | int]): The key to get the value at. If
+                the key is a tuple, this method will treat it as taking multiple
+                keys in order to get to the data.
+            default (Any): The default value to return if the key is not found.
+                Defaults to None.
+
+        Returns:
+            Any: The value at the given key or the default value if the key is
+                not found.
+        """
+        try:
+            return self[key]
+        except (KeyError, IndexError):
+            return default
