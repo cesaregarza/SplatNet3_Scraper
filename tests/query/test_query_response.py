@@ -164,3 +164,10 @@ class TestQueryResponse:
             ret_value = response.show(True)
         print_mock.assert_not_called()
         assert isinstance(ret_value, dict)
+
+    def test_get(self, json_deep_nested_list: dict):
+        response = QueryResponse(json_deep_nested_list)
+        assert response.get("a") == json_deep_nested_list["a"]
+        assert response.get("a", "default") == json_deep_nested_list["a"]
+        assert response.get("d") is None
+        assert response.get(("c", 0, "d")) == json_deep_nested_list["c"][0]["d"]

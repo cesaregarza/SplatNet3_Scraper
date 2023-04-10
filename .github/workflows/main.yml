@@ -1,0 +1,36 @@
+name: Flake8 and Mypy
+
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+        source $HOME/.poetry/env
+
+    - name: Install dependencies
+      run: |
+        poetry install -E parquet
+
+    - name: Flake8 check
+      run: |
+        poetry run flake8 .
+
+    - name: Mypy check
+      run: |
+        poetry run mypy .
+    
+    - name: Pytest check
+      run: |
+        poetry run pytest

@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest import mock
 
 import pytest
 import requests
@@ -36,7 +36,8 @@ class TestGraphQLQueries:
         assert queries.hash_map == {"test": "test"}
         assert isinstance(queries.session, requests.Session)
 
-    def test_query_header(self):
+    @mock.patch(utils_path + ".get_splatnet_web_version")
+    def test_query_header(self, mock_get_version: mock.MagicMock):
         queries = GraphQLQueries()
         expected_bullet_token = "test_bullet_token"
         expected_language = "test_language"
@@ -60,15 +61,12 @@ class TestGraphQLQueries:
             "Accept-Encoding": "gzip, deflate",
             "test_key": "test_value",
         }
-        with patch(
-            utils_path + ".get_splatnet_web_version"
-        ) as mock_get_version:
-            mock_get_version.return_value = expected_splatnet_web_version
-            header = queries.query_header(
-                expected_bullet_token,
-                expected_language,
-                override=override,
-            )
+        mock_get_version.return_value = expected_splatnet_web_version
+        header = queries.query_header(
+            expected_bullet_token,
+            expected_language,
+            override=override,
+        )
         assert header == expected_header
 
     def test_query_body_hash(self):
@@ -84,7 +82,7 @@ class TestGraphQLQueries:
             },
             "variables": variables,
         }
-        with patch("json.dumps") as mock_dumps:
+        with mock.patch("json.dumps") as mock_dumps:
             mock_dumps.return_value = "test_json"
             body = queries.query_body_hash(query_hash, variables)
         mock_dumps.assert_called_once_with(expected_call)
@@ -95,8 +93,8 @@ class TestGraphQLQueries:
         query_name = "anarchy"
         variables = {"test_variable": "test_value"}
         with (
-            patch(test_graphql_path + ".get_query") as mock_get_query,
-            patch(
+            mock.patch(test_graphql_path + ".get_query") as mock_get_query,
+            mock.patch(
                 test_graphql_path + ".query_body_hash"
             ) as mock_query_body_hash,
         ):
@@ -118,9 +116,13 @@ class TestGraphQLQueries:
         variables = {"test_variable": "test_value_variable"}
 
         with (
-            patch(test_graphql_path + ".query_header") as mock_query_header,
-            patch(test_graphql_path + ".query_body_hash") as mock_query_body,
-            patch("requests.Session.post") as mock_post,
+            mock.patch(
+                test_graphql_path + ".query_header"
+            ) as mock_query_header,
+            mock.patch(
+                test_graphql_path + ".query_body_hash"
+            ) as mock_query_body,
+            mock.patch("requests.Session.post") as mock_post,
         ):
             mock_query_header.return_value = "test_header"
             mock_query_body.return_value = "test_body"
@@ -160,8 +162,8 @@ class TestGraphQLQueries:
         override = {"test_key": "test_value_override"}
 
         with (
-            patch(test_graphql_path + ".query_hash") as mock_query_hash,
-            patch(test_graphql_path + ".get_query") as mock_get_query,
+            mock.patch(test_graphql_path + ".query_hash") as mock_query_hash,
+            mock.patch(test_graphql_path + ".get_query") as mock_get_query,
         ):
             mock_get_query.return_value = "test_query"
             mock_query_hash.return_value = "test_response"

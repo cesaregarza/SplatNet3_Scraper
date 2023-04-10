@@ -20,8 +20,8 @@ class TestRetry:
 
         assert test_func()
 
-    @mock.patch("splatnet3_scraper.utils.logger")
-    def test_failure(self, mock_logger):
+    @mock.patch("logging.warning")
+    def test_failure(self, mock_logger: mock.MagicMock):
         count = 0
 
         @retry(times=1)
@@ -33,11 +33,11 @@ class TestRetry:
         with pytest.raises(Exception):
             test_func()
 
-        assert mock_logger.log.call_count == 1
+        assert mock_logger.call_count == 1
         assert count == 2
 
-    @mock.patch("splatnet3_scraper.utils.logger")
-    def test_success_after_failure(self, mock_logger):
+    @mock.patch("logging.warning")
+    def test_success_after_failure(self, mock_logger: mock.MagicMock):
         count = 0
 
         @retry(times=2)
@@ -50,11 +50,11 @@ class TestRetry:
 
         assert test_func()
 
-        assert mock_logger.log.call_count == 1
+        assert mock_logger.call_count == 1
         assert count == 2
 
-    @mock.patch("splatnet3_scraper.utils.logger")
-    def test_multiple_exceptions(self, mock_logger):
+    @mock.patch("logging.warning")
+    def test_multiple_exceptions(self, mock_logger: mock.MagicMock):
         count = 0
 
         @retry(times=2, exceptions=(ValueError, TypeError))
@@ -69,11 +69,11 @@ class TestRetry:
 
         assert test_func()
 
-        assert mock_logger.log.call_count == 2
+        assert mock_logger.call_count == 2
         assert count == 3
 
-    @mock.patch("splatnet3_scraper.utils.logger")
-    def test_exception_not_defined(self, mock_logger):
+    @mock.patch("logging.warning")
+    def test_exception_not_defined(self, mock_logger: mock.MagicMock):
         count = 0
 
         @retry(times=2, exceptions=(ValueError, TypeError))
@@ -89,7 +89,7 @@ class TestRetry:
         with pytest.raises(IndexError):
             test_func()
 
-        assert mock_logger.log.call_count == 1
+        assert mock_logger.call_count == 1
         assert count == 2
 
 
