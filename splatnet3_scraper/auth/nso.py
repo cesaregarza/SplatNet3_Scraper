@@ -22,7 +22,6 @@ from splatnet3_scraper.constants import (
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
-from splatnet3_scraper.logs import logger
 from splatnet3_scraper.utils import get_splatnet_web_version, retry
 
 version_re = re.compile(
@@ -193,7 +192,9 @@ class NSO:
         response = self.session.get(IOS_APP_URL)
         version = version_re.search(response.text)
         if version is None:
-            logger.log("Failed to get version from app store, using fallback")
+            logging.warning(
+                "Failed to get version from app store, using fallback"
+            )
             return APP_VERSION_FALLBACK
         return version.group(0).strip()
 
@@ -479,6 +480,7 @@ class NSO:
         """
         f_token_url = f_token_url if f_token_url is not None else IMINK_URL
         # Get user access token
+        logging.info("Getting user access token")
         user_access_response = self.get_user_access_token(session_token)
         try:
             self._user_access_token = cast(
@@ -491,11 +493,14 @@ class NSO:
                 + f"Response: {user_access_response}"
             )
 
+        logging.info("Getting user info")
         user_info = self.get_user_info(self._user_access_token)
         self._user_info = user_info
+        logging.info("Getting Web Service Access Token")
         web_service_access_token = self.g_token_generation_phase_1(
             self._id_token, user_info, f_token_url
         )
+        logging.info("Getting gtoken")
         gtoken = self.g_token_generation_phase_2(
             web_service_access_token, f_token_url
         )
@@ -540,8 +545,10 @@ class NSO:
             ``f_token`` generation method will be restored.
         """
         if new_function is None:
+            logging.info("Restoring default ftoken generation method")
             self._f_token_function = self.get_ftoken
         else:
+            logging.info("Setting new ftoken generation method")
             self._f_token_function = new_function
 
     def get_ftoken(
@@ -865,6 +872,7 @@ class NSO:
                 to SplatNet 3, and is valid for 6 hours and 30 minutes after it
                 is obtained.
         """
+        logging.info("Getting bullet token")
         user_agent = (
             user_agent if user_agent is not None else DEFAULT_USER_AGENT
         )
@@ -920,6 +928,6 @@ class NSO:
             self._web_view_version = web_version
             return web_version
         except SplatNetException as e:
-            logger.log(str(e), "warning")
-            logger.log("Using fallback web view version", "warning")
+            logging.warning(str(e))
+            logging.warning("Using fallback web view version")
             return WEB_VIEW_VERSION_FALLBACK

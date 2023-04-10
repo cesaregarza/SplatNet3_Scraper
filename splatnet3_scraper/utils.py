@@ -1,11 +1,11 @@
 import re
 from functools import cache, wraps
 from typing import Any, Callable, ParamSpec, Type, TypeVar
+import logging
 
 import requests
 
 from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
-from splatnet3_scraper.logs import logger
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -40,12 +40,9 @@ def retry(
                 try:
                     return func(*args, **kwargs)
                 except exceptions:
-                    logger.log(
-                        f"{func.__name__} failed on attempt {i + 1} of "
-                        f"{times + 1}, retrying."
-                    )
+                    logging.warning("%s failed on attempt %d of %d, retrying.", func.__name__, i + 1, times + 1)
                     if call_on_fail is not None:
-                        logger.log(f"Calling {call_on_fail.__name__}...")
+                        logging.debug("Calling %s...", call_on_fail.__name__)
                         call_on_fail()
 
             return func(*args, **kwargs)
@@ -53,7 +50,6 @@ def retry(
         return wrapper
 
     return decorator
-
 
 @cache
 def get_splatnet_web_version() -> str:
