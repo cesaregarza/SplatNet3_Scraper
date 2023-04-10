@@ -6,19 +6,40 @@
 
 **SplatNet 3 Scraper** started as a fork of **[s3s](https://github.com/frozenpandaman/s3s)**, but has since been rewritten from scratch while incorporating much of the login flow logic of s3s. As a result, I am deeply indebted to the authors of s3s for their work. This project would not have been possible without their efforts.
 
+## Table of Contents
+
+1. [Features](#features)
+2. [Documentation](#documentation)
+3. [Installation](#installation)
+4. [Usage](#usage)
+   - [Using the `scraper` module](#using-the-scraper-module)
+   - [Using the `query` module](#using-the-query-module)
+   - [Using the `auth` module](#using-the-auth-module)
+5. [Roadmap](#roadmap)
+6. [Contributing](#contributing)
+7. [License](#license)
+
 ## Features
 
-* Lightweight and minimal dependencies. Only requires the `requests` library. Requires Python 3.10 or later.
-* The `scraper` module provides a user-level API that enables a quick and easy way to get data from the SplatNet 3 API, only requiring the user to provide their session token.
-* The `query` module provides a high-level API that provides a simple way to make queries to the SplatNet 3 API. It automatically handles authentication and query handling, and provides a simple interface for accessing the response data.
-* The `auth` module provides a low level API that allows for more fine-grained control over the scraping process. It greatly simplifies the process of authentication.
-* Compatibility with the configuration file format used by `s3s`.
-* Responses from the SplatNet 3 API can be saved and loaded from disk, currently supporting the following formats:
-  * JSON
-  * gzip-compressed JSON
-  * csv
-  * parquet (by installing `splatnet3_scraper[parquet]` or the `pyarrow` library)
-* Heavily documented codebase, with extensive docstrings and type annotations for nearly all functions and classes. The documentation is also available on [Read the Docs](https://splatnet3-scraper.readthedocs.io/en/latest/index.html).
+- Lightweight and minimal dependencies. Only requires the `requests` library. Requires Python 3.10 or later.
+- The `scraper` module provides a user-level API that enables a quick and easy way to get data from the SplatNet 3 API, only requiring the user to provide their session token.
+- The `query` module provides a high-level API that provides a simple way to make queries to the SplatNet 3 API. It automatically handles authentication and query handling, and provides a simple interface for accessing the response data.
+- The `auth` module provides a low level API that allows for more fine-grained control over the scraping process. It greatly simplifies the process of authentication.
+- Compatibility with the configuration file format used by `s3s`.
+- Responses from the SplatNet 3 API can be saved and loaded from disk, currently supporting the following formats:
+  - JSON
+  - gzip-compressed JSON
+  - csv
+  - parquet (by installing `splatnet3_scraper[parquet]` or the `pyarrow` library)
+- Heavily documented codebase, with extensive docstrings and type annotations for nearly all functions and classes. The documentation is also available on [Read the Docs](https://splatnet3-scraper.readthedocs.io/en/latest/index.html).
+
+## Documentation
+
+Detailed documentation for SplatNet 3 Scraper, including usage instructions, examples, and API reference, is available on Read the Docs:
+
+[**SplatNet 3 Scraper Documentation**](https://splatnet3-scraper.readthedocs.io/en/latest/index.html)
+
+We highly recommend referring to the documentation to get the most out of SplatNet 3 Scraper and understand its full capabilities.
 
 ## Installation
 
@@ -46,6 +67,14 @@ The `query` module is an easy-to-use module that enables fast and painless query
 
 The `query` module provides the `QueryHandler` class, which is used to make queries to the SplatNet 3 API. The `QueryHandler` class can be instantiated in one of a few ways: by providing a session token, by providing the path to a configuration file, or by loading environment variables.
 
+### Using the `auth` module
+
+:warning: **Warning: The `auth` module is intended for advanced users only. Most users should use the `scraper` or `query` modules for a simpler and more convenient experience.**
+
+The `auth` module provides a low-level API that allows for more fine-grained control over the scraping process. It greatly simplifies the process of authentication and is designed for advanced developers who need full control over the authentication process.
+
+To use the `auth` module, you will need to import the necessary components and handle the authentication flow manually. Please refer to the [documentation](https://splatnet3-scraper.readthedocs.io/en/latest/index.html) for detailed instructions and examples on how to use the `auth` module.
+
 #### Instantiating the `QueryHandler` class by providing a session token
 
 ```python
@@ -66,9 +95,9 @@ handler.query("StageScheduleQuery")
 
 The following environment variables are supported:
 
-* `SN3S_SESSION_TOKEN`
-* `SN3S_GTOKEN`
-* `SN3S_BULLET_TOKEN`
+- `SN3S_SESSION_TOKEN`
+- `SN3S_GTOKEN`
+- `SN3S_BULLET_TOKEN`
 
 ```python
 from splatnet3_scrape.query import QueryHandler
@@ -91,10 +120,10 @@ print(response["xSchedules", "nodes", 0, "vsRule", "name"])
 
 The `QueryResponse` class provides a `parsed_json` method that can be used to generate a `JSONParser` object from the response data. The `JSONParser` class provides multiple ways of interacting with the given data, including the ability to save the data to disk in a variety of formats. There are currently four different formats that are supported and can be used by passing the desired format to a `to_*` method such as `to_json`. The following formats are supported:
 
-* JSON
-* gzip-compressed JSON
-* csv
-* parquet (by installing `splatnet3_scraper[parquet]` or the `pyarrow` library)
+- JSON
+- gzip-compressed JSON
+- csv
+- parquet (by installing `splatnet3_scraper[parquet]` or the `pyarrow` library)
 
 Note: csv and parquet formats work by converting the response data from a nested dictionary to a columnar format. This is not recommended for single queries, but can be useful for interacting with large amounts of data as it deduplicates the JSON structure and allows for more efficient storage and querying.
 
@@ -140,8 +169,12 @@ parser = JSONParser.from_json("response.json")
 | Docker image | :world_map: |
 | Executable binary | :x: |
 
-## Docker Note
+## Contributing
 
-This project currently uses the standard library heavily, and as such it is not compatible with the `python:alpine` Docker image. I have no plans to change this. Use the `python:slim` image instead.
+We welcome contributions to SplatNet 3 Scraper! For detailed information on how to contribute, please refer to our [CONTRIBUTING.md](./CONTRIBUTING.md) file.
 
-QueryHandler is licensed under the GPLv3. See the LICENSE file for more details.
+To report issues or request new features, please open an issue on the GitHub repository.
+
+## License
+
+SplatNet 3 Scraper is licensed under the GPLv3. See the [LICENSE](./LICENSE) file for more details.
