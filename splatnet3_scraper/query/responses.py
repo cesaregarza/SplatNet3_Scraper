@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Iterator, Literal, TypedDict, cast, overload, Callable
+from typing import Any, Callable, Iterator, Literal, TypedDict, cast, overload
 
 from splatnet3_scraper.query.json_parser import JSONParser
 
@@ -317,8 +317,13 @@ class QueryResponse:
             return self._data
         print(self._data)
         return None
-    
-    def apply(self, func: Callable[[Any], "QueryResponse"], key: str | tuple[str | int, ...], recursive: bool = True) -> "QueryResponse":
+
+    def apply(
+        self,
+        func: Callable[[Any], "QueryResponse"],
+        key: str | tuple[str | int, ...],
+        recursive: bool = True,
+    ) -> "QueryResponse":
         """Applies a function to the data.
 
         Given a function and a key to apply the function to, this method will
@@ -360,7 +365,7 @@ class QueryResponse:
                 the ``recursive`` argument is ``False``, this will only apply
                 the function to the value at the absolute key or path in the
                 data. Defaults to True.
-        
+
         Raises:
             ValueError: If the ``key`` argument is a tuple and the last key in
                 the path is an integer.
@@ -375,11 +380,10 @@ class QueryResponse:
         # Deal with absolute paths first since they are trivial.
         if not recursive:
             return func(self[key])
-        
+
         # The easiest way to handle recursive paths is to just iterate over all
         # of the keys in the data and apply the function to the value at the
-        # given key or path. 
-        
+        # given key or path.
 
     def __validate_key(self, key: str | int | tuple[str | int, ...]) -> None:
         """Validates a key or path.
