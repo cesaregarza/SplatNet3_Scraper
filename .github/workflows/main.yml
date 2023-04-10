@@ -21,7 +21,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        poetry install
+        poetry install -E parquet
 
     - name: Flake8 check
       run: |
@@ -30,3 +30,7 @@ jobs:
     - name: Mypy check
       run: |
         poetry run mypy .
+    
+    - name: Pytest check
+      run: |
+        poetry run pytest
