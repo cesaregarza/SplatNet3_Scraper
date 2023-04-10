@@ -17,7 +17,8 @@ am deeply indebted to the authors of s3s for their work. This project would not
 have been possible without their efforts.
 
 See the :doc:`misc/quickstart` page for more information on how to use this library,
-including how to :ref:`install <installation>` it.
+including how to :ref:`install <installation>` it. If you are interested in
+contributing to this project, see the :doc:`misc/contributing` page.
 
 
 Indices and tables
@@ -31,11 +32,13 @@ Contents
 ========
 
 .. toctree::
+   :maxdepth: 1
 
    misc/quickstart
    misc/session_token
    misc/login_flow
    misc/queries
+   misc/contributing
    api/scraper/scraper
    api/query/query
    api/auth/auth
