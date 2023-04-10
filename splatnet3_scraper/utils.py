@@ -1,7 +1,7 @@
+import logging
 import re
 from functools import cache, wraps
 from typing import Any, Callable, ParamSpec, Type, TypeVar
-import logging
 
 import requests
 
@@ -40,7 +40,12 @@ def retry(
                 try:
                     return func(*args, **kwargs)
                 except exceptions:
-                    logging.warning("%s failed on attempt %d of %d, retrying.", func.__name__, i + 1, times + 1)
+                    logging.warning(
+                        "%s failed on attempt %d of %d, retrying.",
+                        func.__name__,
+                        i + 1,
+                        times + 1,
+                    )
                     if call_on_fail is not None:
                         logging.debug("Calling %s...", call_on_fail.__name__)
                         call_on_fail()
@@ -50,6 +55,7 @@ def retry(
         return wrapper
 
     return decorator
+
 
 @cache
 def get_splatnet_web_version() -> str:

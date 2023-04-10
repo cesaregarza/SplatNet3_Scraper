@@ -116,8 +116,12 @@ class TestGraphQLQueries:
         variables = {"test_variable": "test_value_variable"}
 
         with (
-            mock.patch(test_graphql_path + ".query_header") as mock_query_header,
-            mock.patch(test_graphql_path + ".query_body_hash") as mock_query_body,
+            mock.patch(
+                test_graphql_path + ".query_header"
+            ) as mock_query_header,
+            mock.patch(
+                test_graphql_path + ".query_body_hash"
+            ) as mock_query_body,
             mock.patch("requests.Session.post") as mock_post,
         ):
             mock_query_header.return_value = "test_header"
