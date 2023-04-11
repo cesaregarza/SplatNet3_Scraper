@@ -331,8 +331,7 @@ class QueryResponse:
         this method will treat it as a path. For example, a ``key`` argument of
         ``(0, "key1")`` will be treated as ``data[0]["key1"]``. If the key is
         a string, this method will treat it as a key in a dictionary. Integers
-        will be treated as indices in a list, but will raise an error if the
-        last key in the path is an integer. If the ``recursive`` argument is
+        will be treated as indices in a list. If the ``recursive`` argument is
         ``True``, this method will apply the function to all keys in the data
         that match the given key or path. For example, if the ``key`` argument
         is ``(0, "key1")`` and the ``recursive`` argument is ``True``, this will
@@ -340,7 +339,6 @@ class QueryResponse:
         is ``...[0]["key1"]``. If the ``recursive`` argument is ``False``, this
         will only apply the function to the value at the absolute key or path in
         the data.
-
 
         Args:
             func (Callable[[Any], QueryResponse]): The function to apply to the
@@ -352,8 +350,7 @@ class QueryResponse:
                 a path. For example, a ``key`` argument of ``(0, "key1")`` will
                 be treated as ``data[0]["key1"]``. If the key is a string, this
                 method will treat it as a key in a dictionary. Integers will be
-                treated as indices in a list, but will raise an error if the
-                last key in the path is an integer. If the ``recursive``
+                treated as indices in a list. If the ``recursive``
                 argument is ``True``, this method will treat a ``key`` argument
                 of ``(0, "key1")`` as ``...[0]["key1"]`` rather than just
                 ``data[0]["key1"]``.
@@ -366,15 +363,10 @@ class QueryResponse:
                 the function to the value at the absolute key or path in the
                 data. Defaults to True.
 
-        Raises:
-            ValueError: If the ``key`` argument is a tuple and the last key in
-                the path is an integer.
-
         Returns:
             QueryResponse: The QueryResponse object containing the transformed
                 data.
         """
-        self.__validate_key(key)
         # Rely on the fact that __getitem__ is designed to handle both keys and
         # paths.
         # Deal with absolute paths first since they are trivial.
@@ -385,24 +377,35 @@ class QueryResponse:
         # of the keys in the data and apply the function to the value at the
         # given key or path.
 
-    def __validate_key(self, key: str | int | tuple[str | int, ...]) -> None:
-        """Validates a key or path.
+    def match_partial_path(
+        self, partial_path: str | int | tuple[str | int, ...]
+    ) -> list[tuple[str | int, ...]]:
+        """Returns a list of all paths that match the given partial path. For
+        example, if partial_path is ``(0, "key1")``, this will return all paths
+        in the data that match ``...[0]["key1"]``.
 
-        This method will raise an error if the key or path is invalid. This is
-        abstracted into a separate method to make it much easier to test and
-        maintain.
+        Given a partial path, this method will return a list of all paths in
+        the data that match the given partial path. For example, if
+        ``partial_path`` is ``(0, "key1")``, this will return all paths in the
+        data that match ``...[0]["key1"]``. If the partial path is a string,
+        this method will treat it as a key in a dictionary. Integers will be
+        treated as indices in a list. If the partial path is a tuple, this
+        method will treat it as a path. For example, a ``partial_path`` argument
+        of ``(0, "key1")`` will be treated as ``...[0]["key1"]``.
+
 
         Args:
-            key (str | int | tuple[str | int, ...]): The key or path to
-                validate.
+            partial_path (str | int | tuple[str | int, ...]): The partial path
+                to match. If the partial path is a tuple, this method will treat
+                it as a path. For example, a ``partial_path`` argument of ``(0,
+                "key1")`` will be treated as ``...[0]["key1"]``. If the partial
+                path is a string, this method will treat it as a key in a
+                dictionary. Integers will be treated as indices in a list.
 
-        Raises:
-            ValueError: If the ``key`` argument is a tuple and the last key in
-                the path is an integer.
+        Returns:
+            list[tuple[str | int, ...]]: A list of all paths that match the
+                given partial path.
         """
-        if isinstance(key, tuple):
-            if isinstance(key[-1], int):
-                raise ValueError("The last key in a path cannot be an integer.")
 
     def get(
         self, key: str | int | tuple[str | int], default: Any = None
