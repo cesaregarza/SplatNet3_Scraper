@@ -4,6 +4,7 @@ from typing import (
     Callable,
     Iterator,
     Literal,
+    TypeAlias,
     TypedDict,
     TypeVar,
     cast,
@@ -14,6 +15,8 @@ from splatnet3_scraper.query.json_parser import JSONParser
 from splatnet3_scraper.utils import match_partial_path
 
 T = TypeVar("T")
+
+PathType: TypeAlias = str | int | tuple[str | int, ...]
 
 
 class MetaData(TypedDict, total=False):
@@ -220,9 +223,7 @@ class QueryResponse:
     def __len__(self) -> int:
         return len(self._data)
 
-    def __getitem__(
-        self, key: str | int | tuple[str | int, ...]
-    ) -> "QueryResponse":
+    def __getitem__(self, key: PathType) -> "QueryResponse":
         """Returns a QueryResponse object containing the data at the given
         key. If the key is a tuple, this method will treat it as taking multiple
         keys in order to get to the data. For example, the following two are
@@ -234,7 +235,7 @@ class QueryResponse:
         at the given key.
 
         Args:
-            key (str | int | tuple[str  |  int, ...]): The key to get the data
+            key (PathType): The key to get the data
 
         Returns:
             QueryResponse: The QueryResponse object containing the data.
@@ -333,7 +334,7 @@ class QueryResponse:
     def apply(
         self,
         func: Callable[[Any], T],
-        key: str | tuple[str | int, ...],
+        key: PathType,
         recursive: bool = True,
     ) -> T | list[T]:
         """Applies a function to the data.
@@ -386,7 +387,7 @@ class QueryResponse:
         return [func(self[path]) for path in paths]
 
     def match_partial_path(
-        self, partial_path: str | int | tuple[str | int, ...]
+        self, partial_path: PathType | list[PathType]
     ) -> list[tuple[str | int, ...]]:
         """Returns a list of all paths that match the given partial path. For
         example, if partial_path is ``(0, "key1")``, this will return all paths
@@ -416,9 +417,7 @@ class QueryResponse:
         """
         return match_partial_path(self._data, partial_path)
 
-    def get(
-        self, key: str | int | tuple[str | int], default: Any = None
-    ) -> Any:
+    def get(self, key: PathType, default: Any = None) -> Any:
         """Returns the value at the given key. If the key is not found, returns
         the default value.
 
@@ -428,9 +427,9 @@ class QueryResponse:
         given and the key's level data is a list.
 
         Args:
-            key (str | int | tuple[str | int]): The key to get the value at. If
-                the key is a tuple, this method will treat it as taking multiple
-                keys in order to get to the data.
+            key (PathType): The key to get the value at. If the key is a tuple,
+                this method will treat it as taking multiple keys in order to
+                get to the data.
             default (Any): The default value to return if the key is not found.
                 Defaults to None.
 

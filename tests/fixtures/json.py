@@ -225,6 +225,7 @@ def json_deep_nested_list_exp_pp() -> list[tuple[str | int, ...]]:
         ("c", 1, "e", "g", "h"),
     ]
 
+
 @pytest.fixture
 def json_deep_nested_list_exp_pp_2() -> list[tuple[str | int, ...]]:
     return [

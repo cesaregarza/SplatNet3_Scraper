@@ -254,8 +254,8 @@ class TestMatchPartialPath:
             (
                 lazy_fixture("json_deep_nested_list"),
                 [("g", "h"), ("g", "i")],
-                lazy_fixture("json_deep_nested_list_exp_pp_2")
-            )
+                lazy_fixture("json_deep_nested_list_exp_pp_2"),
+            ),
         ],
         ids=[
             "nested_list",
