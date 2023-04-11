@@ -358,15 +358,14 @@ class QueryResponse:
                 data. The function must take a single argument and return a
                 QueryResponse object. The argument that the function takes will
                 be representative of the value at the given key or path.
-            key (str | tuple[str | int, ...]): The key or path to apply the
-                function to. If the key is a tuple, this method will treat it as
-                a path. For example, a ``key`` argument of ``(0, "key1")`` will
-                be treated as ``data[0]["key1"]``. If the key is a string, this
-                method will treat it as a key in a dictionary. Integers will be
-                treated as indices in a list. If the ``recursive``
-                argument is ``True``, this method will treat a ``key`` argument
-                of ``(0, "key1")`` as ``...[0]["key1"]`` rather than just
-                ``data[0]["key1"]``.
+            key (PathType): The key or path to apply the function to. If the key
+                is a tuple, this method will treat it as a path. For example, a
+                ``key`` argument of ``(0, "key1")`` will be treated as
+                ``data[0]["key1"]``. If the key is a string, this method will
+                treat it as a key in a dictionary. Integers will be treated as
+                indices in a list. If the ``recursive`` argument is ``True``,
+                this method will treat a ``key`` argument of ``(0, "key1")`` as
+                ``...[0]["key1"]`` rather than just ``data[0]["key1"]``.
             recursive (bool): Whether to apply the function to all keys in the
                 data that match the given key or path. For example, if the
                 ``key`` argument is ``(0, "key1")`` and the ``recursive``
