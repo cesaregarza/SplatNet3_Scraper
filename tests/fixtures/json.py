@@ -225,6 +225,15 @@ def json_deep_nested_list_exp_pp() -> list[tuple[str | int, ...]]:
         ("c", 1, "e", "g", "h"),
     ]
 
+@pytest.fixture
+def json_deep_nested_list_exp_pp_2() -> list[tuple[str | int, ...]]:
+    return [
+        ("c", 0, "e", "g", "h"),
+        ("c", 1, "e", "g", "h"),
+        ("c", 0, "e", "g", "i"),
+        ("c", 1, "e", "g", "i"),
+    ]
+
 
 @pytest.fixture
 def json_with_none() -> dict[str, int | list[dict[str, int] | None]]:
