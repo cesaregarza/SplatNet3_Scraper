@@ -4,7 +4,6 @@ from unittest.mock import mock_open, patch
 
 import pyarrow as pa
 import pytest
-import pytest_mock
 
 from splatnet3_scraper.query.json_parser import JSONParser, LinearJSON
 from tests.mock import MockLinearJSON, MockPyArrowTable

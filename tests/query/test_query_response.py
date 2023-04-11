@@ -171,3 +171,46 @@ class TestQueryResponse:
         assert response.get("a", "default") == json_deep_nested_list["a"]
         assert response.get("d") is None
         assert response.get(("c", 0, "d")) == json_deep_nested_list["c"][0]["d"]
+
+    @pytest.mark.parametrize(
+        "input, path, expected",
+        [
+            (
+                lazy_fixture("json_nested_list"),
+                "d",
+                lazy_fixture("json_nested_list_exp_pp"),
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("g", "h"),
+                lazy_fixture("json_deep_nested_list_exp_pp"),
+            ),
+        ],
+        ids=[
+            "nested_list",
+            "deep_nested_list",
+        ],
+    )
+    def test_match_partial_path(self, input, path, expected):
+        response = QueryResponse(input)
+        assert response.match_partial_path(path) == expected
+
+    @pytest.mark.parametrize(
+        "data, path, func, expected",
+        [
+            (lazy_fixture("json_nested_list"), "d", lambda x: x + 1, [4, 6]),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("g", "h"),
+                lambda x: x + 1,
+                [6, 10],
+            ),
+        ],
+        ids=[
+            "nested_list",
+            "deep_nested_list",
+        ],
+    )
+    def test_apply(self, data, path, func, expected):
+        response = QueryResponse(data)
+        assert response.apply(func, path) == expected

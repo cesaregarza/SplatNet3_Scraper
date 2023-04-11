@@ -1,7 +1,7 @@
 import logging
 import re
 from functools import cache, wraps
-from typing import Any, Callable, ParamSpec, Type, TypeVar
+from typing import Any, Callable, ParamSpec, Type, TypeVar, cast
 
 import requests
 
@@ -186,26 +186,24 @@ def enumerate_all_paths(data: dict | list | Any) -> list[tuple[str | int, ...]]:
     """Recursively enumerates all paths in the given data.
 
     Args:
-        data (dict[str, Any] | list): The data to enumerate.
+        data (dict | list | Any): The data to enumerate.
 
     Returns:
         list[tuple[str | int, ...]]: A list of all paths in the given data.
     """
-    paths = []
+    paths: list[tuple[str | int, ...]] = []
 
     if not isinstance(data, (dict, list)):
         return paths
 
-    if isinstance(data, dict):
-        members = data.items()
-    else:
-        members = enumerate(data)
+    members = data.items() if isinstance(data, dict) else enumerate(data)
 
     for key, value in members:
-        paths.append((key,))
+        key_tuple = (cast(str | int, key),)
+        paths.append(key_tuple)
         subpaths = enumerate_all_paths(value)
         for subpath in subpaths:
-            paths.append((key,) + subpath)
+            paths.append(key_tuple + subpath)
 
     return paths
 

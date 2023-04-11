@@ -1,7 +1,19 @@
 from datetime import datetime
-from typing import Any, Callable, Iterator, Literal, TypedDict, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    Literal,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from splatnet3_scraper.query.json_parser import JSONParser
+from splatnet3_scraper.utils import match_partial_path
+
+T = TypeVar("T")
 
 
 class MetaData(TypedDict, total=False):
@@ -320,10 +332,10 @@ class QueryResponse:
 
     def apply(
         self,
-        func: Callable[[Any], "QueryResponse"],
+        func: Callable[[Any], T],
         key: str | tuple[str | int, ...],
         recursive: bool = True,
-    ) -> "QueryResponse":
+    ) -> T | list[T]:
         """Applies a function to the data.
 
         Given a function and a key to apply the function to, this method will
@@ -367,15 +379,11 @@ class QueryResponse:
             QueryResponse: The QueryResponse object containing the transformed
                 data.
         """
-        # Rely on the fact that __getitem__ is designed to handle both keys and
-        # paths.
-        # Deal with absolute paths first since they are trivial.
         if not recursive:
             return func(self[key])
 
-        # The easiest way to handle recursive paths is to just iterate over all
-        # of the keys in the data and apply the function to the value at the
-        # given key or path.
+        paths = self.match_partial_path(key)
+        return [func(self[path]) for path in paths]
 
     def match_partial_path(
         self, partial_path: str | int | tuple[str | int, ...]
@@ -406,6 +414,7 @@ class QueryResponse:
             list[tuple[str | int, ...]]: A list of all paths that match the
                 given partial path.
         """
+        return match_partial_path(self._data, partial_path)
 
     def get(
         self, key: str | int | tuple[str | int], default: Any = None
