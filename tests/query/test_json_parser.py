@@ -479,8 +479,3 @@ class TestJSONParser:
             )
             mock_load.assert_called_once()
             assert json_parser.data == data
-
-    # TODO: Figure out how to test from_parquet
-    @pytest.mark.xfail
-    def test_from_parquet(self):
-        raise NotImplementedError
