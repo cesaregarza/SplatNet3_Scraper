@@ -202,21 +202,52 @@ class TestQueryResponse:
         assert response.match_partial_path(path) == expected
 
     @pytest.mark.parametrize(
-        "data, path, func, expected",
+        "data, path, partial, func, expected",
         [
-            (lazy_fixture("json_nested_list"), "d", lambda x: x + 1, [4, 6]),
+            (
+                lazy_fixture("json_nested_list"),
+                "d",
+                True,
+                lambda x: x + 1,
+                [4, 6],
+            ),
+            (
+                lazy_fixture("json_nested_list"),
+                ("c", 0, "d"),
+                False,
+                lambda x: x + 1,
+                4,
+            ),
             (
                 lazy_fixture("json_deep_nested_list"),
                 ("g", "h"),
+                True,
                 lambda x: x + 1,
                 [6, 10],
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("g", "h"), ("g", "i")],
+                True,
+                lambda x: x + 1,
+                [6, 10, 7, 11],
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("c", 0, "e", "g", "h"), ("c", 1, "e", "g", "i")],
+                False,
+                lambda x: x + 1,
+                [6, 11],
             ),
         ],
         ids=[
             "nested_list",
+            "nested_list_partial_false",
             "deep_nested_list",
+            "list_of_paths",
+            "list_of_paths_partial_false",
         ],
     )
-    def test_apply(self, data, path, func, expected):
+    def test_apply(self, data, path, partial, func, expected):
         response = QueryResponse(data)
-        assert response.apply(func, path) == expected
+        assert response.apply(func, path, partial=partial) == expected

@@ -334,8 +334,8 @@ class QueryResponse:
     def apply(
         self,
         func: Callable[[Any], T],
-        key: PathType,
-        recursive: bool = True,
+        key: PathType | list[PathType],
+        partial: bool = True,
     ) -> T | list[T]:
         """Applies a function to the data.
 
@@ -344,12 +344,12 @@ class QueryResponse:
         this method will treat it as a path. For example, a ``key`` argument of
         ``(0, "key1")`` will be treated as ``data[0]["key1"]``. If the key is
         a string, this method will treat it as a key in a dictionary. Integers
-        will be treated as indices in a list. If the ``recursive`` argument is
+        will be treated as indices in a list. If the ``partial`` argument is
         ``True``, this method will apply the function to all keys in the data
         that match the given key or path. For example, if the ``key`` argument
-        is ``(0, "key1")`` and the ``recursive`` argument is ``True``, this will
+        is ``(0, "key1")`` and the ``partial`` argument is ``True``, this will
         apply the function to all values within the JSON object where the path
-        is ``...[0]["key1"]``. If the ``recursive`` argument is ``False``, this
+        is ``...[0]["key1"]``. If the ``partial`` argument is ``False``, this
         will only apply the function to the value at the absolute key or path in
         the data.
 
@@ -358,20 +358,21 @@ class QueryResponse:
                 data. The function must take a single argument and return a
                 QueryResponse object. The argument that the function takes will
                 be representative of the value at the given key or path.
-            key (PathType): The key or path to apply the function to. If the key
-                is a tuple, this method will treat it as a path. For example, a
-                ``key`` argument of ``(0, "key1")`` will be treated as
-                ``data[0]["key1"]``. If the key is a string, this method will
-                treat it as a key in a dictionary. Integers will be treated as
-                indices in a list. If the ``recursive`` argument is ``True``,
-                this method will treat a ``key`` argument of ``(0, "key1")`` as
-                ``...[0]["key1"]`` rather than just ``data[0]["key1"]``.
-            recursive (bool): Whether to apply the function to all keys in the
+            key (PathType | list[PathType]): The key or path to apply the
+                function to. If the key is a tuple, this method will treat it
+                as a path. For example, a ``key`` argument of ``(0, "key1")``
+                will be treated as ``data[0]["key1"]``. If the key is a string,
+                this method will treat it as a key in a dictionary. Integers
+                will be treated as indices in a list. If the ``partial``
+                argument is ``True``, this method will treat a ``key``
+                argument of ``(0, "key1")`` as ``...[0]["key1"]`` rather than
+                just ``data[0]["key1"]``.
+            partial (bool): Whether to apply the function to all keys in the
                 data that match the given key or path. For example, if the
-                ``key`` argument is ``(0, "key1")`` and the ``recursive``
+                ``key`` argument is ``(0, "key1")`` and the ``partial``
                 argument is ``True``, this will apply the function to all values
                 within the JSON object where the path is ``...[0]["key1"]``. If
-                the ``recursive`` argument is ``False``, this will only apply
+                the ``partial`` argument is ``False``, this will only apply
                 the function to the value at the absolute key or path in the
                 data. Defaults to True.
 
@@ -379,8 +380,12 @@ class QueryResponse:
             QueryResponse: The QueryResponse object containing the transformed
                 data.
         """
-        if not recursive:
-            return func(self[key])
+        if not partial:
+            if not isinstance(key, list):
+                return func(self[key])
+            out: list[T] = []
+            for path in key:
+                out.append(func(self[path]))
 
         paths = self.match_partial_path(key)
         return [func(self[path]) for path in paths]
