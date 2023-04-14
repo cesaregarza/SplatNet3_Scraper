@@ -4,7 +4,6 @@ from unittest.mock import mock_open, patch
 
 import pyarrow as pa
 import pytest
-import pytest_mock
 
 from splatnet3_scraper.query.json_parser import JSONParser, LinearJSON
 from tests.mock import MockLinearJSON, MockPyArrowTable
@@ -480,8 +479,3 @@ class TestJSONParser:
             )
             mock_load.assert_called_once()
             assert json_parser.data == data
-
-    # TODO: Figure out how to test from_parquet
-    @pytest.mark.xfail
-    def test_from_parquet(self):
-        raise NotImplementedError

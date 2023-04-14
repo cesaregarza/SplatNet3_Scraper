@@ -1,7 +1,22 @@
 from datetime import datetime
-from typing import Any, Iterator, Literal, TypedDict, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    Literal,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from splatnet3_scraper.query.json_parser import JSONParser
+from splatnet3_scraper.utils import match_partial_path
+
+T = TypeVar("T")
+
+PathType: TypeAlias = str | int | tuple[str | int, ...]
 
 
 class MetaData(TypedDict, total=False):
@@ -208,9 +223,7 @@ class QueryResponse:
     def __len__(self) -> int:
         return len(self._data)
 
-    def __getitem__(
-        self, key: str | int | tuple[str | int, ...]
-    ) -> "QueryResponse":
+    def __getitem__(self, key: PathType) -> "QueryResponse":
         """Returns a QueryResponse object containing the data at the given
         key. If the key is a tuple, this method will treat it as taking multiple
         keys in order to get to the data. For example, the following two are
@@ -222,7 +235,7 @@ class QueryResponse:
         at the given key.
 
         Args:
-            key (str | int | tuple[str  |  int, ...]): The key to get the data
+            key (PathType): The key to get the data
 
         Returns:
             QueryResponse: The QueryResponse object containing the data.
@@ -318,9 +331,97 @@ class QueryResponse:
         print(self._data)
         return None
 
-    def get(
-        self, key: str | int | tuple[str | int], default: Any = None
-    ) -> Any:
+    def apply(
+        self,
+        func: Callable[[Any], T],
+        key: PathType | list[PathType],
+        partial: bool = True,
+    ) -> T | list[T]:
+        """Applies a function to the data.
+
+        Given a function and a key to apply the function to, this method will
+        apply the function to the data at the given key. If the key is a tuple,
+        this method will treat it as a path. For example, a ``key`` argument of
+        ``(0, "key1")`` will be treated as ``data[0]["key1"]``. If the key is
+        a string, this method will treat it as a key in a dictionary. Integers
+        will be treated as indices in a list. If the ``partial`` argument is
+        ``True``, this method will apply the function to all keys in the data
+        that match the given key or path. For example, if the ``key`` argument
+        is ``(0, "key1")`` and the ``partial`` argument is ``True``, this will
+        apply the function to all values within the JSON object where the path
+        is ``...[0]["key1"]``. If the ``partial`` argument is ``False``, this
+        will only apply the function to the value at the absolute key or path in
+        the data.
+
+        Args:
+            func (Callable[[Any], QueryResponse]): The function to apply to the
+                data. The function must take a single argument and return a
+                QueryResponse object. The argument that the function takes will
+                be representative of the value at the given key or path.
+            key (PathType | list[PathType]): The key or path to apply the
+                function to. If the key is a tuple, this method will treat it
+                as a path. For example, a ``key`` argument of ``(0, "key1")``
+                will be treated as ``data[0]["key1"]``. If the key is a string,
+                this method will treat it as a key in a dictionary. Integers
+                will be treated as indices in a list. If the ``partial``
+                argument is ``True``, this method will treat a ``key``
+                argument of ``(0, "key1")`` as ``...[0]["key1"]`` rather than
+                just ``data[0]["key1"]``.
+            partial (bool): Whether to apply the function to all keys in the
+                data that match the given key or path. For example, if the
+                ``key`` argument is ``(0, "key1")`` and the ``partial``
+                argument is ``True``, this will apply the function to all values
+                within the JSON object where the path is ``...[0]["key1"]``. If
+                the ``partial`` argument is ``False``, this will only apply
+                the function to the value at the absolute key or path in the
+                data. Defaults to True.
+
+        Returns:
+            QueryResponse: The QueryResponse object containing the transformed
+                data.
+        """
+        if not partial:
+            if not isinstance(key, list):
+                return func(self[key])
+            out: list[T] = []
+            for path in key:
+                out.append(func(self[path]))
+
+        paths = self.match_partial_path(key)
+        return [func(self[path]) for path in paths]
+
+    def match_partial_path(
+        self, partial_path: PathType | list[PathType]
+    ) -> list[tuple[str | int, ...]]:
+        """Returns a list of all paths that match the given partial path. For
+        example, if partial_path is ``(0, "key1")``, this will return all paths
+        in the data that match ``...[0]["key1"]``.
+
+        Given a partial path, this method will return a list of all paths in
+        the data that match the given partial path. For example, if
+        ``partial_path`` is ``(0, "key1")``, this will return all paths in the
+        data that match ``...[0]["key1"]``. If the partial path is a string,
+        this method will treat it as a key in a dictionary. Integers will be
+        treated as indices in a list. If the partial path is a tuple, this
+        method will treat it as a path. For example, a ``partial_path`` argument
+        of ``(0, "key1")`` will be treated as ``...[0]["key1"]``.
+
+
+        Args:
+            partial_path (str | int | tuple[str | int, ...]): The partial path
+                to match. If the partial path is a tuple, this method will treat
+                it as a path. For example, a ``partial_path`` argument of ``(0,
+                "key1")`` will be treated as ``...[0]["key1"]``. If the partial
+                path is a string, this method will treat it as a key in a
+                dictionary. Integers will be treated as indices in a list.
+
+        Returns:
+            list[tuple[str | int, ...]]: A list of all paths that match the
+                given partial path.
+        """
+        return match_partial_path(self._data, partial_path)
+
+    def get(self, key: PathType, default: Any = None) -> Any:
         """Returns the value at the given key. If the key is not found, returns
         the default value.
 
@@ -330,9 +431,9 @@ class QueryResponse:
         given and the key's level data is a list.
 
         Args:
-            key (str | int | tuple[str | int]): The key to get the value at. If
-                the key is a tuple, this method will treat it as taking multiple
-                keys in order to get to the data.
+            key (PathType): The key to get the value at. If the key is a tuple,
+                this method will treat it as taking multiple keys in order to
+                get to the data.
             default (Any): The default value to return if the key is not found.
                 Defaults to None.
 

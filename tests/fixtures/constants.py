@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime as dt
 
 import pytest
 
@@ -32,10 +32,10 @@ def timestamp() -> int:
 
 
 @pytest.fixture
-def timestamp_datetime() -> datetime:
-    return datetime(2009, 2, 13, 17, 31, 30)
+def timestamp_datetime(timestamp: int) -> dt.datetime:
+    return dt.datetime.fromtimestamp(timestamp)  # 2009-02-13 23:31:30
 
 
 @pytest.fixture
-def timestamp_datetime_str() -> str:
-    return "2009-02-13 17:31:30"
+def timestamp_datetime_str(timestamp_datetime: dt.datetime) -> str:
+    return timestamp_datetime.strftime("%Y-%m-%d %H:%M:%S")

@@ -1,8 +1,6 @@
-import random
 from unittest.mock import patch
 
 import pytest
-import pytest_mock
 
 from splatnet3_scraper.auth.exceptions import SplatNetException
 from splatnet3_scraper.auth.nso import NSO

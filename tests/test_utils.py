@@ -6,8 +6,10 @@ from pytest_lazyfixture import lazy_fixture
 
 from splatnet3_scraper.utils import (
     delinearize_json,
+    enumerate_all_paths,
     get_splatnet_web_version,
     linearize_json,
+    match_partial_path,
     retry,
 )
 
@@ -207,3 +209,59 @@ class TestDelinearizeJSON:
     )
     def test_delinearize_json(self, input, expected):
         assert delinearize_json(*input) == expected
+
+
+class TestEnumerateAllPaths:
+    @pytest.mark.parametrize(
+        "input, expected",
+        [
+            (lazy_fixture("json_small"), lazy_fixture("json_small_keys")),
+            (lazy_fixture("json_nested"), lazy_fixture("json_nested_keys")),
+            (
+                lazy_fixture("json_nested_list"),
+                lazy_fixture("json_nested_list_keys"),
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                lazy_fixture("json_deep_nested_list_keys"),
+            ),
+        ],
+        ids=[
+            "small",
+            "nested",
+            "nested_list",
+            "deep_nested_list",
+        ],
+    )
+    def test_enumerate_all_paths(self, input, expected):
+        assert enumerate_all_paths(input) == expected
+
+
+class TestMatchPartialPath:
+    @pytest.mark.parametrize(
+        "input, path, expected",
+        [
+            (
+                lazy_fixture("json_nested_list"),
+                "d",
+                lazy_fixture("json_nested_list_exp_pp"),
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("g", "h"),
+                lazy_fixture("json_deep_nested_list_exp_pp"),
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("g", "h"), ("g", "i")],
+                lazy_fixture("json_deep_nested_list_exp_pp_2"),
+            ),
+        ],
+        ids=[
+            "nested_list",
+            "deep_nested_list",
+            "list_of_paths",
+        ],
+    )
+    def test_match_partial_path(self, input, path, expected):
+        assert match_partial_path(input, path) == expected

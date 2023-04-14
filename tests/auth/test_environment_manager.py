@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 
 from splatnet3_scraper.auth.environment_manager import (

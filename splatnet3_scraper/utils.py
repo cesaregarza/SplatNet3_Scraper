@@ -1,7 +1,7 @@
 import logging
 import re
 from functools import cache, wraps
-from typing import Any, Callable, ParamSpec, Type, TypeVar
+from typing import Any, Callable, ParamSpec, Type, TypeAlias, TypeVar, cast
 
 import requests
 
@@ -9,6 +9,8 @@ from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
 
 T = TypeVar("T")
 P = ParamSpec("P")
+
+PathType: TypeAlias = str | int | tuple[str | int, ...]
 
 json_splitter_re = re.compile(r"[\;\.]")
 
@@ -180,3 +182,126 @@ def delinearize_json(
             current[subkeys[-1]] = value
 
     return json_data
+
+
+def enumerate_all_paths(data: dict | list | Any) -> list[tuple[str | int, ...]]:
+    """Recursively enumerates all paths in the given data.
+
+    Args:
+        data (dict | list | Any): The data to enumerate.
+
+    Returns:
+        list[tuple[str | int, ...]]: A list of all paths in the given data.
+    """
+    paths: list[tuple[str | int, ...]] = []
+
+    if not isinstance(data, (dict, list)):
+        return paths
+
+    members = data.items() if isinstance(data, dict) else enumerate(data)
+
+    for key, value in members:
+        key_tuple = (cast(str | int, key),)
+        paths.append(key_tuple)
+        subpaths = enumerate_all_paths(value)
+        for subpath in subpaths:
+            paths.append(key_tuple + subpath)
+
+    return paths
+
+
+def match_partial_path(
+    data: dict[str, Any] | list, partial_path: PathType | list[PathType]
+) -> list[tuple[str | int, ...]]:
+    """Returns a list of all paths in the given data that match the given
+    partial path. For example, if partial_path is ``(0, "key1")``, this will
+    return all paths in the data that match ``...[0]["key1"]``. If fed a list
+    of partial paths, this will return all paths that match any of the partial
+    paths. Do not confuse tuples with lists, as they are treated differently.
+
+    The match_partial_path algorithm searches for all paths in a dictionary that
+    match the given partial path. The ``partial_path`` can be a string, integer
+    or a tuple of strings/integers that represents the path to an item in the
+    dictionary. For example, the path ``("key1", "key2", 2)`` corresponds to
+    ``...["key1"]["key2"][2]`` in the dictionary. The algorithm returns a list
+    of all paths that match the ``partial_path``. Each path in the result is
+    represented as a tuple of strings and integers where strings correspond to
+    dictionary keys and integers correspond to list indices.
+
+    For instance, if ``data`` is:
+
+    >>> data = {
+    ...     "key1": {
+    ...         "key2": [
+    ...             {"key3": 1},
+    ...             {"key3": 2},
+    ...         ]
+    ...     },
+    ...     "key4": {
+    ...         "key5": [
+    ...             {"key3": 3},
+    ...             {"key3": 4},
+    ...         ]
+    ...     }
+    ... }
+
+    Then ``match_partial_path(data, (0, "key3"))`` will return:
+
+    >>> [
+    ...     ("key1", "key2", 0, "key3"),
+    ...     ("key4", "key5", 0, "key3"),
+    ... ]
+
+    If ``match_partial_path(data, "key3")`` is called, the result will be:
+
+    >>> [
+    ...     ("key1", "key2", 0, "key3"),
+    ...     ("key1", "key2", 1, "key3"),
+    ...     ("key4", "key5", 0, "key3"),
+    ...     ("key4", "key5", 1, "key3"),
+    ... ]
+
+    And if ``match_partial_path(data, [(0, "key3"), "key2"])`` is called, the
+    result will be:
+
+    >>> [
+    ...     ("key1", "key2", 0, "key3"),
+    ...     ("key1", "key2"),
+    ...     ("key4", "key5", 0, "key3"),
+    ... ]
+
+    Args:
+        data (dict[str, Any] | list): The dictionary or list to search.
+        partial_path (PathType | list[PathType]): The partial path to match. If
+            the partial path is a tuple, this function will treat it as a path.
+            For example, a ``partial_path`` argument of ``(0, "key1")`` will be
+            treated  as ``...[0]["key1"]``. If the partial path is a string,
+            this function will treat it as a key in a dictionary. Integers will
+            be treated as indices in a list. If the partial path is a list, this
+            function will return all paths that match any of the partial paths.
+
+    Returns:
+        list[tuple[str | int, ...]]: A list of all paths that match the given
+        partial path. Each path is represented as a tuple of strings and
+        integers, where strings correspond  to dictionary keys and integers
+        correspond to list indices.
+    """
+    if isinstance(partial_path, list):
+        short_circuit: list[tuple[str | int, ...]] = []
+        for path in partial_path:
+            short_circuit.extend(match_partial_path(data, path))
+        return short_circuit
+
+    if isinstance(partial_path, (str, int)):
+        partial_path = (partial_path,)
+    partial_path = tuple(partial_path)
+
+    # If the partial path is empty, return an empty list
+    paths = enumerate_all_paths(data)
+    out: list[tuple[str | int, ...]] = []
+
+    for path in paths:
+        if path[-len(partial_path) :] == partial_path:
+            out.append(path)
+
+    return out
