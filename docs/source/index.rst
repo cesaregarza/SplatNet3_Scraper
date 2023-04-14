@@ -42,3 +42,4 @@ Contents
    api/scraper/scraper
    api/query/query
    api/auth/auth
+   api/utils

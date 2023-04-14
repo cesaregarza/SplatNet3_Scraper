@@ -32,7 +32,8 @@ def retry(
             function fails. If None, nothing will be called. Defaults to None.
 
     Returns:
-        Callable[[Callable[P, T]], Callable[P, T]]: Decorator.
+        Callable[[Callable[P, T]], Callable[P, T]]: The decorated function,
+            which will retry the function if it raises an exception.
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
@@ -73,15 +74,41 @@ def get_splatnet_web_version() -> str:
 def linearize_json(
     json_data: dict[str, Any]
 ) -> tuple[tuple[str, ...], list[Any]]:
-    """Linearizes a JSON object.
+    """Linearizes a JSON object. Given a JSON object, this function will
+    return a tuple of keys and values. Turns a JSON object into a table.
+
+    Given a JSON object, this function will return a tuple of keys and values.
+    The keys will be a tuple of strings, and the values will be a list of
+    values. The keys will be the path to the value in the JSON object, and the
+    values will be the values of the JSON object. For example, given the
+    following JSON object:
+
+    >>> json_data = {
+    ...     "a": 1,
+    ...     "b": {
+    ...         "c": 2,
+    ...         "d": 3,
+    ...     },
+    ...     "e": [4, 5],
+    ... }
+
+    The function will return the following tuple:
+
+    >>> linearize_json(json_data)
+    ... (
+    ...     ("a", "b.c", "b.d", "e;0", "e;1"),
+    ...     [1, 2, 3, 4, 5],
+    ... )
 
     Args:
         json_data (dict[str, Any]): The JSON object to linearize.
 
     Returns:
-        tuple:
-            tuple[str, ...]: The keys of the JSON object.
-            list[Any]: The values of the JSON object.
+        tuple[str, ...]: The keys of the JSON object. The keys are in the
+            format of "key1.key2;index1.key3" where the semicolon indicates a
+            list and the period indicates a nested object.
+        list[Any]: The values of the JSON object. The values are in the same
+            order as the keys.
     """
     keys = []
     values = []
@@ -117,14 +144,24 @@ def linearize_json(
 def delinearize_json(
     keys: list[str] | tuple[str, ...], values: list[Any]
 ) -> dict[str, Any]:
-    """Delinearizes a JSON object.
+    """Delinearizes a JSON object. Given a list of keys and a list of values,
+    this function will return a JSON object. Turns a table into a JSON object.
+
+    Given a list of keys and a list of values, this function will return a
+    JSON object. The keys are expected to be in the format of
+    "key1.key2;index1.key3" where the semicolon indicates a list and the
+    period indicates a nested object. The values are expected to be in the
+    same order as the keys.
 
     Args:
-        keys (list[str]): The keys of the JSON object.
-        values (list[Any]): The values of the JSON object.
+        keys (list[str]): The keys of the JSON object. The keys are expected
+            to be in the format of "key1.key2;index1.key3" where the semicolon
+            indicates a list and the period indicates a nested object.
+        values (list[Any]): The values of the JSON object. The values are
+            expected to be in the same order as the keys.
 
     Returns:
-        dict[str, Any]: The JSON object.
+        dict[str, Any]: The JSON object created from the keys and values.
     """
     json_data = {}
 
@@ -187,8 +224,35 @@ def delinearize_json(
 def enumerate_all_paths(data: dict | list | Any) -> list[tuple[str | int, ...]]:
     """Recursively enumerates all paths in the given data.
 
+    Given a dictionary or list, returns a list of all paths in the data. For
+    example, given the following data:
+
+    >>> data = {
+    ...     "a": 1,
+    ...     "b": {
+    ...         "c": 2,
+    ...         "d": [3, 4],
+    ...     },
+    ... }
+
+    The following paths would be returned:
+
+    >>> enumerate_all_paths(data)
+    ... [
+    ...     ("a",),
+    ...     ("b",),
+    ...     ("b", "c"),
+    ...     ("b", "d"),
+    ...     ("b", "d", 0),
+    ...     ("b", "d", 1),
+    ... ]
+
+    If the given data is not a dictionary or list, an empty list is returned.
+
     Args:
-        data (dict | list | Any): The data to enumerate.
+        data (dict | list | Any): The data to enumerate. If the data is not a
+            dictionary or list, an empty list is returned. Otherwise, the
+            function recurses into the data.
 
     Returns:
         list[tuple[str | int, ...]]: A list of all paths in the given data.
@@ -282,9 +346,9 @@ def match_partial_path(
 
     Returns:
         list[tuple[str | int, ...]]: A list of all paths that match the given
-        partial path. Each path is represented as a tuple of strings and
-        integers, where strings correspond  to dictionary keys and integers
-        correspond to list indices.
+            partial path. Each path is represented as a tuple of strings and
+            integers, where strings correspond  to dictionary keys and integers
+            correspond to list indices.
     """
     if isinstance(partial_path, list):
         short_circuit: list[tuple[str | int, ...]] = []
