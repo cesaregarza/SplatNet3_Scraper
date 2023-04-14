@@ -1,17 +1,31 @@
+import datetime as dt
 from unittest import mock
 
+import freezegun
 import pytest
 import requests
 from pytest_lazyfixture import lazy_fixture
 
+from splatnet3_scraper.constants import (
+    GRAPH_QL_REFERENCE_URL,
+    HASHES_FALLBACK,
+    WEB_VIEW_VERSION_FALLBACK,
+)
 from splatnet3_scraper.utils import (
     delinearize_json,
     enumerate_all_paths,
+    get_hash_data,
+    get_splatnet_hashes,
+    get_splatnet_version,
     get_splatnet_web_version,
+    get_ttl_hash,
     linearize_json,
     match_partial_path,
     retry,
 )
+from tests.mock import MockResponse
+
+utils_path = "splatnet3_scraper.utils"
 
 
 class TestRetry:
@@ -265,3 +279,103 @@ class TestMatchPartialPath:
     )
     def test_match_partial_path(self, input, path, expected):
         assert match_partial_path(input, path) == expected
+
+
+class TestHash:
+    def test_get_hash_data(self):
+        response_json = {
+            "graphql": {
+                "hash_map": {
+                    "test_query": "test_hash",
+                },
+            },
+            "version": "test_version",
+        }
+        with mock.patch.object(
+            requests, "get", return_value=MockResponse(200, json=response_json)
+        ) as mock_get:
+            assert get_hash_data("test_query", 0) == (
+                {"test_query": "test_hash"},
+                "test_version",
+            )
+            mock_get.assert_called_once_with("test_query")
+
+        with mock.patch.object(
+            requests, "get", return_value=MockResponse(200, json=response_json)
+        ) as mock_get:
+            # Test if feeding no parameters returns the same result
+            assert get_hash_data() == (
+                {"test_query": "test_hash"},
+                "test_version",
+            )
+            mock_get.assert_called_once_with(GRAPH_QL_REFERENCE_URL)
+
+    def test_get_ttl_hash(self):
+        frozen_time = "2023-04-14 12:00:00"
+        with freezegun.freeze_time(frozen_time) as frozen_datetime:
+            ft = get_ttl_hash()
+            frozen_datetime.tick(delta=dt.timedelta(minutes=1))
+            assert ft == get_ttl_hash()
+            frozen_datetime.tick(delta=dt.timedelta(minutes=15))
+            assert ft != get_ttl_hash()
+
+    @mock.patch("logging.warning")
+    def test_get_splatnet_hashes(self, mock_warning: mock.MagicMock):
+        expected_hash = {
+            "test_query": "test_hash",
+        }
+        frozen_time = "2023-04-14 12:00:00"
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                return_value=(expected_hash, "test_version"),
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(frozen_time),
+        ):
+            assert get_splatnet_hashes() == {"test_query": "test_hash"}
+            ft = get_ttl_hash()
+            mock_get_hash_data.assert_called_once_with(None, ft)
+
+        def new_get_hash_data(*args, **kwargs):
+            raise requests.exceptions.RequestException()
+
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                side_effect=new_get_hash_data,
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(frozen_time),
+        ):
+            assert get_splatnet_hashes() == HASHES_FALLBACK
+            mock_get_hash_data.assert_called_once_with(None, ft)
+            assert mock_warning.call_count == 2
+
+    @mock.patch("logging.warning")
+    def test_get_splatnet_version(self, mock_warning: mock.MagicMock):
+        expected_version = "test_version"
+        frozen_time = "2023-04-14 12:00:00"
+        hash_return = {"graphql": {"hash_map": {"test_query": "test_hash"}}}
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                return_value=(hash_return, expected_version),
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(frozen_time),
+        ):
+            assert get_splatnet_version() == expected_version
+            ft = get_ttl_hash()
+            mock_get_hash_data.assert_called_once_with(None, ft)
+
+        def new_get_hash_data(*args, **kwargs):
+            raise requests.exceptions.RequestException()
+
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                side_effect=new_get_hash_data,
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(frozen_time),
+        ):
+            assert get_splatnet_version() == WEB_VIEW_VERSION_FALLBACK
+            mock_get_hash_data.assert_called_once_with(None, ft)
+            assert mock_warning.call_count == 2

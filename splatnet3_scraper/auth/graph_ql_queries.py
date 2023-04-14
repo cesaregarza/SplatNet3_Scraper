@@ -7,11 +7,10 @@ import requests
 
 from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
-    GRAPH_QL_REFERENCE_URL,
     GRAPHQL_URL,
     SPLATNET_URL,
 )
-from splatnet3_scraper.utils import get_splatnet_web_version
+from splatnet3_scraper.utils import get_splatnet_hashes, get_splatnet_version
 
 
 class GraphQLQueries:
@@ -34,27 +33,6 @@ class GraphQLQueries:
         and the values are the hashes.
         """
         self.session = requests.Session()
-        self.hash_map = self.get_hashes()
-
-    def get_hashes(self) -> dict[str, str]:
-        """Gets the hashes for the GraphQL queries.
-
-        Uses requests to get the `imink` GraphQL query hash map JSON file and
-        parses it to get the hashes for the queries. The initial request
-        response contains two keys: ``hash_map`` and ``version``. The
-        ``hash_map`` key is the dictionary that contains the hashes for the
-        queries and is what is returned by this method. The `version` key is the
-        version of the hashes and is used to check if the hashes are up to date,
-        it is used elsewhere in this package, but is not used here.
-
-        Returns:
-            dict[str, str]: The hashes for the GraphQL queries. The keys are
-                the names of the queries and the values are the most up to date
-                hashes for the queries.
-        """
-        response = self.session.get(GRAPH_QL_REFERENCE_URL)
-        hash_map = response.json()["graphql"]["hash_map"]
-        return hash_map
 
     def get_query(self, query_name: str) -> str:
         """Gets a GraphQL query hash given the name of the query.
@@ -69,7 +47,7 @@ class GraphQLQueries:
         Returns:
             str: The GraphQL query hash.
         """
-        return self.hash_map[query_name]
+        return get_splatnet_hashes()[query_name]
 
     def query_header(
         self,
@@ -123,7 +101,7 @@ class GraphQLQueries:
             "Authorization": f"Bearer {bullet_token}",
             "Accept-Language": language,
             "User-Agent": user_agent,
-            "X-Web-View-Ver": get_splatnet_web_version(),
+            "X-Web-View-Ver": get_splatnet_version(),
             "Content-Type": "application/json",
             "Accept": "*/*",
             "Origin": SPLATNET_URL,
