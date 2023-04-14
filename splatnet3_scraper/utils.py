@@ -1,7 +1,7 @@
 import logging
 import re
 import time
-from functools import cache, lru_cache, wraps
+from functools import lru_cache, wraps
 from typing import Any, Callable, ParamSpec, Type, TypeAlias, TypeVar, cast
 
 import requests
@@ -63,17 +63,6 @@ def retry(
         return wrapper
 
     return decorator
-
-
-@cache
-def get_splatnet_web_version() -> str:
-    """Gets the web view version from the GraphQL reference.
-
-    Returns:
-        str: The web view version.
-    """
-    response = requests.get(GRAPH_QL_REFERENCE_URL)
-    return response.json()["version"]
 
 
 def linearize_json(

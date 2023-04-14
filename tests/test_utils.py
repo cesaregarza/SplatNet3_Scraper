@@ -17,7 +17,6 @@ from splatnet3_scraper.utils import (
     get_hash_data,
     get_splatnet_hashes,
     get_splatnet_version,
-    get_splatnet_web_version,
     get_ttl_hash,
     linearize_json,
     match_partial_path,
@@ -107,41 +106,6 @@ class TestRetry:
 
         assert mock_logger.call_count == 1
         assert count == 2
-
-
-class TestGetSplatnetWebVersion:
-    class MockResponse:
-        @staticmethod
-        def json():
-            return {"version": "test_version"}
-
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        def mock_get(*args, **kwargs):
-            return self.MockResponse()
-
-        monkeypatch.setattr(requests, "get", mock_get)
-
-        assert get_splatnet_web_version() == "test_version"
-
-    def test_cache(self, monkeypatch: pytest.MonkeyPatch):
-        def mock_get(*args, **kwargs):
-            return self.MockResponse()
-
-        monkeypatch.setattr(requests, "get", mock_get)
-
-        assert get_splatnet_web_version() == "test_version"
-
-        class MockResponse2:
-            @staticmethod
-            def json():
-                return {"version": "test_version2"}
-
-        def mock_get2(*args, **kwargs):
-            return MockResponse2()
-
-        monkeypatch.setattr(requests, "get", mock_get2)
-
-        assert get_splatnet_web_version() == "test_version"
 
 
 class TestLinearizeJSON:
