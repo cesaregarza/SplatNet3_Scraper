@@ -22,7 +22,7 @@ from splatnet3_scraper.constants import (
     SPLATNET_URL,
     WEB_VIEW_VERSION_FALLBACK,
 )
-from splatnet3_scraper.utils import get_splatnet_web_version, retry
+from splatnet3_scraper.utils import get_splatnet_version, retry
 
 version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
@@ -924,7 +924,7 @@ class NSO:
         if self._web_view_version is not None:
             return self._web_view_version
         try:
-            web_version = get_splatnet_web_version()
+            web_version = get_splatnet_version()
             self._web_view_version = web_version
             return web_version
         except SplatNetException as e:
