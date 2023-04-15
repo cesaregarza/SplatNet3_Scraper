@@ -374,12 +374,11 @@ The preliminary release cycle will only be used until the project reaches
 
 1. The ``main`` branch will be used for development.
 2. Every time a new feature is added, the version number will be either bumped
-   to the next minor version or the next patch version.  The version number
-   will be bumped to the next minor version if the new feature is a backwards
-   compatible change.  The version number will be bumped to the next patch
-   version if the new feature is a backwards incompatible change. This is a
-   modification of the semantic versioning specification only for the ``0.x.y``
-   development cycle.
+   to the next minor version or the next patch version. Semantic versioning will
+   mostly be followed, but with backwards-incompatible changes and significant
+   enough features bumping the minor version rather than the major version. This
+   is a modification of the semantic versioning specification only for the
+   ``0.x.y`` development cycle.
 3. Every time a new release is made, a new tag will be created with the version
    number as the tag name.
 
