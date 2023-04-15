@@ -354,12 +354,39 @@ def match_partial_path(
         partial_path = (partial_path,)
     partial_path = tuple(partial_path)
 
+    # Check if the partial path contains the ":" character, which is used to
+    # denote to allow all indices in a list. If it does, then we need to
+    # enumerate all paths in the data and filter out the ones that match the
+    # partial path.
+    branching_points = len([i for i, x in enumerate(partial_path) if x == ":"])
+
     # If the partial path is empty, return an empty list
     paths = enumerate_all_paths(data)
     out: list[tuple[str | int, ...]] = []
 
+    if branching_points == 0:
+        for path in paths:
+            if path[-len(partial_path) :] == partial_path:
+                out.append(path)
+
+        return out
+
+    # If the partial path contains the ":" character, then we need to
+    # enumerate all paths in the data and filter out the ones that match the
+    # partial path.
     for path in paths:
-        if path[-len(partial_path) :] == partial_path:
+        add_path = True
+        truncated_path = path[-len(partial_path) :]
+        for idx, value in enumerate(partial_path):
+            if value == truncated_path[idx]:
+                continue
+            elif value == ":":
+                if isinstance(truncated_path[idx], int):
+                    continue
+
+            add_path = False
+            break
+        if add_path:
             out.append(path)
 
     return out
