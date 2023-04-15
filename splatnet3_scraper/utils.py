@@ -282,7 +282,7 @@ def match_partial_path(
 
     The match_partial_path algorithm searches for all paths in a dictionary that
     match the given partial path. The ``partial_path`` can be a string, integer,
-    a special ":" string, or a tuple of strings/integers that represents the 
+    a special ":" string, or a tuple of strings/integers that represents the
     path to an item in the dictionary. For example, the path
     ``("key1", "key2", 2)`` corresponds to ``...["key1"]["key2"][2]`` in the
     dictionary. The algorithm returns a list of all paths that match the

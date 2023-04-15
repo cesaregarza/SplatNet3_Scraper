@@ -391,34 +391,118 @@ class QueryResponse:
         return [func(self[path]) for path in paths]
 
     def match_partial_path(
-        self, partial_path: PathType | list[PathType]
+        self,
+        partial_path: PathType | list[PathType],
+        *args: str | int,
     ) -> list[tuple[str | int, ...]]:
-        """Returns a list of all paths that match the given partial path. For
-        example, if partial_path is ``(0, "key1")``, this will return all paths
-        in the data that match ``...[0]["key1"]``.
+        """Returns a list of all paths in the given data that match the given
+        partial path. For example, if partial_path is ``(0, "key1")``, this will
+        return all paths in the data that match ``...[0]["key1"]``. If fed a
+        list of partial paths, this will return all paths that match any of the
+        partial paths. Do not confuse tuples with lists, as they are treated
+        differently.
 
-        Given a partial path, this method will return a list of all paths in
-        the data that match the given partial path. For example, if
-        ``partial_path`` is ``(0, "key1")``, this will return all paths in the
-        data that match ``...[0]["key1"]``. If the partial path is a string,
-        this method will treat it as a key in a dictionary. Integers will be
-        treated as indices in a list. If the partial path is a tuple, this
-        method will treat it as a path. For example, a ``partial_path`` argument
-        of ``(0, "key1")`` will be treated as ``...[0]["key1"]``.
+        The ":" string can be added to the partial path input to match all list
+        indices that match it. This is useful for JSONs with a repeating
+        structure.
 
+        The match_partial_path algorithm searches for all paths in a dictionary
+        that match the given partial path. The ``partial_path`` can be a string,
+        integer, a special ":" string, or a tuple of strings/integers that
+        represents the  path to an item in the dictionary. For example, the path
+        ``("key1", "key2", 2)`` corresponds to ``...["key1"]["key2"][2]`` in the
+        dictionary. The algorithm returns a list of all paths that match the
+        ``partial_path``. Each path in the result is represented as a tuple of
+        strings and integers where strings correspond to dictionary keys and
+        integers correspond to list indices.
+
+        For instance, if ``data`` is:
+
+        >>> data = QueryResponse({
+        ...     "key1": {
+        ...         "key2": [
+        ...             {"key3": 1},
+        ...             {"key3": 2},
+        ...         ]
+        ...     },
+        ...     "key4": {
+        ...         "key5": [
+        ...             {"key3": 3},
+        ...             {"key3": 4},
+        ...         ]
+        ...     }
+        ... })
+
+        Then ``data.match_partial_path((0, "key3"))`` will return:
+
+        >>> [
+        ...     ("key1", "key2", 0, "key3"),
+        ...     ("key4", "key5", 0, "key3"),
+        ... ]
+
+        If ``data.match_partial_path("key3")`` is called, the result will be:
+
+        >>> [
+        ...     ("key1", "key2", 0, "key3"),
+        ...     ("key1", "key2", 1, "key3"),
+        ...     ("key4", "key5", 0, "key3"),
+        ...     ("key4", "key5", 1, "key3"),
+        ... ]
+
+        If ``data.match_partial_path([(0, "key3"), "key2"])`` is called, the
+        result will be:
+
+        >>> [
+        ...     ("key1", "key2", 0, "key3"),
+        ...     ("key4", "key5", 0, "key3"),
+        ...     ("key1", "key2"),
+        ... ]
+
+        If ``data.match_partial_path(("key1", "key2", ":", "key3"))`` is called,
+        the result will be:
+
+        >>> [
+        ...     ("key1", "key2", 0, "key3"),
+        ...     ("key1", "key2", 1, "key3"),
+        ... ]
 
         Args:
-            partial_path (str | int | tuple[str | int, ...]): The partial path
+            partial_path (PathType | list[PathType]): The partial path
                 to match. If the partial path is a tuple, this method will treat
                 it as a path. For example, a ``partial_path`` argument of ``(0,
                 "key1")`` will be treated as ``...[0]["key1"]``. If the partial
                 path is a string, this method will treat it as a key in a
                 dictionary. Integers will be treated as indices in a list.
+            *args (str | int): If *args is not empty, treat each arg as part of
+                the partial path. For example, if
+                ``data.match_partial_path(0, "key1")`` is called, the result
+                is equivalent to ``data.match_partial_path((0, "key1"))``. Note
+                that if *args is not empty, the ``partial_path`` argument must
+                be a string or integer, not a tuple. Use the ``partial_path``
+                argument with a list of paths instead of passing a PathType in
+                *args.
+
+        Raises:
+            TypeError: If *args is not empty and the ``partial_path`` argument
+                is a tuple. Use a list of paths instead of passing a PathType in
+                *args.
 
         Returns:
             list[tuple[str | int, ...]]: A list of all paths that match the
-                given partial path.
+                given partial path. Each path is represented as a tuple of
+                strings and integers, where strings correspond  to dictionary
+                keys and integers correspond to list indices.
         """
+        # If *args is not empty, treat each arg as part of the partial path
+        if args and isinstance(partial_path, tuple):
+            raise TypeError(
+                "Cannot use *args with a full path. Use a list of paths "
+                "instead. *args is a shortcut syntax to not have to use a tuple"
+                " for a single path."
+            )
+        elif args and not isinstance(partial_path, (tuple, list)):
+            partial_path = cast(PathType, (partial_path, *args))
+
         return match_partial_path(self._data, partial_path)
 
     def get(self, key: PathType, default: Any = None) -> Any:
