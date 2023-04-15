@@ -277,14 +277,18 @@ def match_partial_path(
     of partial paths, this will return all paths that match any of the partial
     paths. Do not confuse tuples with lists, as they are treated differently.
 
+    The ":" string can be added to the partial path input to match all list
+    indices that match it. This is useful for JSONs with a repeating structure.
+
     The match_partial_path algorithm searches for all paths in a dictionary that
-    match the given partial path. The ``partial_path`` can be a string, integer
-    or a tuple of strings/integers that represents the path to an item in the
-    dictionary. For example, the path ``("key1", "key2", 2)`` corresponds to
-    ``...["key1"]["key2"][2]`` in the dictionary. The algorithm returns a list
-    of all paths that match the ``partial_path``. Each path in the result is
-    represented as a tuple of strings and integers where strings correspond to
-    dictionary keys and integers correspond to list indices.
+    match the given partial path. The ``partial_path`` can be a string, integer,
+    a special ":" string, or a tuple of strings/integers that represents the
+    path to an item in the dictionary. For example, the path
+    ``("key1", "key2", 2)`` corresponds to ``...["key1"]["key2"][2]`` in the
+    dictionary. The algorithm returns a list of all paths that match the
+    ``partial_path``. Each path in the result is represented as a tuple of
+    strings and integers where strings correspond to dictionary keys and
+    integers correspond to list indices.
 
     For instance, if ``data`` is:
 
@@ -319,13 +323,21 @@ def match_partial_path(
     ...     ("key4", "key5", 1, "key3"),
     ... ]
 
-    And if ``match_partial_path(data, [(0, "key3"), "key2"])`` is called, the
-    result will be:
+    If ``match_partial_path(data, [(0, "key3"), "key2"])`` is called, the result
+    will be:
 
     >>> [
     ...     ("key1", "key2", 0, "key3"),
-    ...     ("key1", "key2"),
     ...     ("key4", "key5", 0, "key3"),
+    ...     ("key1", "key2"),
+    ... ]
+
+    If ``match_partial_path(data, ("key1", "key2", ":", "key3"))`` is called,
+    the result will be:
+
+    >>> [
+    ...     ("key1", "key2", 0, "key3"),
+    ...     ("key1", "key2", 1, "key3"),
     ... ]
 
     Args:
@@ -337,6 +349,9 @@ def match_partial_path(
             this function will treat it as a key in a dictionary. Integers will
             be treated as indices in a list. If the partial path is a list, this
             function will return all paths that match any of the partial paths.
+            The special ":" string can be used to match all list indices that
+            match the rest of the partial path. This is useful to get all paths
+            in a list that match a given partial path.
 
     Returns:
         list[tuple[str | int, ...]]: A list of all paths that match the given
@@ -354,12 +369,39 @@ def match_partial_path(
         partial_path = (partial_path,)
     partial_path = tuple(partial_path)
 
+    # Check if the partial path contains the ":" character, which is used to
+    # denote to allow all indices in a list. If it does, then we need to
+    # enumerate all paths in the data and filter out the ones that match the
+    # partial path.
+    branching_points = len([i for i, x in enumerate(partial_path) if x == ":"])
+
     # If the partial path is empty, return an empty list
     paths = enumerate_all_paths(data)
     out: list[tuple[str | int, ...]] = []
 
+    if branching_points == 0:
+        for path in paths:
+            if path[-len(partial_path) :] == partial_path:
+                out.append(path)
+
+        return out
+
+    # If the partial path contains the ":" character, then we need to
+    # enumerate all paths in the data and filter out the ones that match the
+    # partial path.
     for path in paths:
-        if path[-len(partial_path) :] == partial_path:
+        add_path = True
+        truncated_path = path[-len(partial_path) :]
+        for idx, value in enumerate(partial_path):
+            if value == truncated_path[idx]:
+                continue
+            elif value == ":":
+                if isinstance(truncated_path[idx], int):
+                    continue
+
+            add_path = False
+            break
+        if add_path:
             out.append(path)
 
     return out

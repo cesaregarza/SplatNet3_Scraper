@@ -201,6 +201,20 @@ class TestQueryResponse:
         response = QueryResponse(input)
         assert response.match_partial_path(path) == expected
 
+    def test_match_partial_path_args(
+        self, json_deep_nested_list: dict, json_deep_nested_list_exp_pp: dict
+    ):
+        response = QueryResponse(json_deep_nested_list)
+        assert (
+            response.match_partial_path("g", "h")
+            == json_deep_nested_list_exp_pp
+        )
+
+    def test_match_partial_path_error(self, json_deep_nested_list: dict):
+        response = QueryResponse(json_deep_nested_list)
+        with pytest.raises(TypeError):
+            response.match_partial_path(("g", "h"), "i")
+
     @pytest.mark.parametrize(
         "data, path, partial, func, expected",
         [

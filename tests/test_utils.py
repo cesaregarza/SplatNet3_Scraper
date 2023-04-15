@@ -234,11 +234,23 @@ class TestMatchPartialPath:
                 [("g", "h"), ("g", "i")],
                 lazy_fixture("json_deep_nested_list_exp_pp_2"),
             ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                (":", "e"),
+                [("c", 0, "e"), ("c", 1, "e")],
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [(":", "e"), (":", "d")],
+                [("c", 0, "e"), ("c", 1, "e"), ("c", 0, "d"), ("c", 1, "d")],
+            ),
         ],
         ids=[
             "nested_list",
             "deep_nested_list",
             "list_of_paths",
+            "path_with_wildcard",
+            "list_of_paths_with_wildcard",
         ],
     )
     def test_match_partial_path(self, input, path, expected):
