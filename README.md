@@ -157,10 +157,10 @@ parser = JSONParser.from_json("response.json")
 | Feature | Status |
 | ------- | ------ |
 | Support for the SplatNet 3 API | :white_check_mark: |
-| Full support for the SplatNet 3 API | :world_map: |
+| Full support for the SplatNet 3 API | :white_check_mark: |
 | Support for the SplatNet 2 API | :x: |
 | Obtaining session tokens | :white_check_mark: |
-| Full documentation | :construction: |
+| Full documentation | :white_check_mark: |
 | Full unit test coverage | :white_check_mark: |
 | Columnar data format support | :construction: |
 | CLI interface | :x: |
