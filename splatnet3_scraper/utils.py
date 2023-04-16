@@ -392,6 +392,8 @@ def match_partial_path(
     for path in paths:
         add_path = True
         truncated_path = path[-len(partial_path) :]
+        if len(truncated_path) < len(partial_path):
+            continue
         for idx, value in enumerate(partial_path):
             if value == truncated_path[idx]:
                 continue
