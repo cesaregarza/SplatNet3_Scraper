@@ -571,6 +571,63 @@ class QueryResponse:
 
         return match_partial_path(self._data, partial_path)
 
+    def get_partial_path(
+        self,
+        partial_path: PathType | list[PathType],
+        *args: str | int,
+    ) -> list[Any]:
+        """Returns a list of values for all paths in the given data that match
+        the provided partial path. This function first calls
+        `match_partial_path` to find all matching paths and then retrieves the
+        value at each of those paths using the `get` method.
+
+        The input `partial_path` can be a single partial path or a list of
+        partial paths, consisting of strings, integers, or a special colon (":")
+        symbol, which represents matching all list indices.
+
+        Example usage:
+
+        >>> data = QueryResponse({
+        ...     "key1": {
+        ...         "key2": [
+        ...             {"key3": 1},
+        ...             {"key3": 2},
+        ...         ]
+        ...     },
+        ...     "key4": {
+        ...         "key5": [
+        ...             {"key3": 3},
+        ...             {"key3": 4},
+        ...         ]
+        ...     }
+        ... })
+
+        >>> data.get_partial_path("key3")
+        [1, 2, 3, 4]
+
+        Args:
+            partial_path (PathType | list[PathType]): The partial path
+                to match. If the partial path is a tuple, this method will treat
+                it as a path. For example, a ``partial_path`` argument of ``(0,
+                "key1")`` will be treated as ``...[0]["key1"]``. If the partial
+                path is a string, this method will treat it as a key in a
+                dictionary. Integers will be treated as indices in a list.
+            *args (str | int): If *args is not empty, treat each arg as part of
+                the partial path. For example, if
+                ``data.get_partial_path(0, "key1")`` is called, the result
+                is equivalent to ``data.get_partial_path((0, "key1"))``. Note
+                that if *args is not empty, the ``partial_path`` argument must
+                be a string or integer, not a tuple. Use the ``partial_path``
+                argument with a list of paths instead of passing a PathType in
+                *args.
+
+        Returns:
+            list[Any]: A list of values at all paths that match the
+                given partial path.
+        """
+        paths = self.match_partial_path(partial_path, *args)
+        return [self.get(path) for path in paths]
+
     def get(self, key: PathType, default: Any = None) -> Any:
         """Returns the value at the given key. If the key is not found, returns
         the default value.
