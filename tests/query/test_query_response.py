@@ -326,7 +326,7 @@ class TestQueryResponse:
             response.apply_reduce(func, reduce_func, path, partial=partial)
             == expected
         )
-    
+
     @pytest.mark.parametrize(
         "data, path, expected",
         [

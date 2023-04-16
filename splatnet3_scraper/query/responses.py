@@ -570,7 +570,7 @@ class QueryResponse:
             partial_path = cast(PathType, (partial_path, *args))
 
         return match_partial_path(self._data, partial_path)
-    
+
     def get_partial_path(
         self,
         partial_path: PathType | list[PathType],
@@ -621,18 +621,12 @@ class QueryResponse:
                 argument with a list of paths instead of passing a PathType in
                 *args.
 
-        Raises:
-            TypeError: If *args is not empty and the ``partial_path`` argument
-                is a tuple. Use a list of paths instead of passing a PathType in
-                *args.
-
         Returns:
             list[Any]: A list of values at all paths that match the
                 given partial path.
         """
         paths = self.match_partial_path(partial_path, *args)
         return [self.get(path) for path in paths]
-
 
     def get(self, key: PathType, default: Any = None) -> Any:
         """Returns the value at the given key. If the key is not found, returns
