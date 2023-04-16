@@ -15,6 +15,7 @@ from splatnet3_scraper.query.json_parser import JSONParser
 from splatnet3_scraper.utils import match_partial_path
 
 T = TypeVar("T")
+S = TypeVar("S")
 
 PathType: TypeAlias = str | int | tuple[str | int, ...]
 
@@ -354,10 +355,13 @@ class QueryResponse:
         the data.
 
         Args:
-            func (Callable[[Any], QueryResponse]): The function to apply to the
-                data. The function must take a single argument and return a
-                QueryResponse object. The argument that the function takes will
-                be representative of the value at the given key or path.
+            func (Callable[[Any], T]): The function to apply to the data. The
+                function must take a single argument and return a value of type
+                ``T``. The argument that the function takes will be
+                representative of the value at the given key or path. If the
+                ``partial`` argument is ``True``, the argument will be a
+                representative of the value at the given key or path within the
+                data.
             key (PathType | list[PathType]): The key or path to apply the
                 function to. If the key is a tuple, this method will treat it
                 as a path. For example, a ``key`` argument of ``(0, "key1")``
@@ -367,18 +371,19 @@ class QueryResponse:
                 argument is ``True``, this method will treat a ``key``
                 argument of ``(0, "key1")`` as ``...[0]["key1"]`` rather than
                 just ``data[0]["key1"]``.
-            partial (bool): Whether to apply the function to all keys in the
-                data that match the given key or path. For example, if the
-                ``key`` argument is ``(0, "key1")`` and the ``partial``
-                argument is ``True``, this will apply the function to all values
-                within the JSON object where the path is ``...[0]["key1"]``. If
-                the ``partial`` argument is ``False``, this will only apply
-                the function to the value at the absolute key or path in the
-                data. Defaults to True.
+            partial (bool): Whether the given key or path is a partial path. If
+                ``True``, this method will treat a ``key`` argument of ``(0,
+                "key1")`` as ``...[0]["key1"]`` rather than just
+                ``data[0]["key1"]``. If ``False``, this method will treat a
+                ``key`` argument of ``(0, "key1")`` as ``data[0]["key1"]``.
+                Defaults to ``True``.
 
         Returns:
-            QueryResponse: The QueryResponse object containing the transformed
-                data.
+            T | list[T]: The result of applying the function to the data. If
+                multiple paths match the given key or path, this will be a list
+                of the results of applying the function to each path. If only a
+                single path matches the given key or path, this will be the
+                result of applying the function to that path.
         """
         if not partial:
             if not isinstance(key, list):
@@ -389,6 +394,67 @@ class QueryResponse:
 
         paths = self.match_partial_path(key)
         return [func(self[path]) for path in paths]
+
+    def apply_reduce(
+        self,
+        func: Callable[[Any], T],
+        reduce_func: Callable[[list[T]], S],
+        key: PathType | list[PathType],
+        partial: bool = True,
+    ) -> S:
+        """Applies a function to the data and then reduces the result.
+
+        Given a function, a reduce function, and a key to apply the function to,
+        this method will apply the function to the data at the given key. If the
+        key is a tuple, this method will treat it as a path. For example, a
+        ``key`` argument of ``(0, "key1")`` will be treated as
+        ``data[0]["key1"]``. If the key is a string, this method will treat it
+        as a key in a dictionary. Integers will be treated as indices in a list.
+        If the ``partial`` argument is ``True``, this method will apply the
+        function to all keys in the data that match the given key or path. For
+        example, if the ``key`` argument is ``(0, "key1")`` and the ``partial``
+        argument is ``True``, this will apply the function to all values within
+        the JSON object where the path is ``...[0]["key1"]``. If the ``partial``
+        argument is ``False``, this will only apply the function to the value at
+        the absolute key or path in the data.
+
+        Args:
+            func (Callable[[Any], T]): The function to apply to the data. The
+                function must take a single argument and return a value of type
+                ``T``. The argument that the function takes will be
+                representative of the value at the given key or path. If the
+                ``partial`` argument is ``True``, the argument will be a
+                representative of the value at the given key or path within the
+                data.
+            reduce_func (Callable[[T], S]): The function to reduce the result
+                of applying the function to the data. The function must take a
+                single argument and return a value of type ``S``. The argument
+                that the function takes will be the result of applying the
+                function to the data.
+            key (PathType | list[PathType]): The key or path to apply the
+                function to. If the key is a tuple, this method will treat it
+                as a path. For example, a ``key`` argument of ``(0, "key1")``
+                will be treated as ``data[0]["key1"]``. If the key is a string,
+                this method will treat it as a key in a dictionary. Integers
+                will be treated as indices in a list. If the ``partial``
+                argument is ``True``, this method will treat a ``key``
+                argument of ``(0, "key1")`` as ``...[0]["key1"]`` rather than
+                just ``data[0]["key1"]``.
+            partial (bool): Whether the given key or path is a partial path. If
+                ``True``, this method will treat a ``key`` argument of ``(0,
+                "key1")`` as ``...[0]["key1"]`` rather than just
+                ``data[0]["key1"]``. If ``False``, this method will treat a
+                ``key`` argument of ``(0, "key1")`` as ``data[0]["key1"]``.
+                Defaults to ``True``.
+
+        Returns:
+            S: The result of applying the function to the data and then reducing
+                the result. This will always be a single value of type ``S``.
+        """
+        out = self.apply(func, key, partial)
+        if not isinstance(out, list):
+            out = [out]
+        return reduce_func(out)
 
     def match_partial_path(
         self,

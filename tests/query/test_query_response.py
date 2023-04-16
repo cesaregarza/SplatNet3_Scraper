@@ -265,3 +265,64 @@ class TestQueryResponse:
     def test_apply(self, data, path, partial, func, expected):
         response = QueryResponse(data)
         assert response.apply(func, path, partial=partial) == expected
+
+    @pytest.mark.parametrize(
+        "data, path, partial, func, reduce_func, expected",
+        [
+            (
+                lazy_fixture("json_nested_list"),
+                "d",
+                True,
+                lambda x: x + 1,
+                sum,
+                10,
+            ),
+            (
+                lazy_fixture("json_nested_list"),
+                ("c", 0, "d"),
+                False,
+                lambda x: x + 1,
+                sum,
+                4,
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("g", "h"),
+                True,
+                lambda x: x + 1,
+                sum,
+                16,
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("g", "h"), ("g", "i")],
+                True,
+                lambda x: x + 1,
+                sum,
+                34,
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("c", 0, "e", "g", "h"), ("c", 1, "e", "g", "i")],
+                False,
+                lambda x: x + 1,
+                sum,
+                17,
+            ),
+        ],
+        ids=[
+            "nested_list",
+            "nested_list_single_apply_result",
+            "deep_nested_list",
+            "list_of_paths",
+            "list_of_paths_partial_false",
+        ],
+    )
+    def test_apply_reduce(
+        self, data, path, partial, func, reduce_func, expected
+    ):
+        response = QueryResponse(data)
+        assert (
+            response.apply_reduce(func, reduce_func, path, partial=partial)
+            == expected
+        )
