@@ -326,3 +326,44 @@ class TestQueryResponse:
             response.apply_reduce(func, reduce_func, path, partial=partial)
             == expected
         )
+    
+    @pytest.mark.parametrize(
+        "data, path, expected",
+        [
+            (
+                lazy_fixture("json_nested_list"),
+                "d",
+                [3, 5],
+            ),
+            (
+                lazy_fixture("json_nested_list"),
+                ("c", 0, "d"),
+                [3],
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("g", "h"),
+                [5, 9],
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("g", "h"), ("g", "i")],
+                [5, 9, 6, 10],
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                [("c", 0, "e", "g", "h"), ("c", 1, "e", "g", "i")],
+                [5, 10],
+            ),
+        ],
+        ids=[
+            "nested_list",
+            "nested_list_single_value",
+            "deep_nested_list",
+            "list_of_paths",
+            "list_of_paths_from_root",
+        ],
+    )
+    def test_get_partial_path(self, data, path, expected):
+        response = QueryResponse(data)
+        assert response.get_partial_path(path) == expected
