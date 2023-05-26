@@ -24,6 +24,7 @@ class TestNSO:
         "language": "test_language",
         "country": "test_country",
         "birthday": "test_birthday",
+        "id": "test_id",
     }
 
     def get_new_nso(
@@ -249,7 +250,23 @@ class TestNSO:
         user_info = nso.get_user_info("test")
         assert user_info == {"test": "test"}
 
-    def test_get_ftoken(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize(
+        "step, coral, xfail",
+        [
+            (1, True, False),
+            (1, False, False),
+            (2, True, False),
+            (2, False, True),
+        ],
+        ids=["step1_coral", "step1", "step2_coral", "step2"],
+    )
+    def test_get_ftoken(
+        self,
+        step: int,
+        coral: bool,
+        xfail: bool,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         def mock_post(*args, **kwargs):
             out_json = {
                 "f": "test_f",
@@ -258,42 +275,49 @@ class TestNSO:
             }
             return MockResponse(200, json=out_json)
 
-        nso = self.get_new_nso()
-        monkeypatch.setattr(requests.Session, "post", mock_post)
-
-        ftoken, request_id, timestamp = nso.get_ftoken("test", "test", "test")
-        assert ftoken == "test_f"
-        assert request_id == "test_request_id"
-        assert timestamp == "test_timestamp"
-
-        # Fail
-        def mock_post(*args, **kwargs):
+        def mock_post_fail(*args, **kwargs):
             return MockResponse(400, json={})
 
+        nso = self.get_new_nso()
         monkeypatch.setattr(requests.Session, "post", mock_post)
-        with pytest.raises(FTokenException):
-            nso.get_ftoken("test", "test", "test")
+        args = ["test", "test", step, "test", "test" if coral else None]
+        if xfail:
+            with pytest.raises(ValueError):
+                nso.get_ftoken(*args)
+        else:
+            ftoken, request_id, timestamp = nso.get_ftoken(*args)
+            assert ftoken == "test_f"
+            assert request_id == "test_request_id"
+            assert timestamp == "test_timestamp"
+            monkeypatch.setattr(requests.Session, "post", mock_post_fail)
+            # Fail on request
+            with pytest.raises(FTokenException):
+                nso.get_ftoken(*args)
 
     def test_get_web_service_access_token(
         self, monkeypatch: pytest.MonkeyPatch
     ):
         def mock_post(*args, **kwargs):
             out_json = {
-                "result": {"webApiServerCredential": {"accessToken": "test"}}
+                "result": {
+                    "webApiServerCredential": {"accessToken": "test_token"},
+                    "user": {"id": "test_id"},
+                }
             }
             return MockResponse(200, json=out_json)
 
         nso = self.get_new_nso(version="5.0.0")
         monkeypatch.setattr(requests.Session, "post", mock_post)
 
-        access_token = nso.get_web_service_access_token(
+        access_token, coral_id = nso.get_web_service_access_token(
             "test_id_token",
             self.mock_user_data,
             "test_f_token",
             "test_request_id",
             "test_timestamp",
         )
-        assert access_token == "test"
+        assert access_token == "test_token"
+        assert coral_id == "test_id"
 
     def test_g_token_generation_phase_1(self):
         nso = self.get_new_nso()
@@ -309,11 +333,14 @@ class TestNSO:
             )
             mock_get_wsat.return_value = "test_access_token"
             wsat = nso.g_token_generation_phase_1(
-                "test_id_token", self.mock_user_data, "test_f_token_url"
+                "test_id_token",
+                self.mock_user_data,
+                "test_id",
+                "test_f_token_url",
             )
             assert wsat == "test_access_token"
             mock_f_token_function.assert_called_once_with(
-                "test_f_token_url", "test_id_token", 1
+                "test_f_token_url", "test_id_token", 1, "test_id", None
             )
             mock_get_wsat.assert_called_once_with(
                 "test_id_token",
@@ -337,11 +364,15 @@ class TestNSO:
             )
             mock_get_gtoken.return_value = "test_gtoken"
             wsat = nso.g_token_generation_phase_2(
-                "test_wsat", "test_f_token_url"
+                "test_wsat", "test_na_id", "test_coral_id", "test_f_token_url"
             )
             assert wsat == "test_gtoken"
             mock_f_token_function.assert_called_once_with(
-                "test_f_token_url", "test_wsat", 2
+                "test_f_token_url",
+                "test_wsat",
+                2,
+                "test_na_id",
+                "test_coral_id",
             )
             mock_get_gtoken.assert_called_once_with(
                 "test_wsat",
@@ -384,7 +415,7 @@ class TestNSO:
                 "id_token": "test_id_token",
             }
             mock_gui.return_value = self.mock_user_data
-            mock_gtp1.return_value = "test_wsat"
+            mock_gtp1.return_value = ("test_wsat", "test_coral_id")
             mock_gtp2.return_value = "test_gtoken"
 
             gtoken = nso.get_gtoken("test_session_token", f_token_url)
@@ -392,9 +423,17 @@ class TestNSO:
             mock_guat.assert_called_once_with("test_session_token")
             mock_gui.assert_called_once_with("test_user_access_token")
             mock_gtp1.assert_called_once_with(
-                "test_id_token", self.mock_user_data, expected_url
+                "test_id_token",
+                self.mock_user_data,
+                "test_id",
+                f_token_url=expected_url,
             )
-            mock_gtp2.assert_called_once_with("test_wsat", expected_url)
+            mock_gtp2.assert_called_once_with(
+                "test_wsat",
+                "test_id",
+                "test_coral_id",
+                f_token_url=expected_url,
+            )
             assert nso._user_access_token == "test_user_access_token"
             assert nso._id_token == "test_id_token"
             assert nso._user_info == self.mock_user_data
