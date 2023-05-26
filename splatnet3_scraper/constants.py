@@ -15,7 +15,7 @@ DEFAULT_USER_AGENT = (
     + "Mobile Safari/537.36"
 )
 WEB_VIEW_VERSION_FALLBACK = "3.0.0-0742bda0"
-APP_VERSION_FALLBACK = "2.5.0"
+APP_VERSION_FALLBACK = "2.5.1"
 HASHES_FALLBACK = {
     "BankaraBattleHistoriesQuery": "0438ea6978ae8bd77c5d1250f4f84803",
     "BankaraBattleHistoriesRefetchQuery": "92b56403c0d9b1e63566ec98fef52eb3",
