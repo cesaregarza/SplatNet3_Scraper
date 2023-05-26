@@ -1,6 +1,5 @@
 import base64
 import hashlib
-import json
 import logging
 import os
 import re
@@ -29,7 +28,8 @@ version_re = re.compile(
 )
 
 FToken_Gen: TypeAlias = Callable[
-    [str, str, Literal[1] | Literal[2]], tuple[str, str, str]
+    [str, str, Literal[1] | Literal[2], str, str | None],
+    tuple[str, str, str],
 ]
 
 
@@ -142,6 +142,8 @@ class NSO:
         self._session_token: str | None = None
         self._user_access_token: str | None = None
         self._id_token: str | None = None
+        self._nintendo_account_id: str | None = None
+        self._coral_user_id: str | None = None
         self._gtoken: str | None = None
         self._user_info: dict[str, str] | None = None
         self._f_token_function: FToken_Gen = self.get_ftoken
@@ -496,13 +498,24 @@ class NSO:
         logging.info("Getting user info")
         user_info = self.get_user_info(self._user_access_token)
         self._user_info = user_info
+        self._nintendo_account_id = user_info["id"]
         logging.info("Getting Web Service Access Token")
-        web_service_access_token = self.g_token_generation_phase_1(
-            self._id_token, user_info, f_token_url
+        (
+            web_service_access_token,
+            coral_user_id,
+        ) = self.g_token_generation_phase_1(
+            self._id_token,
+            user_info,
+            self._nintendo_account_id,
+            f_token_url=f_token_url,
         )
         logging.info("Getting gtoken")
+        self._coral_user_id = coral_user_id
         gtoken = self.g_token_generation_phase_2(
-            web_service_access_token, f_token_url
+            web_service_access_token,
+            self._nintendo_account_id,
+            self._coral_user_id,
+            f_token_url=f_token_url,
         )
         self._gtoken = gtoken
         return gtoken
@@ -552,7 +565,12 @@ class NSO:
             self._f_token_function = new_function
 
     def get_ftoken(
-        self, f_token_url: str, id_token: str, step: Literal[1] | Literal[2]
+        self,
+        f_token_url: str,
+        id_token: str,
+        step: Literal[1] | Literal[2],
+        na_id: str,
+        coral_user_id: str | None = None,
     ) -> tuple[str, str, str]:
         """Given the ``f_token_url``, ``id_token``, and ``step``, returns the
         ``f_token``, ``request_id``, and ``timestamp`` from the response.
@@ -593,8 +611,17 @@ class NSO:
             step (Literal[1] | Literal[2]): The step number. This is either
                 ``1`` or ``2``. This is used to identify the step in the
                 ``f_token`` generation process.
+            na_id (str): The Nintendo Account ID of the user. As of version
+                2.5.1, this is not used for anything. However, it is still
+                required to futureproof in case Nintendo decides to enforce
+                verification of this value.
+            coral_user_id (str | None): The Coral user ID of the user. This is
+                used to verify the ftoken generation process. This is only
+                required for step ``2``.
 
         Raises:
+            ValueError: In the case that the ``coral_user_id`` is not provided
+                for step ``2``.
             FTokenException: In the case that the ftoken cannot be obtained
                 from the ftoken generation URL.
 
@@ -606,13 +633,23 @@ class NSO:
         header = {
             "User-Agent": f"splatnet3_scraper/{__version__}",
             "Content-Type": "application/json; charset=utf-8",
+            "X-znca-Platform": "Android",
+            "X-znca-Version": self.version,
         }
         body = {
             "token": id_token,
             "hash_method": step,
+            "na_id": na_id,
         }
-        bodystr = json.dumps(body)
-        response = self.session.post(f_token_url, headers=header, data=bodystr)
+
+        if coral_user_id is not None:
+            body["coral_user_id"] = coral_user_id
+        elif step == 2:
+            raise ValueError(
+                "Coral user ID is required for step 2 of ftoken generation"
+            )
+
+        response = self.session.post(f_token_url, headers=header, json=body)
         response_json = response.json()
         try:
             f_token = response_json["f"]
@@ -629,8 +666,9 @@ class NSO:
         self,
         id_token: str,
         user_info: dict[str, str],
+        na_id: str,
         f_token_url: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         """First phase of the ``gtoken`` generation process.
 
         This is the first phase of the ``gtoken`` generation process. This is
@@ -651,15 +689,20 @@ class NSO:
             user_info (dict[str, str]): The dictionary of user info returned by
                 ``get_user_info``. This must contain the keys ``language``,
                 ``birthday``, and ``country``.
+            na_id (str): The Nintendo Account ID of the user. As of version
+                2.5.1, this is not used for anything. However, it is still
+                required to futureproof in case Nintendo decides to enforce
+                verification of this value.
             f_token_url (str): URL to use for f token generation. This package
                 provides a default URL, but you can provide your own. The
                 default URL is provided by `imink`.
 
         Returns:
             str: The Web Service Credential Access Token.
+            str: The Coral user ID.
         """
         f_token, request_id, timestamp = self._f_token_function(
-            f_token_url, id_token, 1
+            f_token_url, id_token, 1, na_id, None
         )
         return self.get_web_service_access_token(
             id_token, user_info, f_token, request_id, timestamp
@@ -669,6 +712,8 @@ class NSO:
     def g_token_generation_phase_2(
         self,
         web_service_access_token: str,
+        na_id: str,
+        coral_user_id: str,
         f_token_url: str,
     ) -> str:
         """Final phase of the ``gtoken`` generation process.
@@ -687,6 +732,13 @@ class NSO:
             web_service_access_token (str): The Web Service Credential Access
                 Token obtained from the first half of the gtoken generation
                 process.
+            na_id (str): The Nintendo Account ID of the user. As of version
+                2.5.1, this is not used for anything. However, it is still
+                required to futureproof in case Nintendo decides to enforce
+                verification of this value.
+            coral_user_id (str): The Coral user ID of the user. This is
+                used to verify the ftoken generation process. This is only
+                required for step ``2``.
             f_token_url (str): URL to use for f token generation. This package
                 provides a default URL, but you can provide your own. The
                 default URL is provided by `imink`.
@@ -695,7 +747,7 @@ class NSO:
             str: The gtoken from the response.
         """
         f_token, request_id, timestamp = self._f_token_function(
-            f_token_url, web_service_access_token, 2
+            f_token_url, web_service_access_token, 2, na_id, coral_user_id
         )
 
         return self.get_gtoken_request(
@@ -709,7 +761,7 @@ class NSO:
         f_token: str,
         request_id: str,
         timestamp: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         """Given the ``id_token``, user data, ``f_token``, ``request_id``, and
         ``timestamp``, returns the Web Service Credential Access Token.
 
@@ -732,6 +784,7 @@ class NSO:
 
         Returns:
             str: The Web Service Credential Access Token.
+            str: The coral user ID.
         """
         header = {
             "X-Platform": "Android",
@@ -757,7 +810,11 @@ class NSO:
         }
         url = "https://api-lp1.znc.srv.nintendo.net/v3/Account/Login"
         response = self.session.post(url, headers=header, json=body).json()
-        return response["result"]["webApiServerCredential"]["accessToken"]
+        response_result = response["result"]
+        return (
+            response_result["webApiServerCredential"]["accessToken"],
+            response_result["user"]["id"],
+        )
 
     def get_gtoken_request(
         self,

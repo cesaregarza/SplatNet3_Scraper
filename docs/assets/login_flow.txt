@@ -31,8 +31,12 @@ group GameWebToken (GToken)
         group User Data
             U -[#1E90FF]> NCA : User Access Token
             NCA --[#B22222]> U : User Data (Birthday, Language, Country)
+            autonumber 11
+            NCA --[#B22222]> U : Nintendo Account ID
         end
         U -[#1E90FF]> im : ID Token
+        autonumber 12
+        U -[#1E90FF]> im : Nintendo Account ID
         im --[#C71585]> U : F Token (ID Token)
         autonumber 13
         im --[#C71585]> U : Timestamp
@@ -48,9 +52,15 @@ group GameWebToken (GToken)
         autonumber 14
         U -[#1E90FF]> NCA : ID Token
         NCA --[#B22222]> U : Web API Server Credential Access Token
+        autonumber 15
+        NCA --[#B22222]> U : Coral User ID
     end
     group GToken
         U -[#1E90FF]> im : Web API Server Credential Access Token
+        autonumber 16
+        U -[#1E90FF]> im : Nintendo Account ID
+        autonumber 16
+        U -[#1E90FF]> im : Coral User ID
         im --[#C71585]> U : F Token (Web API Server Credential Access Token)
         autonumber 17
         im --[#C71585]> U : Timestamp
