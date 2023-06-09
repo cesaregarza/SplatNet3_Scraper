@@ -643,7 +643,7 @@ class QueryResponse:
                 *args.
             unpack_query_response (bool): If True, unpack any QueryResponse
                 objects in the result. If False, QueryResponse objects will be
-                left as is.
+                left as is. Defaults to True.
 
         Returns:
             list[Any]: A list of values at all paths that match the
