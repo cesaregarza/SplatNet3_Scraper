@@ -1,3 +1,5 @@
+import gzip
+import json
 from datetime import datetime
 from typing import (
     Any,
@@ -160,6 +162,24 @@ class QueryResponse:
             datetime: The timestamp.
         """
         return datetime.fromtimestamp(self.timestamp_raw)
+
+    def to_json(self, path: str) -> None:
+        """Saves the data to a JSON file.
+
+        Args:
+            path (str): The path to save the JSON file to.
+        """
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(self.data, f, ensure_ascii=False, indent=4)
+
+    def to_gzipped_json(self, path: str) -> None:
+        """Saves the data to a gzipped JSON file.
+
+        Args:
+            path (str): The path to save the gzipped JSON file to.
+        """
+        with gzip.open(path, "wt", encoding="utf-8") as f:
+            json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     def parse_json(self) -> JSONParser:
         """The JSONParser object containing the data.
@@ -575,6 +595,7 @@ class QueryResponse:
         self,
         partial_path: PathType | list[PathType],
         *args: str | int,
+        unpack_query_response: bool = True,
     ) -> list[Any]:
         """Returns a list of values for all paths in the given data that match
         the provided partial path. This function first calls
@@ -620,13 +641,23 @@ class QueryResponse:
                 be a string or integer, not a tuple. Use the ``partial_path``
                 argument with a list of paths instead of passing a PathType in
                 *args.
+            unpack_query_response (bool): If True, unpack any QueryResponse
+                objects in the result. If False, QueryResponse objects will be
+                left as is.
 
         Returns:
             list[Any]: A list of values at all paths that match the
                 given partial path.
         """
         paths = self.match_partial_path(partial_path, *args)
-        return [self.get(path) for path in paths]
+        out = []
+        for path in paths:
+            value = self.get(path)
+            if unpack_query_response and isinstance(value, QueryResponse):
+                out.append(value.data)
+            else:
+                out.append(value)
+        return out
 
     def get(self, key: PathType, default: Any = None) -> Any:
         """Returns the value at the given key. If the key is not found, returns
