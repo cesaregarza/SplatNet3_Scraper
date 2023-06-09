@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import pytest
 from pytest_lazyfixture import lazy_fixture
@@ -328,32 +328,58 @@ class TestQueryResponse:
         )
 
     @pytest.mark.parametrize(
-        "data, path, expected",
+        "data, path, expected, unpack",
         [
             (
                 lazy_fixture("json_nested_list"),
                 "d",
                 [3, 5],
+                None,
             ),
             (
                 lazy_fixture("json_nested_list"),
                 ("c", 0, "d"),
                 [3],
+                None,
             ),
             (
                 lazy_fixture("json_deep_nested_list"),
                 ("g", "h"),
                 [5, 9],
+                None,
             ),
             (
                 lazy_fixture("json_deep_nested_list"),
                 [("g", "h"), ("g", "i")],
                 [5, 9, 6, 10],
+                None,
             ),
             (
                 lazy_fixture("json_deep_nested_list"),
                 [("c", 0, "e", "g", "h"), ("c", 1, "e", "g", "i")],
                 [5, 10],
+                None,
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("e", "g"),
+                [{"h": 5, "i": 6}, {"h": 9, "i": 10}],
+                None,
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("e", "g"),
+                [{"h": 5, "i": 6}, {"h": 9, "i": 10}],
+                True,
+            ),
+            (
+                lazy_fixture("json_deep_nested_list"),
+                ("e", "g"),
+                [
+                    QueryResponse({"h": 5, "i": 6}),
+                    QueryResponse({"h": 9, "i": 10}),
+                ],
+                False,
             ),
         ],
         ids=[
@@ -362,8 +388,43 @@ class TestQueryResponse:
             "deep_nested_list",
             "list_of_paths",
             "list_of_paths_from_root",
+            "list_of_paths_no_kwarg",
+            "list_of_paths_unpack",
+            "list_of_paths_unpack_false",
         ],
     )
-    def test_get_partial_path(self, data, path, expected):
+    def test_get_partial_path(self, data, path, expected, unpack):
         response = QueryResponse(data)
-        assert response.get_partial_path(path) == expected
+        if unpack is None:
+            assert response.get_partial_path(path) == expected
+        else:
+            assert (
+                response.get_partial_path(path, unpack_query_response=unpack)
+                == expected
+            )
+
+    def test_to_json(self, json_deep_nested: dict):
+        response = QueryResponse(json_deep_nested)
+        path = "test.json"
+        with (
+            patch("json.dump", return_value=None) as mock_dump,
+            patch("builtins.open", mock_open()) as mock_file,
+        ):
+            response.to_json("test.json")
+            mock_file.assert_called_once_with(path, "w", encoding="utf-8")
+            mock_dump.assert_called_once_with(
+                response.data, mock_file(), ensure_ascii=False, indent=4
+            )
+
+    def test_to_gzipped_json(self, json_deep_nested: dict):
+        response = QueryResponse(json_deep_nested)
+        path = "test.json.gz"
+        with (
+            patch("gzip.open", mock_open()) as mock_file,
+            patch("json.dump", return_value=None) as mock_dump,
+        ):
+            response.to_gzipped_json("test.json.gz")
+            mock_file.assert_called_once_with(path, "wt", encoding="utf-8")
+            mock_dump.assert_called_once_with(
+                response.data, mock_file(), ensure_ascii=False, indent=4
+            )
