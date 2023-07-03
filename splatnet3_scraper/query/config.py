@@ -272,12 +272,19 @@ class Config:
             raise KeyError(f"Invalid option: {key}")
 
     def get_data(self, key: str) -> str:
-        if not self.config.has_section("data"):
-            self.config.add_section("data")
+        try:
+            return self.config["data"][key]
+        except KeyError:
+            if not self.config.has_section("data"):
+                self.config.add_section("data")
             data = self.token_manager.data
             for k, v in data.items():
                 self.config["data"][k] = v
-        return self.config["data"][key]
+
+        try:
+            return self.config["data"][key]
+        except KeyError:
+            return self.get(key)
 
     @overload
     def get_token(self, key: str, full_token: Literal[False] = ...) -> str:
