@@ -1,3 +1,4 @@
+import logging
 from typing import Literal, cast, overload
 
 from splatnet3_scraper.query import QueryHandler, QueryResponse
@@ -18,6 +19,7 @@ class SplatNet_Scraper:
             query_handler (QueryHandler): The query handler to use.
         """
         self._query_handler = query_handler
+        self.logger = logging.getLogger(__name__)
 
     @staticmethod
     def from_session_token(session_token: str) -> "SplatNet_Scraper":
@@ -132,6 +134,7 @@ class SplatNet_Scraper:
             variable_name = "vsResultId"
 
         _limit = -1 if limit is None else limit
+        self.logger.info(f"Limit set to {_limit}")
 
         # Get the list of battles
         summary_query = self.__query(query)
@@ -140,29 +143,40 @@ class SplatNet_Scraper:
         top_level_key = summary_query.keys()[0]
         history_groups = summary_query[top_level_key, "historyGroups", "nodes"]
         out: list[QueryResponse] = []
+        queue: list[str] = []
         idx = 0
+        break_early = False
 
         for group in history_groups:
             group = cast(QueryResponse, group)
+            if break_early:
+                break
             for game in group["historyDetails", "nodes"]:
                 game = cast(QueryResponse, game)
                 if idx == _limit:
-                    return summary_query, out
+                    break_early = True
+                    break
                 idx += 1
-                game_id = game["id"]
+                game_id = cast(str, game["id"])
 
                 if isinstance(existing_ids, str):
                     if game_id == existing_ids:
-                        return summary_query, out
+                        break_early = True
+                        break
                 elif isinstance(existing_ids, list):
                     if game_id in existing_ids:
                         idx -= 1
                         continue
 
                 variables = {variable_name: game_id}
-                detailed_game = self.__query(detail_query, variables)
-                out.append(detailed_game)
+                queue.append(game_id)
 
+        self.logger.info(f"Queue length: {len(queue)}")
+        for idx, game_id in enumerate(queue):
+            self.logger.info(f"Getting game {idx + 1} of {len(queue)}")
+            variables = {variable_name: game_id}
+            detailed_game = self.__query(detail_query, variables)
+            out.append(detailed_game)
         return summary_query, out
 
     @overload

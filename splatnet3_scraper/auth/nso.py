@@ -147,6 +147,7 @@ class NSO:
         self._gtoken: str | None = None
         self._user_info: dict[str, str] | None = None
         self._f_token_function: FToken_Gen = self.get_ftoken
+        self.logger = logging.getLogger(__name__)
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -194,7 +195,7 @@ class NSO:
         response = self.session.get(IOS_APP_URL)
         version = version_re.search(response.text)
         if version is None:
-            logging.warning(
+            self.logger.warning(
                 "Failed to get version from app store, using fallback"
             )
             return APP_VERSION_FALLBACK
@@ -482,7 +483,7 @@ class NSO:
         """
         f_token_url = f_token_url if f_token_url is not None else IMINK_URL
         # Get user access token
-        logging.info("Getting user access token")
+        self.logger.info("Getting user access token")
         user_access_response = self.get_user_access_token(session_token)
         try:
             self._user_access_token = cast(
@@ -495,11 +496,11 @@ class NSO:
                 + f"Response: {user_access_response}"
             )
 
-        logging.info("Getting user info")
+        self.logger.info("Getting user info")
         user_info = self.get_user_info(self._user_access_token)
         self._user_info = user_info
         self._nintendo_account_id = user_info["id"]
-        logging.info("Getting Web Service Access Token")
+        self.logger.info("Getting Web Service Access Token")
         (
             web_service_access_token,
             coral_user_id,
@@ -509,7 +510,7 @@ class NSO:
             self._nintendo_account_id,
             f_token_url=f_token_url,
         )
-        logging.info("Getting gtoken")
+        self.logger.info("Getting gtoken")
         self._coral_user_id = coral_user_id
         gtoken = self.g_token_generation_phase_2(
             web_service_access_token,
@@ -558,10 +559,10 @@ class NSO:
             ``f_token`` generation method will be restored.
         """
         if new_function is None:
-            logging.info("Restoring default ftoken generation method")
+            self.logger.info("Restoring default ftoken generation method")
             self._f_token_function = self.get_ftoken
         else:
-            logging.info("Setting new ftoken generation method")
+            self.logger.info("Setting new ftoken generation method")
             self._f_token_function = new_function
 
     def get_ftoken(
@@ -929,7 +930,7 @@ class NSO:
                 to SplatNet 3, and is valid for 6 hours and 30 minutes after it
                 is obtained.
         """
-        logging.info("Getting bullet token")
+        self.logger.info("Getting bullet token")
         user_agent = (
             user_agent if user_agent is not None else DEFAULT_USER_AGENT
         )
@@ -985,6 +986,6 @@ class NSO:
             self._web_view_version = web_version
             return web_version
         except SplatNetException as e:
-            logging.warning(str(e))
-            logging.warning("Using fallback web view version")
+            self.logger.warning(str(e))
+            self.logger.warning("Using fallback web view version")
             return WEB_VIEW_VERSION_FALLBACK

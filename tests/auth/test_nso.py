@@ -58,6 +58,8 @@ class TestNSO:
                 assert isinstance(nso_variables[key], requests.Session)
             elif key == "_f_token_function":
                 assert nso_variables[key] == nso.get_ftoken
+            elif key == "logger":
+                assert nso_variables[key].name == "splatnet3_scraper.auth.nso"
             else:
                 assert nso_variables[key] is None
 
