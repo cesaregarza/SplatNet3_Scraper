@@ -1,4 +1,5 @@
 import json
+import logging
 
 import requests
 
@@ -44,6 +45,8 @@ class QueryHandler:
                 constructor.
         """
         self.config = config
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("Initialized QueryHandler.")
 
     @staticmethod
     def from_config_file(
@@ -276,6 +279,7 @@ class QueryHandler:
         """
         response = self.__query_hash(query_hash, variables)
         if response.status_code != 200:
+            self.logger.info("Query failed, regenerating tokens and retrying.")
             self.config.token_manager.generate_all_tokens()
             response = self.__query_hash(query_hash, variables)
 
@@ -333,6 +337,7 @@ class QueryHandler:
         """
         response = self.__query(query_name, variables)
         if response.status_code != 200:
+            self.logger.info("Query failed, regenerating tokens and retrying.")
             self.config.token_manager.generate_all_tokens()
             response = self.__query(query_name, variables)
 
