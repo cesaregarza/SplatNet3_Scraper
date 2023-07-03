@@ -268,8 +268,10 @@ class TestConfig:
         with pytest.raises(KeyError):
             config.get("invalid_option")
 
-    def test_get_data(self):
-        token_manager = MockTokenManager()
+    def test_get_data_fed_data(self):
+        token_manager = MockTokenManager(
+            data={"test_key_1": "test_value_1", "test_key_2": "test_value_2"}
+        )
         config = Config(token_manager=token_manager)
 
         assert not config.config.has_section("data")
@@ -277,6 +279,15 @@ class TestConfig:
         assert config.config.has_section("data")
         assert config.config["data"]["test_key_1"] == "test_value_1"
         assert config.get_data("test_key_2") == "test_value_2"
+
+    def test_get_data_defaults(self):
+        token_manager = MockTokenManager()
+        config = Config(token_manager=token_manager)
+
+        assert not config.config.has_section("data")
+        assert config.get_data("language") == "en-US"
+        assert config.config.has_section("data")
+        assert config.config["data"] == {}
 
     def test_add_accepted_options(self):
         token_manager = MockTokenManager()

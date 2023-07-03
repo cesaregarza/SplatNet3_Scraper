@@ -93,10 +93,13 @@ class MockEnvironmentManager:
 
 
 class MockTokenManager:
-    def __init__(self, origin: dict = {"origin": "mock", "data": None}) -> None:
+    def __init__(
+        self, origin: dict = {"origin": "mock", "data": None}, data: dict = {}
+    ) -> None:
         self._mocked = True
         self._origin = origin
         self.env_manager = MockEnvironmentManager()
+        self._data = data
 
     @staticmethod
     def load():
@@ -111,7 +114,7 @@ class MockTokenManager:
 
     @property
     def data(self):
-        return {"test_key_1": "test_value_1", "test_key_2": "test_value_2"}
+        return self._data
 
     @property
     def origin(self):

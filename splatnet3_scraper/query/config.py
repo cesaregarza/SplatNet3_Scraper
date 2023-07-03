@@ -280,7 +280,11 @@ class Config:
             data = self.token_manager.data
             for k, v in data.items():
                 self.config["data"][k] = v
+
+        try:
             return self.config["data"][key]
+        except KeyError:
+            return self.get(key)
 
     @overload
     def get_token(self, key: str, full_token: Literal[False] = ...) -> str:
