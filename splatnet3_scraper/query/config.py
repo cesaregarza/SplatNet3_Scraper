@@ -226,6 +226,8 @@ class Config:
         "user_agent": DEFAULT_USER_AGENT,
         "f_gen": IMINK_URL,
         "export_path": "",
+        "language": "en-US",
+        "country": "US",
     }
 
     @property
