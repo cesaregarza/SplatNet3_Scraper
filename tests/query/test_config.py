@@ -261,7 +261,7 @@ class TestConfig:
         assert config.get("user_agent") == DEFAULT_USER_AGENT
         # Accepted option, not set, and no default
         with pytest.raises(KeyError):
-            config.get("language")
+            config.get("log_file")
         # Deprecated option
         assert config.get("api_key") == "test_stat_ink_api_key"
         # Invalid option
