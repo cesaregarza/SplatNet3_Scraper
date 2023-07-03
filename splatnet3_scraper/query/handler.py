@@ -140,6 +140,42 @@ class QueryHandler:
         return QueryHandler(config)
 
     @staticmethod
+    def from_tokens(
+        session_token: str,
+        gtoken: str | None = None,
+        bullet_token: str | None = None,
+    ) -> "QueryHandler":
+        """Creates a new instance of the class using the tokens provided.
+
+        Given a session token, a ``GTOKEN``, and a ``BULLET_TOKEN``, this
+        method will create a new instance of the class with all the tokens
+        already set in the ``Config`` object. This method is useful if the user
+        already has all the tokens and wants to avoid having to generate them
+        again if possible. If the user does not have all the tokens, they can
+        pass in ``None`` for the tokens they do not have and the method will
+        generate the tokens that are missing.
+
+        Args:
+            session_token (str): The session token to use. This token must be
+                valid and not expired or revoked. If the token is invalid, the
+                user will not be able to make any queries to the SplatNet 3 API.
+            gtoken (str | None): The ``GTOKEN`` to use. If None, the method
+                will generate a new ``GTOKEN``. Defaults to None.
+            bullet_token (str | None): The ``BULLET_TOKEN`` to use. If None,
+                the method will generate a new ``BULLET_TOKEN``. Defaults to
+                None.
+
+        Returns:
+            QueryHandler: A new instance of the class with all the tokens
+                already set in the ``Config`` object.
+        """
+        token_manager = TokenManager.from_tokens(
+            session_token, gtoken, bullet_token
+        )
+        config = Config(token_manager=token_manager)
+        return QueryHandler(config)
+
+    @staticmethod
     def from_env() -> "QueryHandler":
         """Creates a new instance of the class using the environment
         variables.
@@ -351,3 +387,22 @@ class QueryHandler:
             raise SplatNetException(error_message)
 
         return QueryResponse(data=response.json()["data"])
+
+    def export_tokens(self) -> list[tuple[str, str]]:
+        """Exports the tokens to a list of tuples.
+
+        This method will export the tokens to a list of tuples. This method is
+        useful if the user wants to export the tokens to a file or to a database
+        or some other data store. The tokens are returned as a list of tuples
+        with the first element being the token name and the second element being
+        the token value. The list of tokens returned is as follows:
+
+        - ``session_token``
+        - ``gtoken``
+        - ``bullet_token``
+
+        Returns:
+            list[tuple[str, str]]: The list of tokens as a list of tuples.
+        """
+        self.logger.debug("Exporting tokens.")
+        return self.config.token_manager.export_tokens()

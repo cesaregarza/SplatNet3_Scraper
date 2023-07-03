@@ -1,5 +1,5 @@
 import random
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -134,6 +134,17 @@ class TestSplatNetScraper:
             "Minus one limit",
         ],
     )
+    @param(
+        "progress_callback",
+        [
+            False,
+            True,
+        ],
+        ids=[
+            "No progress callback",
+            "Progress callback",
+        ],
+    )
     def test_detailed_vs_or_coop_limit(
         self,
         query,
@@ -142,6 +153,7 @@ class TestSplatNetScraper:
         num_per_group,
         ids,
         num_limit,
+        progress_callback,
         monkeypatch: pytest.MonkeyPatch,
     ):
 
@@ -180,6 +192,10 @@ class TestSplatNetScraper:
         elif num_limit is None:
             num_limit = num_total
 
+        mock_progress_callback = MagicMock()
+
+        progress_arg = mock_progress_callback if progress_callback else None
+
         expected_total = min(expected_total, num_limit)
         counter = 0
 
@@ -198,9 +214,16 @@ class TestSplatNetScraper:
         with monkeypatch.context() as m:
             m.setattr(scraper, "_SplatNet_Scraper__query", mock_query)
             scraper._SplatNet_Scraper__detailed_vs_or_coop(
-                query, limit=num_limit, existing_ids=ids
+                query,
+                limit=num_limit,
+                existing_ids=ids,
+                progress_callback=progress_arg,
             )
             assert counter == expected_total + 1
+            if progress_callback:
+                mock_progress_callback.call_count == expected_total
+            else:
+                mock_progress_callback.assert_not_called()
 
     @param(
         "mode, expect_error, expected_query",
@@ -226,14 +249,23 @@ class TestSplatNetScraper:
         [True, False],
         ids=["detail", "no detail"],
     )
+    @param(
+        "progress_callback",
+        [True, False],
+        ids=["progress callback", "no progress callback"],
+    )
     def test_get_vs_battles(
-        self, mode: str, expect_error: bool, expected_query: str, detail: bool
+        self,
+        mode: str,
+        expect_error: bool,
+        expected_query: str,
+        detail: bool,
+        progress_callback: bool,
     ):
         scraper = SplatNet_Scraper(MockQueryHandler())
+        detail_path = scraper_mangled_path + "__detailed_vs_or_coop"
         with (
-            patch(
-                scraper_mangled_path + "__detailed_vs_or_coop"
-            ) as mock_detailed,
+            patch(detail_path) as mock_detailed,
             patch(scraper_mangled_path + "__query") as mock_query,
         ):
             mock_detailed.return_value = "test_detailed"
@@ -250,10 +282,15 @@ class TestSplatNetScraper:
                 return
 
             expected = "test_detailed" if detail else "test_query"
-            assert scraper.get_vs_battles(mode, detail) == expected
+            assert (
+                scraper.get_vs_battles(
+                    mode, detail, progress_callback=progress_callback
+                )
+                == expected
+            )
             if detail:
                 mock_detailed.assert_called_once_with(
-                    expected_query, None, None
+                    expected_query, None, None, progress_callback
                 )
                 mock_query.assert_not_called()
             else:

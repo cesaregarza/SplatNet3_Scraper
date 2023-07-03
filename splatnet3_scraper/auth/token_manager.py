@@ -1,5 +1,6 @@
 import configparser
 import json
+import logging
 import os
 import re
 import time
@@ -176,6 +177,7 @@ class TokenManager:
             if env_manager is not None
             else EnvironmentVariablesManager()
         )
+        self.logger = logging.getLogger(__name__)
 
     def flag_origin(self, origin: str, data: str | None = None) -> None:
         """Flags the origin of the token manager. This is used to identify where
@@ -249,6 +251,7 @@ class TokenManager:
             ValueError: If the ``token`` provided is a string and ``token_type``
                 is not provided.
         """
+        self.logger.debug(f"Adding token of type {token_type} to manager.")
         if timestamp is None:
             timestamp = time.time()
         if isinstance(token, str) and token_type is None:
@@ -402,6 +405,7 @@ class TokenManager:
         session token to already be set, and will raise the errors that those
         methods raise if a session token is not set.
         """
+        self.logger.debug("Generating all tokens.")
         self.generate_gtoken()
         self.generate_bullet_token()
 
@@ -424,6 +428,48 @@ class TokenManager:
         manager = cls()
         manager.add_session_token(session_token)
         manager.flag_origin("session_token")
+        return manager
+
+    @classmethod
+    def from_tokens(
+        cls,
+        session_token: str,
+        gtoken: str | None = None,
+        bullet_token: str | None = None,
+    ) -> "TokenManager":
+        """Creates a token manager from a session token.
+
+        Given a session token, this method will create a token manager and add
+        a session token to it. Additionally, it will flag the origin of the
+        TokenManager as "tokens" so that it can be saved to a config file later.
+
+        Args:
+            session_token (str): The session token to use to instantiate the
+                ``TokenManager``.
+            gtoken (str | None): The gtoken to use to instantiate the
+                ``TokenManager``. If not provided, a new gtoken will be
+                generated. Defaults to None.
+            bullet_token (str | None): The bullet token to use to instantiate
+                the ``TokenManager``. If not provided, a new bullet token will
+                be generated. Defaults to None.
+
+        Returns:
+            TokenManager: The token manager with the session token added.
+        """
+        manager = cls()
+        manager.add_session_token(session_token)
+
+        if gtoken is not None:
+            manager.add_token(gtoken, TOKENS.GTOKEN)
+        else:
+            manager.generate_gtoken()
+
+        if bullet_token is not None:
+            manager.add_token(bullet_token, TOKENS.BULLET_TOKEN)
+        else:
+            manager.generate_bullet_token()
+
+        manager.flag_origin("tokens")
         return manager
 
     @classmethod
@@ -700,3 +746,15 @@ class TokenManager:
         )
         if response.status_code != 200:
             self.generate_all_tokens()
+
+    def export_tokens(self) -> list[tuple[str, str]]:
+        """Exports the tokens as a list of tuples.
+
+        Returns:
+            list[tuple[str, str]]: A list of tuples containing the token type
+                and the token value.
+        """
+        return [
+            (token_type, token.token)
+            for token_type, token in self._tokens.items()
+        ]

@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, cast, overload
+from typing import Callable, Literal, cast, overload
 
 from splatnet3_scraper.query import QueryHandler, QueryResponse
 from splatnet3_scraper.scraper.query_map import QueryMap
@@ -95,6 +95,7 @@ class SplatNet_Scraper:
         query: str,
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> tuple[QueryResponse, list[QueryResponse]]:
         """Gets the detailed results for a vs battle or coop battle.
 
@@ -107,6 +108,9 @@ class SplatNet_Scraper:
                 upon finding the first match. If a list is passed, it will
                 return the results of all matches not in the list. If None,
                 it will return all results. Defaults to None.
+            progress_callback (Callable[[int, int], None] | None): A callback
+                function that will be called with the current index and the
+                total number of battles. Defaults to None.
 
         Raises:
             ValueError: If the query is not a vs battle or coop battle.
@@ -172,11 +176,15 @@ class SplatNet_Scraper:
                 queue.append(game_id)
 
         self.logger.info(f"Queue length: {len(queue)}")
+        if progress_callback is not None:
+            progress_callback(0, len(queue))
         for idx, game_id in enumerate(queue):
             self.logger.info(f"Getting game {idx + 1} of {len(queue)}")
             variables = {variable_name: game_id}
             detailed_game = self.__query(detail_query, variables)
             out.append(detailed_game)
+            if progress_callback is not None:
+                progress_callback(idx + 1, len(queue))
         return summary_query, out
 
     @overload
@@ -186,6 +194,7 @@ class SplatNet_Scraper:
         detail: Literal[False],
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> QueryResponse:
         ...
 
@@ -196,6 +205,7 @@ class SplatNet_Scraper:
         detail: Literal[True],
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> tuple[QueryResponse, list[QueryResponse]]:
         ...
 
@@ -206,6 +216,7 @@ class SplatNet_Scraper:
         detail: bool = False,
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
         ...
 
@@ -215,6 +226,7 @@ class SplatNet_Scraper:
         detail: bool = False,
         limit: int | None = None,
         existing_ids: list[str] | str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
         """Gets the vs battles.
 
@@ -230,6 +242,9 @@ class SplatNet_Scraper:
                 upon finding the first match. If a list is passed, it will
                 return the results of all matches not in the list. If None,
                 it will return all results. Defaults to None.
+            progress_callback (Callable[[int, int], None] | None): A callback
+                function that will be called with the current index and the
+                total number of battles. Defaults to None.
 
         Raises:
             ValueError: If the mode is not valid.
@@ -270,6 +285,8 @@ class SplatNet_Scraper:
             raise ValueError(f"Invalid mode: {mode}")
 
         if detail:
-            return self.__detailed_vs_or_coop(mapped_query, limit, existing_ids)
+            return self.__detailed_vs_or_coop(
+                mapped_query, limit, existing_ids, progress_callback
+            )
         else:
             return self.__query(mapped_query)

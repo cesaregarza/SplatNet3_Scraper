@@ -12,6 +12,7 @@ config_path = "splatnet3_scraper.query.config.Config"
 query_response_path = "splatnet3_scraper.query.responses.QueryResponse"
 nso_path = "splatnet3_scraper.auth.nso.NSO"
 token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
+query_handler_path = "splatnet3_scraper.query.handler.QueryHandler"
 
 
 class TestSplatNetQueryHandler:
@@ -64,6 +65,15 @@ class TestSplatNetQueryHandler:
             QueryHandler.from_session_token("test_token")
             mock_from_token.assert_called_once_with("test_token")
             mock_generate.assert_called_once()
+
+    def test_from_tokens(self):
+        from_tokens_path = token_manager_path + ".from_tokens"
+        with (patch(from_tokens_path) as mock_from_tokens,):
+            mock_from_tokens.return_value = MockTokenManager()
+            QueryHandler.from_tokens("test_session_token", "test_token")
+            mock_from_tokens.assert_called_once_with(
+                "test_session_token", "test_token", None
+            )
 
     def test_from_env(self):
         with patch(config_path + ".from_env") as mock_from_env:
@@ -162,3 +172,13 @@ class TestSplatNetQueryHandler:
             )
             assert mock_get.call_count == 2
             mock_generate.assert_called_once()
+
+    def test_export_tokens(self):
+        with (
+            patch.object(MockTokenManager, "export_tokens") as mock_export,
+            patch(config_path + ".__init__") as mock_config,
+        ):
+            mock_config.return_value = None
+            scraper = QueryHandler(MockConfig())
+            scraper.export_tokens()
+            mock_export.assert_called_once()
