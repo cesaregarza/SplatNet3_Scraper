@@ -117,6 +117,9 @@ class MockTokenManager:
     def origin(self):
         return self._origin
 
+    def export_tokens():
+        pass
+
 
 class MockConfigParser:
     def __init__(self) -> None:

@@ -13,3 +13,9 @@ def test_version():
     version_line = [str(line) for line in lines if "version" in str(line)][0]
     version = re.search(r"\d+\.\d+\.\d+", version_line).group(0)
     assert version == splatnet3_scraper.__version__
+
+
+def test_slushie():
+    # This test exists to satisfy Slushie's need for a nice round 400 tests
+    # rather than 399.
+    assert True

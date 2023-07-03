@@ -229,6 +229,48 @@ class TestTokenManager:
         expected_origin = {"origin": "session_token", "data": None}
         assert token_manager._origin == expected_origin
 
+    @pytest.mark.parametrize(
+        "gtoken",
+        [None, "test_gtoken"],
+        ids=["no_gtoken", "gtoken"],
+    )
+    @pytest.mark.parametrize(
+        "bullet_token",
+        [None, "test_bullet_token"],
+        ids=["no_bullet_token", "bullet_token"],
+    )
+    def test_from_tokens(
+        self,
+        gtoken: str | None,
+        bullet_token: str | None,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+        gtoken_path = token_manager_path + ".generate_gtoken"
+        bullet_token_path = token_manager_path + ".generate_bullet_token"
+        session_token = "test_session_token"
+        with (
+            patch(gtoken_path) as mock_gen_gtoken,
+            patch(bullet_token_path) as mock_gen_bullet_token,
+        ):
+            mock_gen_gtoken.return_value = "test_gtoken"
+            mock_gen_bullet_token.return_value = "test_bullet_token"
+            token_manager = TokenManager.from_tokens(
+                session_token, gtoken, bullet_token
+            )
+            assert token_manager.nso._session_token == session_token
+            expected_origin = {"origin": "tokens", "data": None}
+            assert token_manager._origin == expected_origin
+            if gtoken is None:
+                mock_gen_gtoken.assert_called_once()
+            else:
+                mock_gen_gtoken.assert_not_called()
+
+            if bullet_token is None:
+                mock_gen_bullet_token.assert_called_once()
+            else:
+                mock_gen_bullet_token.assert_not_called()
+
     def test_from_config_file(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
         counter = 0
@@ -525,3 +567,16 @@ class TestTokenManager:
             m.setattr(requests, "post", post_status_code(400))
             token_manager.test_tokens()
             mock_generate.assert_called_once()
+
+    def test_export_tokens(self):
+        token_manager = TokenManager()
+        token_manager.add_session_token("test_session_token")
+        token_manager.add_token("test_gtoken", "gtoken")
+        token_manager.add_token("test_bullet_token", "bullet_token")
+        token_manager._data = {"language": "test_language"}
+        expected = [
+            ("session_token", "test_session_token"),
+            ("gtoken", "test_gtoken"),
+            ("bullet_token", "test_bullet_token"),
+        ]
+        assert token_manager.export_tokens() == expected
