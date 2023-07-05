@@ -120,6 +120,8 @@ class QueryMap:
     SALMON_RUN = "CoopHistoryQuery"
     TURF = "RegularBattleHistoriesQuery"
     COOP = "CoopHistoryQuery"
+    CHALLENGE = "EventBattleHistoriesQuery"
+    EVENT = "EventBattleHistoriesQuery"
     ANARCHY_DETAIL = "VsHistoryDetailQuery"
     TURF_DETAIL = "VsHistoryDetailQuery"
     REGULAR_DETAIL = "VsHistoryDetailQuery"
@@ -128,6 +130,8 @@ class QueryMap:
     PRIVATE_DETAIL = "VsHistoryDetailQuery"
     LATEST_DETAIL = "VsHistoryDetailQuery"
     COOP_DETAIL = "CoopHistoryDetailQuery"
+    SALMON_DETAIL = "CoopHistoryDetailQuery"
+    CHALLENGE_DETAIL = "VsHistoryDetailQuery"
 
     @staticmethod
     def get(query: str) -> str:
