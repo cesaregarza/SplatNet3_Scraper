@@ -22,6 +22,12 @@ class TestSplatNetScraper:
             mock.assert_not_called()
             assert scraper._query_handler == mock
 
+    def test_handler_property(self):
+        with patch(query_handler_path) as mock:
+            scraper = SplatNet_Scraper(mock)
+            assert scraper.query_handler == mock
+            mock.assert_not_called()
+
     @param(
         "method, args",
         [
@@ -29,7 +35,7 @@ class TestSplatNetScraper:
             ("from_config_file", "test_config_path"),
             ("from_env", None),
             ("from_s3s_config", "test_config_path"),
-            ("from_tokens", ["test_session_token", "test_gtoken"])
+            ("from_tokens", ["test_session_token", "test_gtoken"]),
         ],
         ids=[
             "from_session_token",

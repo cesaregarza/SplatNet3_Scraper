@@ -21,6 +21,15 @@ class SplatNet_Scraper:
         self._query_handler = query_handler
         self.logger = logging.getLogger(__name__)
 
+    @property
+    def query_handler(self) -> QueryHandler:
+        """The query handler used by the scraper.
+
+        Returns:
+            QueryHandler: The query handler.
+        """
+        return self._query_handler
+
     @staticmethod
     def from_session_token(session_token: str) -> "SplatNet_Scraper":
         """Creates a SplatNet_Scraper instance using the given session token.
