@@ -171,6 +171,7 @@ class TestQueryResponse:
         assert response.get("a", "default") == json_deep_nested_list["a"]
         assert response.get("d") is None
         assert response.get(("c", 0, "d")) == json_deep_nested_list["c"][0]["d"]
+        assert response.get(("c", 0, "d", "x")) is None
 
     @pytest.mark.parametrize(
         "input, path, expected",

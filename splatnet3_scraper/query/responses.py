@@ -681,5 +681,5 @@ class QueryResponse:
         """
         try:
             return self[key]
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, TypeError):
             return default
