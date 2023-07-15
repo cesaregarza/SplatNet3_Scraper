@@ -22,6 +22,12 @@ class TestSplatNetScraper:
             mock.assert_not_called()
             assert scraper._query_handler == mock
 
+    def test_handler_property(self):
+        with patch(query_handler_path) as mock:
+            scraper = SplatNet_Scraper(mock)
+            assert scraper.query_handler == mock
+            mock.assert_not_called()
+
     @param(
         "method, args",
         [
@@ -29,12 +35,14 @@ class TestSplatNetScraper:
             ("from_config_file", "test_config_path"),
             ("from_env", None),
             ("from_s3s_config", "test_config_path"),
+            ("from_tokens", ["test_session_token", "test_gtoken"]),
         ],
         ids=[
             "from_session_token",
             "from_config",
             "from_env",
             "from_s3s_config",
+            "from_tokens",
         ],
     )
     def test_from_methods(self, method, args, monkeypatch: pytest.MonkeyPatch):
@@ -42,6 +50,8 @@ class TestSplatNetScraper:
             m.setattr(QueryHandler, method, MockQueryHandler)
             if args is None:
                 scraper = getattr(SplatNet_Scraper, method)()
+            elif isinstance(args, list):
+                scraper = getattr(SplatNet_Scraper, method)(*args)
             else:
                 scraper = getattr(SplatNet_Scraper, method)(args)
             assert isinstance(scraper, SplatNet_Scraper)
@@ -232,7 +242,8 @@ class TestSplatNetScraper:
             ("anarchy", False, QueryMap.ANARCHY),
             ("xbattle", False, QueryMap.XBATTLE),
             ("private", False, QueryMap.PRIVATE),
-            ("salmon", True, QueryMap.SALMON),
+            ("salmon", False, QueryMap.SALMON),
+            ("challenge", False, QueryMap.CHALLENGE),
             ("not_a_mode", True, None),
         ],
         ids=[
@@ -241,6 +252,7 @@ class TestSplatNetScraper:
             "x battle",
             "private",
             "salmon",
+            "challenge",
             "not a mode",
         ],
     )
@@ -254,7 +266,7 @@ class TestSplatNetScraper:
         [True, False],
         ids=["progress callback", "no progress callback"],
     )
-    def test_get_vs_battles(
+    def test_get_matches(
         self,
         mode: str,
         expect_error: bool,
@@ -276,14 +288,14 @@ class TestSplatNetScraper:
                 else:
                     error_type = ValueError
                 with pytest.raises(error_type):
-                    scraper.get_vs_battles(mode, detail)
+                    scraper.get_matches(mode, detail)
                 mock_detailed.assert_not_called()
                 mock_query.assert_not_called()
                 return
 
             expected = "test_detailed" if detail else "test_query"
             assert (
-                scraper.get_vs_battles(
+                scraper.get_matches(
                     mode, detail, progress_callback=progress_callback
                 )
                 == expected

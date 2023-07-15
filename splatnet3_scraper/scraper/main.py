@@ -21,6 +21,15 @@ class SplatNet_Scraper:
         self._query_handler = query_handler
         self.logger = logging.getLogger(__name__)
 
+    @property
+    def query_handler(self) -> QueryHandler:
+        """The query handler used by the scraper.
+
+        Returns:
+            QueryHandler: The query handler.
+        """
+        return self._query_handler
+
     @staticmethod
     def from_session_token(session_token: str) -> "SplatNet_Scraper":
         """Creates a SplatNet_Scraper instance using the given session token.
@@ -32,6 +41,32 @@ class SplatNet_Scraper:
             SplatNet_Scraper: The SplatNet_Scraper instance.
         """
         query_handler = QueryHandler.from_session_token(session_token)
+        return SplatNet_Scraper(query_handler)
+
+    @staticmethod
+    def from_tokens(
+        session_token: str,
+        gtoken: str | None = None,
+        bullet_token: str | None = None,
+    ) -> "SplatNet_Scraper":
+        """Creates a SplatNet_Scraper instance using the given tokens. This is
+        useful if you already have the tokens and don't want to have to
+        retrieve them again. This does not guarantee that the tokens are valid,
+        that will be checked when the first query is run.
+
+        Args:
+            session_token (str): The session token to use.
+            gtoken (str | None): The gtoken to use. If None, it will be
+                retrieved from the session token. Defaults to None.
+            bullet_token (str | None): The bullet token to use. If None, it
+                will be retrieved from the session token. Defaults to None.
+
+        Returns:
+            SplatNet_Scraper: The SplatNet_Scraper instance.
+        """
+        query_handler = QueryHandler.from_tokens(
+            session_token, gtoken, bullet_token
+        )
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
@@ -127,6 +162,7 @@ class SplatNet_Scraper:
             QueryMap.ANARCHY,
             QueryMap.XBATTLE,
             QueryMap.PRIVATE,
+            QueryMap.CHALLENGE,
         ):
             raise ValueError(f"Invalid query: {query}")
 
@@ -188,7 +224,7 @@ class SplatNet_Scraper:
         return summary_query, out
 
     @overload
-    def get_vs_battles(
+    def get_matches(
         self,
         mode: str,
         detail: Literal[False],
@@ -199,7 +235,7 @@ class SplatNet_Scraper:
         ...
 
     @overload
-    def get_vs_battles(
+    def get_matches(
         self,
         mode: str,
         detail: Literal[True],
@@ -210,7 +246,7 @@ class SplatNet_Scraper:
         ...
 
     @overload
-    def get_vs_battles(
+    def get_matches(
         self,
         mode: str,
         detail: bool = False,
@@ -220,7 +256,7 @@ class SplatNet_Scraper:
     ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
         ...
 
-    def get_vs_battles(
+    def get_matches(
         self,
         mode: str,
         detail: bool = False,
@@ -228,11 +264,12 @@ class SplatNet_Scraper:
         existing_ids: list[str] | str | None = None,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> QueryResponse | tuple[QueryResponse, list[QueryResponse]]:
-        """Gets the vs battles.
+        """Gets matches for the given mode.
 
         Args:
-            mode (str): The mode to get the battles for. Some values are:
-                "turf", "anarchy", "xbattle", "private",
+            mode (str): The mode to get the battles for. Valid values are:
+                "turf", "anarchy", "xbattle", "private", "challenge",
+                and "salmon".
             detail (bool): Whether to get the detailed results or not.
                 Defaults to False.
             limit (int | None): The maximum number of battles to get. If None,
@@ -258,20 +295,20 @@ class SplatNet_Scraper:
                 response.
         """
         mapped_query = QueryMap.get(mode)
-        if mapped_query == QueryMap.SALMON:
-            raise ValueError("Use get_coop_battles for salmon run battles.")
 
         if mapped_query in (
             QueryMap.TURF_DETAIL,
             QueryMap.ANARCHY_DETAIL,
             QueryMap.XBATTLE_DETAIL,
             QueryMap.PRIVATE_DETAIL,
+            QueryMap.CHALLENGE_DETAIL,
         ):
             non_detail_map = {
                 QueryMap.TURF_DETAIL: QueryMap.TURF,
                 QueryMap.ANARCHY_DETAIL: QueryMap.ANARCHY,
                 QueryMap.XBATTLE_DETAIL: QueryMap.XBATTLE,
                 QueryMap.PRIVATE_DETAIL: QueryMap.PRIVATE,
+                QueryMap.CHALLENGE_DETAIL: QueryMap.CHALLENGE,
             }
             mapped_query = non_detail_map[mapped_query]
             detail = True
@@ -281,6 +318,8 @@ class SplatNet_Scraper:
             QueryMap.ANARCHY,
             QueryMap.XBATTLE,
             QueryMap.PRIVATE,
+            QueryMap.SALMON,
+            QueryMap.CHALLENGE,
         ):
             raise ValueError(f"Invalid mode: {mode}")
 
