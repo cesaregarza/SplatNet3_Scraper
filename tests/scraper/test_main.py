@@ -189,18 +189,28 @@ class TestSplatNetScraper:
             }
         )
 
+        if num_limit == "minus_one":
+            num_limit = num_total - 1
+        elif num_limit is None:
+            num_limit = num_total
+
         if ids == "string":
             ids = "test_id_2_4"
             expected_total = 2 * num_per_group + 4
         elif ids is None:
             expected_total = num_total
         else:
-            expected_total = num_total - len(ids)
-
-        if num_limit == "minus_one":
-            num_limit = num_total - 1
-        elif num_limit is None:
-            num_limit = num_total
+            # Calculate expected total
+            expected_total = 0
+            limit = 0
+            for i in range(num_groups):
+                for j in range(num_per_group):
+                    if limit >= num_limit:
+                        break
+                    limit += 1
+                    if (j < 3) and (i < 2):
+                        continue
+                    expected_total += 1
 
         mock_progress_callback = MagicMock()
 

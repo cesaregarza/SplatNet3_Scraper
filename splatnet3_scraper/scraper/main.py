@@ -205,7 +205,6 @@ class SplatNet_Scraper:
                         break
                 elif isinstance(existing_ids, list):
                     if game_id in existing_ids:
-                        idx -= 1
                         continue
 
                 variables = {variable_name: game_id}
