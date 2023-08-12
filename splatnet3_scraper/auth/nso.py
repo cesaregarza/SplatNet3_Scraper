@@ -644,7 +644,7 @@ class NSO:
         }
 
         if coral_user_id is not None:
-            body["coral_user_id"] = coral_user_id
+            body["coral_user_id"] = f"{coral_user_id}"
         elif step == 2:
             raise ValueError(
                 "Coral user ID is required for step 2 of ftoken generation"

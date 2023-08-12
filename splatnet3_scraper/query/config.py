@@ -220,6 +220,7 @@ class Config:
     _DEPRECATED_OPTIONS = {
         "api_key": "stat.ink_api_token",
         "f_gen": "f_token_url",
+        "ftoken_url": "f_token_url",
     }
 
     _DEFAULT_OPTIONS = {

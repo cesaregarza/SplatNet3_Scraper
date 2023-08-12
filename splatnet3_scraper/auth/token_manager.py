@@ -13,6 +13,7 @@ from splatnet3_scraper.auth.environment_manager import (
     EnvironmentVariablesManager,
 )
 from splatnet3_scraper.auth.exceptions import (
+    FTokenException,
     NintendoException,
     SplatNetException,
 )
@@ -21,6 +22,7 @@ from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
+    IMINK_URL,
     TOKEN_EXPIRATIONS,
     TOKENS,
 )
@@ -153,6 +155,7 @@ class TokenManager:
     def __init__(
         self,
         nso: NSO | None = None,
+        f_token_url: str | list[str] | None = None,
         *args,
         env_manager: EnvironmentVariablesManager | None = None,
     ) -> None:
@@ -162,6 +165,11 @@ class TokenManager:
         Args:
             nso (NSO | None, optional): An instance of the NSO class. If one is
                 not provided, a new instance will be created. Defaults to None.
+            f_token_url (str | list[str] | None, optional): The URL(s) to use
+                to generate tokens. If a list is provided, each URL will be
+                tried in order until a token is generated. If None is provided,
+                the default URL provided by imink will be used. Defaults to
+                None.
             *args: Additional arguments to pass to the NSO class, currently not
                 used.
             env_manager (EnvironmentVariablesManager): An instance of the
@@ -170,6 +178,7 @@ class TokenManager:
         """
         nso = nso if nso is not None else NSO.new_instance()
         self.nso = nso
+        self.f_token_url = f_token_url if f_token_url is not None else IMINK_URL
         self._tokens: dict[str, Token] = {}
         self._data: dict[str, str] = {}
         self.env_manager = (
@@ -338,6 +347,30 @@ class TokenManager:
         self.add_token(token, TOKENS.SESSION_TOKEN)
         self.nso._session_token = token
 
+    def get_gtoken(self) -> str:
+        """Gets a gtoken from NSO.
+
+        If the f_token_url is a string, it will be used to get the gtoken. If
+        the f_token_url is a list, each url will be tried until a gtoken is
+        successfully retrieved. If no gtoken is retrieved, a FTokenException
+        will be raised.
+
+        Raises:
+            FTokenException: If no gtoken is retrieved from any ftoken url.
+
+        Returns:
+            str: The gtoken.
+        """
+        if isinstance(self.f_token_url, str):
+            return self.nso.get_gtoken(self.nso.session_token, self.f_token_url)
+
+        for f_token_url in self.f_token_url:
+            try:
+                return self.nso.get_gtoken(self.nso.session_token, f_token_url)
+            except FTokenException:
+                continue
+        raise FTokenException("Could not get gtoken from any ftoken url.")
+
     def generate_gtoken(self) -> None:
         """Generates a new gtoken from the internal NSO class and adds it to the
         manager. This is a convenience method that will also set the gtoken in
@@ -355,7 +388,7 @@ class TokenManager:
             raise ValueError(
                 "Session token must be set before generating a gtoken."
             )
-        gtoken = self.nso.get_gtoken(self.nso.session_token)
+        gtoken = self.get_gtoken()
         self.add_token(gtoken, TOKENS.GTOKEN)
         try:
             user_info = cast(dict[str, str], self.nso._user_info)
@@ -410,7 +443,11 @@ class TokenManager:
         self.generate_bullet_token()
 
     @classmethod
-    def from_session_token(cls, session_token: str) -> "TokenManager":
+    def from_session_token(
+        cls,
+        session_token: str,
+        **kwargs,
+    ) -> "TokenManager":
         """Creates a token manager from a session token.
 
         Given a session token, this method will create a token manager and add
@@ -421,11 +458,12 @@ class TokenManager:
         Args:
             session_token (str): The session token to use to instantiate the
                 ``TokenManager``.
+            kwargs: Additional keyword arguments to pass to the ``TokenManager``
 
         Returns:
             TokenManager: The token manager with the session token added.
         """
-        manager = cls()
+        manager = cls(**kwargs)
         manager.add_session_token(session_token)
         manager.flag_origin("session_token")
         return manager
@@ -436,6 +474,7 @@ class TokenManager:
         session_token: str,
         gtoken: str | None = None,
         bullet_token: str | None = None,
+        **kwargs,
     ) -> "TokenManager":
         """Creates a token manager from a session token.
 
@@ -452,11 +491,12 @@ class TokenManager:
             bullet_token (str | None): The bullet token to use to instantiate
                 the ``TokenManager``. If not provided, a new bullet token will
                 be generated. Defaults to None.
+            kwargs: Additional keyword arguments to pass to the ``TokenManager``
 
         Returns:
             TokenManager: The token manager with the session token added.
         """
-        manager = cls()
+        manager = cls(**kwargs)
         manager.add_session_token(session_token)
 
         if gtoken is not None:
@@ -558,6 +598,16 @@ class TokenManager:
             return tokenmanager
         for option in config.options("data"):
             tokenmanager._data[option] = config.get("data", option)
+
+        if not config.has_section("options"):
+            return tokenmanager
+        for option in config.options("options"):
+            if option == "f_token_url":
+                value = (
+                    config.get("options", option).replace(" ", "").split(",")
+                )
+                tokenmanager.f_token_url = value
+
         tokenmanager.test_tokens()
         return tokenmanager
 

@@ -115,7 +115,7 @@ class QueryHandler:
         return url, nso.state, nso.verifier
 
     @staticmethod
-    def from_session_token(session_token: str) -> "QueryHandler":
+    def from_session_token(session_token: str, **kwargs) -> "QueryHandler":
         """Creates a new instance of the class using a session token.
 
         Given a session token, this method will create a new instance of the
@@ -127,6 +127,8 @@ class QueryHandler:
             session_token (str): The session token to use. This token must be
                 valid and not expired or revoked. If the token is invalid, the
                 user will not be able to make any queries to the SplatNet 3 API.
+            **kwargs: Any additional keyword arguments to pass to the
+                constructor of the ``TokenManager`` class.
 
         Returns:
             QueryHandler: A new instance of the class with a valid session
@@ -134,7 +136,7 @@ class QueryHandler:
                 ``BULLET_TOKEN`` will also have been generated and set in the
                 ``Config`` object.
         """
-        token_manager = TokenManager.from_session_token(session_token)
+        token_manager = TokenManager.from_session_token(session_token, **kwargs)
         token_manager.generate_all_tokens()
         config = Config(token_manager=token_manager)
         return QueryHandler(config)

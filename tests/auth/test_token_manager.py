@@ -12,13 +12,14 @@ from splatnet3_scraper.auth.environment_manager import (
     EnvironmentVariablesManager,
 )
 from splatnet3_scraper.auth.exceptions import (
+    FTokenException,
     NintendoException,
     SplatNetException,
 )
 from splatnet3_scraper.auth.graph_ql_queries import GraphQLQueries
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.token_manager import Token, TokenManager
-from splatnet3_scraper.constants import ENV_VAR_NAMES, TOKENS
+from splatnet3_scraper.constants import ENV_VAR_NAMES, IMINK_URL, TOKENS
 from tests.mock import MockNSO
 
 
@@ -75,12 +76,14 @@ class TestTokenManager:
         # Test init without arguments to ensure NSO is mocked
         token_manager = TokenManager()
         assert token_manager.nso._mocked is True
+        assert token_manager.f_token_url == IMINK_URL
 
         # Test init with NSO, ensuring it is set correctly
         mock_nso = MockNSO()
         mock_nso.value = "test"
-        token_manager = TokenManager(mock_nso)
+        token_manager = TokenManager(mock_nso, f_token_url="test_url")
         assert token_manager.nso.value == "test"
+        assert token_manager.f_token_url == "test_url"
 
     def test_add_token(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
@@ -158,6 +161,64 @@ class TestTokenManager:
         token_manager.add_session_token("test_session_token")
         assert token_manager.nso._session_token == "test_session_token"
 
+    @pytest.mark.parametrize(
+        "f_token_url, expected_fail",
+        [
+            ["test_url", False],
+            [["test_url"], False],
+            [["test_url0", "test_url1"], False],
+            [["test_url0", "test_url1"], 0],
+            [["test_url0", "test_url1", "test_url2"], 2],
+            [["test_url0", "test_url1", "test_url2"], True],
+        ],
+        ids=[
+            "single url, no fail",
+            "single item list, no fail",
+            "multi item list, no fail",
+            "multi item list, fail first by index",
+            "multi item list, fail all by index",
+            "multi item list, fail all",
+        ],
+    )
+    def test_get_gtoken(
+        self, monkeypatch: pytest.MonkeyPatch, f_token_url, expected_fail
+    ):
+        monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
+        token_manager = TokenManager(f_token_url=f_token_url)
+        list_f_token_url = isinstance(f_token_url, list)
+
+        count = 0
+
+        def mock_get_gtoken(self, session_token: str, url: str):
+            nonlocal count
+            if isinstance(expected_fail, bool):
+                condition = expected_fail
+            else:
+                condition = count <= expected_fail
+            count += 1
+            if list_f_token_url and condition:
+                raise FTokenException("test")
+
+            return "test_gtoken"
+
+        monkeypatch.setattr(MockNSO, "get_gtoken", mock_get_gtoken)
+
+        token_manager.add_session_token("test_session_token")
+        if expected_fail is False:
+            assert token_manager.get_gtoken() == "test_gtoken"
+            assert count == 1
+        elif expected_fail is True:
+            with pytest.raises(FTokenException):
+                token_manager.get_gtoken()
+            assert count == len(f_token_url)
+        elif expected_fail < (len(f_token_url) - 1):
+            assert token_manager.get_gtoken() == "test_gtoken"
+            assert count == expected_fail + 2
+        else:
+            with pytest.raises(FTokenException):
+                token_manager.get_gtoken()
+            assert count == len(f_token_url)
+
     def test_generate_gtoken(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
         token_manager = TokenManager()
@@ -224,8 +285,11 @@ class TestTokenManager:
 
     def test_from_session_token(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
-        token_manager = TokenManager.from_session_token("test_session_token")
+        token_manager = TokenManager.from_session_token(
+            "test_session_token", f_token_url="test_url"
+        )
         assert token_manager.nso._session_token == "test_session_token"
+        assert token_manager.f_token_url == "test_url"
         expected_origin = {"origin": "session_token", "data": None}
         assert token_manager._origin == expected_origin
 
@@ -239,10 +303,16 @@ class TestTokenManager:
         [None, "test_bullet_token"],
         ids=["no_bullet_token", "bullet_token"],
     )
+    @pytest.mark.parametrize(
+        "f_token_url",
+        [None, "test_url"],
+        ids=["no_f_token_url", "f_token_url"],
+    )
     def test_from_tokens(
         self,
         gtoken: str | None,
         bullet_token: str | None,
+        f_token_url: str | None,
         monkeypatch: pytest.MonkeyPatch,
     ):
         monkeypatch.setattr(NSO, "new_instance", MockNSO.new_instance)
@@ -255,9 +325,15 @@ class TestTokenManager:
         ):
             mock_gen_gtoken.return_value = "test_gtoken"
             mock_gen_bullet_token.return_value = "test_bullet_token"
-            token_manager = TokenManager.from_tokens(
-                session_token, gtoken, bullet_token
-            )
+            if f_token_url is None:
+                token_manager = TokenManager.from_tokens(
+                    session_token, gtoken, bullet_token
+                )
+            else:
+                token_manager = TokenManager.from_tokens(
+                    session_token, gtoken, bullet_token, f_token_url=f_token_url
+                )
+                assert token_manager.f_token_url == f_token_url
             assert token_manager.nso._session_token == session_token
             expected_origin = {"origin": "tokens", "data": None}
             assert token_manager._origin == expected_origin
@@ -310,6 +386,19 @@ class TestTokenManager:
             "data": path,
         }
         assert token_manager._origin == expected_origin
+
+        # Test with valid config file with f_token_url
+        path = str(base_path / ".valid_with_ftoken")
+        token_manager = TokenManager.from_config_file(path)
+        assert token_manager.f_token_url == ["test_f_token_url"]
+
+        # Test with valid config with multiple f_token_urls
+        path = str(base_path / ".valid_with_ftoken_list")
+        token_manager = TokenManager.from_config_file(path)
+        assert token_manager.f_token_url == [
+            "test_f_token_url0",
+            "test_f_token_url1",
+        ]
 
         # Test with a config file without a tokens section
         path = str(base_path / ".no_tokens_section")
