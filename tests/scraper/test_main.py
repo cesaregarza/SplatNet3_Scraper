@@ -241,7 +241,7 @@ class TestSplatNetScraper:
             )
             assert counter == expected_total + 1
             if progress_callback:
-                mock_progress_callback.call_count == expected_total
+                assert mock_progress_callback.call_count == expected_total + 1
             else:
                 mock_progress_callback.assert_not_called()
 

@@ -120,7 +120,7 @@ class MockTokenManager:
     def origin(self):
         return self._origin
 
-    def export_tokens():
+    def export_tokens(self):
         pass
 
 
