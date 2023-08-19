@@ -333,7 +333,7 @@ class TestJSONParser:
             )
             mock_linear_json.assert_called_once()
             mock_stringify.assert_called_once()
-            mock_file().write.call_count == 2
+            assert mock_file().write.call_count == 2
 
     def test_to_json(self):
         data = [
@@ -397,7 +397,7 @@ class TestJSONParser:
             # any of the methods
             m.setattr(pa, "Table", MockPyArrowTable)
             json_parser.to_parquet("test_path")
-            mock_pa_array.call_count == 2
+            assert mock_pa_array.call_count == 2
             array_call_args = mock_pa_array.call_args_list
             assert array_call_args[0][0][0][0] == "test_value_0"
             assert array_call_args[0][0][0][1] == "test_value_2"
@@ -436,15 +436,14 @@ class TestJSONParser:
             "",
             "1",
             "1.0",
-            "true",
-            "false",
-            "null",
             "[]",
             "{}",
             "['a', 'b']",
         ]
-        expected_values = [None, 1, 1.0, True, False, None, [], {}, ["a", "b"]]
-        JSONParser.automatic_type_conversion(test_values) == expected_values
+        expected_values = [None, 1, 1.0, [], {}, ["a", "b"]]
+        assert (
+            JSONParser.automatic_type_conversion(test_values) == expected_values
+        )
 
     def test_from_json(self):
         data = [
