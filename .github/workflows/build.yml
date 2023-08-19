@@ -13,6 +13,22 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Setup Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install poetry
+        run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+      
+      - name: Install dependencies
+        run: |
+          poetry install -E parquet
+      
+      - name: Coverage
+        run: |
+          poetry run coverage run -m pytest -rap --junitxml coverage.xml
+          poetry run coverage xml -i
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
