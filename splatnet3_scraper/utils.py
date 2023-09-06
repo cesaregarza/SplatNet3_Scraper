@@ -8,9 +8,7 @@ from typing import Any, Callable, ParamSpec, Type, TypeAlias, TypeVar, cast
 
 import requests
 
-from splatnet3_scraper.constants import (
-    GRAPH_QL_REFERENCE_URL,
-)
+from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
 
 T = TypeVar("T")
 P = ParamSpec("P")

@@ -7,12 +7,12 @@ import pytest
 import requests
 from pytest_lazyfixture import lazy_fixture
 
-from splatnet3_scraper.constants import (
-    GRAPH_QL_REFERENCE_URL,
-)
+from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
 from splatnet3_scraper.utils import (
     delinearize_json,
     enumerate_all_paths,
+    fallback_path,
+    get_fallback_hash_data,
     get_hash_data,
     get_splatnet_hashes,
     get_splatnet_version,
@@ -20,8 +20,6 @@ from splatnet3_scraper.utils import (
     linearize_json,
     match_partial_path,
     retry,
-    fallback_path,
-    get_fallback_hash_data,
 )
 from tests.mock import MockResponse
 
@@ -259,135 +257,184 @@ class TestMatchPartialPath:
 
 
 class TestHash:
-    def test_get_hash_data(self):
-        response_json = {
-            "graphql": {
-                "hash_map": {
-                    "test_query": "test_hash",
-                },
-            },
-            "version": "test_version",
-        }
-        with mock.patch.object(
-            requests, "get", return_value=MockResponse(200, json=response_json)
-        ) as mock_get:
-            assert get_hash_data("test_query", 0) == (
-                {"test_query": "test_hash"},
-                "test_version",
-            )
-            mock_get.assert_called_once_with("test_query")
+    TEST_HASH = "test_hash"
+    TEST_QUERY = "test_query"
+    TEST_VERSION = "test_version"
+    TEST_HASH_MAP = {
+        TEST_QUERY: TEST_HASH,
+    }
+    TEST_HASH_MAP = {
+        "hash_map": TEST_HASH,
+    }
+    TEST_RESPONSE_JSON = {
+        "graphql": {
+            "hash_map": TEST_HASH_MAP,
+        },
+        "version": TEST_VERSION,
+    }
+    FROZEN_TIME = "2023-04-14 12:00:00"
 
+    @pytest.mark.parametrize(
+        "args, expected_url",
+        [
+            ((), GRAPH_QL_REFERENCE_URL),
+            (("test_query",), "test_query"),
+            (("test_query", 0), "test_query"),
+        ],
+        ids=[
+            "no_args",
+            "query_only",
+            "query_and_version",
+        ],
+    )
+    def test_get_hash_data_explicit(self, args: tuple, expected_url: str):
         with mock.patch.object(
-            requests, "get", return_value=MockResponse(200, json=response_json)
+            requests,
+            "get",
+            return_value=MockResponse(200, json=self.TEST_RESPONSE_JSON),
         ) as mock_get:
-            # Test if feeding no parameters returns the same result
-            assert get_hash_data() == (
-                {"test_query": "test_hash"},
-                "test_version",
+            assert get_hash_data(*args) == (
+                self.TEST_HASH_MAP,
+                self.TEST_VERSION,
             )
-            mock_get.assert_called_once_with(GRAPH_QL_REFERENCE_URL)
+            mock_get.assert_called_once_with(expected_url)
 
     def test_get_ttl_hash(self):
-        frozen_time = "2023-04-14 12:00:00"
-        with freezegun.freeze_time(frozen_time) as frozen_datetime:
+        with freezegun.freeze_time(self.FROZEN_TIME) as frozen_datetime:
             ft = get_ttl_hash()
             frozen_datetime.tick(delta=dt.timedelta(minutes=1))
             assert ft == get_ttl_hash()
             frozen_datetime.tick(delta=dt.timedelta(minutes=15))
             assert ft != get_ttl_hash()
 
-    @mock.patch("logging.warning")
-    def test_get_splatnet_hashes(self, mock_warning: mock.MagicMock):
-        expected_hash = {
-            "test_query": "test_hash",
-        }
-        frozen_time = "2023-04-14 12:00:00"
+    def test_get_fallback_hash_data(self):
+        with open(fallback_path, "r") as fallback_file:
+            expected_fallback_data = json.load(fallback_file)
+
+        fallback_data = get_fallback_hash_data()
+        assert fallback_data == (
+            expected_fallback_data["graphql"]["hash_map"],
+            expected_fallback_data["version"],
+        )
+
+    def test_get_splatnet_hashes_success(self):
         with (
             mock.patch(
                 utils_path + ".get_hash_data",
-                return_value=(expected_hash, "test_version"),
+                return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_hash_data,
-            freezegun.freeze_time(frozen_time),
+            freezegun.freeze_time(self.FROZEN_TIME),
+            mock.patch(
+                "logging.warning",
+            ) as mock_warning,
         ):
-            assert get_splatnet_hashes() == {"test_query": "test_hash"}
+            assert get_splatnet_hashes() == self.TEST_HASH_MAP
             ft = get_ttl_hash()
             mock_get_hash_data.assert_called_once_with(None, ft)
+            mock_warning.assert_not_called()
 
-        def new_get_hash_data(*args, **kwargs):
+    def test_get_splatnet_hashes_failure(self):
+        def get_hash_data_fail(*args, **kwargs):
             raise requests.exceptions.RequestException()
 
         with (
             mock.patch(
                 utils_path + ".get_hash_data",
-                side_effect=new_get_hash_data,
+                side_effect=get_hash_data_fail,
             ) as mock_get_hash_data,
-            freezegun.freeze_time(frozen_time),
-            open(fallback_path, "r") as fallback_file,
-        ):
-            HASHES_FALLBACK = json.load(fallback_file)["graphql"]["hash_map"]
-            assert get_splatnet_hashes() == HASHES_FALLBACK
-            mock_get_hash_data.assert_called_once_with(None, ft)
-            assert mock_warning.call_count == 2
-        
-        with (
-            mock.patch(
-                utils_path + ".get_hash_data",
-                return_value=({}, "test_version"),
-            ) as mock_get_hash_data,
-            freezegun.freeze_time(frozen_time),
+            freezegun.freeze_time(self.FROZEN_TIME),
             mock.patch(
                 utils_path + ".get_fallback_hash_data",
+                return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_fallback_hash_data,
+            mock.patch(
+                "logging.warning",
+            ) as mock_warning,
         ):
-            assert get_splatnet_hashes() != {}
+            assert get_splatnet_hashes() == self.TEST_HASH_MAP
+            ft = get_ttl_hash()
             mock_get_hash_data.assert_called_once_with(None, ft)
             mock_get_fallback_hash_data.assert_called_once()
-            assert mock_warning.call_count == 4
+            assert mock_warning.call_count == 2
 
-
-    @mock.patch("logging.warning")
-    def test_get_splatnet_version(self, mock_warning: mock.MagicMock):
-        expected_version = "test_version"
-        frozen_time = "2023-04-14 12:00:00"
-        hash_return = {"graphql": {"hash_map": {"test_query": "test_hash"}}}
+    def test_get_splatnet_hashes_success_empty(self):
         with (
             mock.patch(
                 utils_path + ".get_hash_data",
-                return_value=(hash_return, expected_version),
+                return_value=({}, self.TEST_VERSION),
             ) as mock_get_hash_data,
-            freezegun.freeze_time(frozen_time),
+            freezegun.freeze_time(self.FROZEN_TIME),
+            mock.patch(
+                utils_path + ".get_fallback_hash_data",
+                return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
+            ) as mock_get_fallback_hash_data,
+            mock.patch(
+                "logging.warning",
+            ) as mock_warning,
         ):
-            assert get_splatnet_version() == expected_version
+            assert get_splatnet_hashes() == self.TEST_HASH_MAP
             ft = get_ttl_hash()
             mock_get_hash_data.assert_called_once_with(None, ft)
+            mock_get_fallback_hash_data.assert_called_once()
+            assert mock_warning.call_count == 2
 
-        def new_get_hash_data(*args, **kwargs):
+    def test_get_splatnet_version_success(self):
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(self.FROZEN_TIME),
+            mock.patch(
+                "logging.warning",
+            ) as mock_warning,
+        ):
+            assert get_splatnet_version() == self.TEST_VERSION
+            ft = get_ttl_hash()
+            mock_get_hash_data.assert_called_once_with(None, ft)
+            mock_warning.assert_not_called()
+
+    def test_get_splatnet_version_failure(self):
+        def get_hash_data_fail(*args, **kwargs):
             raise requests.exceptions.RequestException()
 
         with (
             mock.patch(
                 utils_path + ".get_hash_data",
-                side_effect=new_get_hash_data,
+                side_effect=get_hash_data_fail,
             ) as mock_get_hash_data,
-            freezegun.freeze_time(frozen_time),
-            open(fallback_path, "r") as fallback_file,
+            freezegun.freeze_time(self.FROZEN_TIME),
+            mock.patch(
+                utils_path + ".get_fallback_hash_data",
+                return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
+            ) as mock_get_fallback_hash_data,
+            mock.patch(
+                "logging.warning",
+            ) as mock_warning,
         ):
-            WEB_VIEW_VERSION_FALLBACK = json.load(fallback_file)["version"]
-            assert get_splatnet_version() == WEB_VIEW_VERSION_FALLBACK
+            assert get_splatnet_version() == self.TEST_VERSION
+            ft = get_ttl_hash()
             mock_get_hash_data.assert_called_once_with(None, ft)
+            mock_get_fallback_hash_data.assert_called_once()
             assert mock_warning.call_count == 2
-        
+
+    def test_get_splatnet_version_success_empty(self):
         with (
             mock.patch(
                 utils_path + ".get_hash_data",
-                return_value=({}, expected_version),
+                return_value=({}, self.TEST_VERSION),
             ) as mock_get_hash_data,
-            freezegun.freeze_time(frozen_time),
+            freezegun.freeze_time(self.FROZEN_TIME),
             mock.patch(
                 utils_path + ".get_fallback_hash_data",
+                return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_fallback_hash_data,
+            mock.patch(
+                "logging.warning",
+            ) as mock_warning,
         ):
-            assert get_splatnet_version() != "test_version"
+            assert get_splatnet_version() == self.TEST_VERSION
+            ft = get_ttl_hash()
             mock_get_hash_data.assert_called_once_with(None, ft)
             mock_get_fallback_hash_data.assert_called_once()
-            assert mock_warning.call_count == 4
+            assert mock_warning.call_count == 2
