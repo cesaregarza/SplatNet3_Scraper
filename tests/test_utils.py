@@ -21,6 +21,7 @@ from splatnet3_scraper.utils import (
     match_partial_path,
     retry,
     fallback_path,
+    get_fallback_hash_data,
 )
 from tests.mock import MockResponse
 
@@ -327,6 +328,22 @@ class TestHash:
             assert get_splatnet_hashes() == HASHES_FALLBACK
             mock_get_hash_data.assert_called_once_with(None, ft)
             assert mock_warning.call_count == 2
+        
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                return_value=({}, "test_version"),
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(frozen_time),
+            mock.patch(
+                utils_path + ".get_fallback_hash_data",
+            ) as mock_get_fallback_hash_data,
+        ):
+            assert get_splatnet_hashes() != {}
+            mock_get_hash_data.assert_called_once_with(None, ft)
+            mock_get_fallback_hash_data.assert_called_once()
+            assert mock_warning.call_count == 4
+
 
     @mock.patch("logging.warning")
     def test_get_splatnet_version(self, mock_warning: mock.MagicMock):
@@ -359,3 +376,18 @@ class TestHash:
             assert get_splatnet_version() == WEB_VIEW_VERSION_FALLBACK
             mock_get_hash_data.assert_called_once_with(None, ft)
             assert mock_warning.call_count == 2
+        
+        with (
+            mock.patch(
+                utils_path + ".get_hash_data",
+                return_value=({}, expected_version),
+            ) as mock_get_hash_data,
+            freezegun.freeze_time(frozen_time),
+            mock.patch(
+                utils_path + ".get_fallback_hash_data",
+            ) as mock_get_fallback_hash_data,
+        ):
+            assert get_splatnet_version() != "test_version"
+            mock_get_hash_data.assert_called_once_with(None, ft)
+            mock_get_fallback_hash_data.assert_called_once()
+            assert mock_warning.call_count == 4
