@@ -1,4 +1,6 @@
+import json
 import logging
+import pathlib
 import re
 import time
 from functools import lru_cache, wraps
@@ -6,11 +8,7 @@ from typing import Any, Callable, ParamSpec, Type, TypeAlias, TypeVar, cast
 
 import requests
 
-from splatnet3_scraper.constants import (
-    GRAPH_QL_REFERENCE_URL,
-    HASHES_FALLBACK,
-    WEB_VIEW_VERSION_FALLBACK,
-)
+from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -18,6 +16,8 @@ P = ParamSpec("P")
 PathType: TypeAlias = str | int | tuple[str | int, ...]
 
 json_splitter_re = re.compile(r"[\;\.]")
+
+fallback_path = pathlib.Path(__file__).parent / "splatnet3_webview_data.json"
 
 
 def retry(
@@ -450,6 +450,24 @@ def get_ttl_hash(expiry_time_seconds: float = 15 * 60) -> int:
     return round(time.time() / expiry_time_seconds)
 
 
+@lru_cache()
+def get_fallback_hash_data() -> tuple[dict, str]:
+    """Gets the fallback hash data for the GraphQL queries.
+
+    Loads the fallback hash data from the ``splatnet3_webview_data.json`` file
+    and parses it to get the hashes for the queries.
+
+    Returns:
+        tuple[dict, str]:
+            dict: The hash map for the GraphQL queries.
+            str: The version of the hash map.
+    """
+    with open(fallback_path, "r") as f:
+        FALLBACK_DATA = json.load(f)
+
+    return FALLBACK_DATA["graphql"]["hash_map"], FALLBACK_DATA["version"]
+
+
 def get_splatnet_hashes(url: str | None = None) -> dict[str, str]:
     """Gets the hashes for the GraphQL queries.
 
@@ -470,13 +488,18 @@ def get_splatnet_hashes(url: str | None = None) -> dict[str, str]:
         dict[str, str]: The hashes for the GraphQL queries. The keys are
             the names of the queries and the values are the most up to date
             hashes for the queries.
+
+    # noqa: DAR401 ValueError
     """
     try:
         hash_data, _ = get_hash_data(url, get_ttl_hash())
+        # If the hash data is empty, use the fallback
+        if not hash_data:
+            raise ValueError("Hash data is empty")
     except Exception as e:
         logging.warning(f"Failed to get hash data: {e}")
         logging.warning("Using fallback")
-        return HASHES_FALLBACK
+        return get_fallback_hash_data()[0]
     return hash_data
 
 
@@ -498,11 +521,16 @@ def get_splatnet_version(url: str | None = None) -> str:
 
     Returns:
         str: The version of the GraphQL queries.
+
+    # noqa: DAR401 ValueError
     """
     try:
-        _, version = get_hash_data(url, get_ttl_hash())
+        hash_data, version = get_hash_data(url, get_ttl_hash())
+        # If the hash data is empty, use the fallback
+        if not hash_data:
+            raise ValueError("Hash data is empty")
     except Exception as e:
         logging.warning(f"Failed to get hash data: {e}")
         logging.warning("Using fallback")
-        return WEB_VIEW_VERSION_FALLBACK
+        return get_fallback_hash_data()[1]
     return version
