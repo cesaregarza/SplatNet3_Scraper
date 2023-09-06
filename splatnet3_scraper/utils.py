@@ -488,13 +488,15 @@ def get_splatnet_hashes(url: str | None = None) -> dict[str, str]:
         dict[str, str]: The hashes for the GraphQL queries. The keys are
             the names of the queries and the values are the most up to date
             hashes for the queries.
+
+    # noqa: DAR401 ValueError
     """
     try:
         hash_data, _ = get_hash_data(url, get_ttl_hash())
         # If the hash data is empty, use the fallback
         if not hash_data:
             raise ValueError("Hash data is empty")
-    except (Exception, ValueError) as e:  # Workaround for DAR401
+    except Exception as e:
         logging.warning(f"Failed to get hash data: {e}")
         logging.warning("Using fallback")
         return get_fallback_hash_data()[0]
@@ -519,13 +521,15 @@ def get_splatnet_version(url: str | None = None) -> str:
 
     Returns:
         str: The version of the GraphQL queries.
+
+    # noqa: DAR401 ValueError
     """
     try:
         hash_data, version = get_hash_data(url, get_ttl_hash())
         # If the hash data is empty, use the fallback
         if not hash_data:
             raise ValueError("Hash data is empty")
-    except (Exception, ValueError) as e:  # Workaround for DAR401
+    except Exception as e:
         logging.warning(f"Failed to get hash data: {e}")
         logging.warning("Using fallback")
         return get_fallback_hash_data()[1]
