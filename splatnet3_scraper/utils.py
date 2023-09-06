@@ -494,7 +494,7 @@ def get_splatnet_hashes(url: str | None = None) -> dict[str, str]:
         # If the hash data is empty, use the fallback
         if not hash_data:
             raise ValueError("Hash data is empty")
-    except ValueError as e:
+    except Exception as e:
         logging.warning(f"Failed to get hash data: {e}")
         logging.warning("Using fallback")
         return get_fallback_hash_data()[0]
@@ -525,7 +525,7 @@ def get_splatnet_version(url: str | None = None) -> str:
         # If the hash data is empty, use the fallback
         if not hash_data:
             raise ValueError("Hash data is empty")
-    except ValueError as e:
+    except Exception as e:
         logging.warning(f"Failed to get hash data: {e}")
         logging.warning("Using fallback")
         return get_fallback_hash_data()[1]
