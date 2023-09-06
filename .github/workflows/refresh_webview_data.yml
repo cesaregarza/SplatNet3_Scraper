@@ -22,8 +22,7 @@ jobs:
 
     - name: Download file from URL
       run: |
-        curl -o splatnet3_scraper/splatnet3_webview_data.json https://raw.githubusercontent.com/imink-app/SplatNet3/master/Data/splatnet3_webview_data.json || 
-        echo "Curl failed" && exit 1
+        curl -o splatnet3_scraper/splatnet3_webview_data.json https://raw.githubusercontent.com/imink-app/SplatNet3/master/Data/splatnet3_webview_data.json
 
     - name: Create PR
       uses: peter-evans/create-pull-request@v4
