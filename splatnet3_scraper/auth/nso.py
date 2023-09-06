@@ -19,7 +19,6 @@ from splatnet3_scraper.constants import (
     IMINK_URL,
     IOS_APP_URL,
     SPLATNET_URL,
-    WEB_VIEW_VERSION_FALLBACK,
 )
 from splatnet3_scraper.utils import get_splatnet_version, retry
 
@@ -981,11 +980,7 @@ class NSO:
         """
         if self._web_view_version is not None:
             return self._web_view_version
-        try:
-            web_version = get_splatnet_version()
-            self._web_view_version = web_version
-            return web_version
-        except SplatNetException as e:
-            self.logger.warning(str(e))
-            self.logger.warning("Using fallback web view version")
-            return WEB_VIEW_VERSION_FALLBACK
+
+        web_version = get_splatnet_version()
+        self._web_view_version = web_version
+        return web_version

@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 from unittest import mock
 
 import freezegun
@@ -8,8 +9,6 @@ from pytest_lazyfixture import lazy_fixture
 
 from splatnet3_scraper.constants import (
     GRAPH_QL_REFERENCE_URL,
-    HASHES_FALLBACK,
-    WEB_VIEW_VERSION_FALLBACK,
 )
 from splatnet3_scraper.utils import (
     delinearize_json,
@@ -21,6 +20,7 @@ from splatnet3_scraper.utils import (
     linearize_json,
     match_partial_path,
     retry,
+    fallback_path,
 )
 from tests.mock import MockResponse
 
@@ -321,7 +321,9 @@ class TestHash:
                 side_effect=new_get_hash_data,
             ) as mock_get_hash_data,
             freezegun.freeze_time(frozen_time),
+            open(fallback_path, "r") as fallback_file,
         ):
+            HASHES_FALLBACK = json.load(fallback_file)["graphql"]["hash_map"]
             assert get_splatnet_hashes() == HASHES_FALLBACK
             mock_get_hash_data.assert_called_once_with(None, ft)
             assert mock_warning.call_count == 2
@@ -351,7 +353,9 @@ class TestHash:
                 side_effect=new_get_hash_data,
             ) as mock_get_hash_data,
             freezegun.freeze_time(frozen_time),
+            open(fallback_path, "r") as fallback_file,
         ):
+            WEB_VIEW_VERSION_FALLBACK = json.load(fallback_file)["version"]
             assert get_splatnet_version() == WEB_VIEW_VERSION_FALLBACK
             mock_get_hash_data.assert_called_once_with(None, ft)
             assert mock_warning.call_count == 2
