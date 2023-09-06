@@ -1,0 +1,34 @@
+name: Update query hashes
+
+on:
+    workflow_dispatch:
+    schedule:
+      - cron: '30 * * * *'
+
+env:
+  PR_TITLE: Update query hashes
+
+jobs:
+  check-and-create-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        ref: development
+
+    - name: Download file from URL
+      run: |
+        curl -o splatnet3_scraper/splatnet3_webview_data.json https://raw.githubusercontent.com/imink-app/SplatNet3/master/Data/splatnet3_webview_data.json || 
+        echo "Curl failed" && exit 1
+
+    - name: Create PR
+      uses: peter-evans/create-pull-request@v4
+      with:
+        title: ${{ env.PR_TITLE }}
+        commit-message: ${{ env.PR_TITLE }}
+        branch: update-query-hashes
+        base: development 
+        body: ${{ env.PR_TITLE }}
+        delete-branch: true
