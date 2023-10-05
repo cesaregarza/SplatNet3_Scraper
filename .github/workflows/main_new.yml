@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   built-test-publish:
@@ -33,7 +34,7 @@ jobs:
         run: |
           docker build \
           --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
-          --build-arg VERSION=${{ steps.semver.outputs.version }} \
+          --build-arg BUILD_VERSION=${{ steps.semver.outputs.version }} \
           --tag my-image:${{ steps.semver.outputs.version }} \
           .
           docker run --name test-container my-image:${{ steps.semver.outputs.version }}
@@ -42,7 +43,7 @@ jobs:
           docker cp test-container:/app/dist temp-dist/
       
       - name: Publish to PyPi
-        if: success()
+        if: false
         run: |
           pip install twine
           for i in {1..5}; do \
