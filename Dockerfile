@@ -29,48 +29,36 @@ RUN poetry config virtualenvs.create false
 FROM base AS dependencies
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install
+RUN poetry install --no-root --extras "parquet"
 
 ###############################
 #        Build Image          #
 ###############################
 FROM dependencies AS build
 
+ARG BUILD_VERSION
+
 COPY . /app/
 
 # Build the application
-RUN poetry build
+RUN poetry version $BUILD_VERSION && \
+    poetry build
 
 ###############################
 #         Test  Image         #
 ###############################
 FROM build AS test
 
-# Install dev dependencies
-RUN poetry install
-
-# Define common paths and options using shell variables for conciseness.
 RUN J_PATH=reports/junit \
     C_PATH=reports/coverage \
     F_PATH=reports/flake8 && \
     # Run tests with coverage
-    poetry run pytest --junitxml=$J_PATH/junit.xml --cov=app --cov-report=xml:$C_PATH/coverage.xml --cov-report=html:$C_PATH/report.html && \
+    poetry run coverage run -m pytest --junitxml=$J_PATH/junit.xml --html=${J_PATH}/report.html && \
+    poetry run coverage xml -o $C_PATH/coverage.xml --omit="app/tests/*" && \
+    poetry run coverage html -d $C_PATH/htmlcov --omit="app/tests/*" && \
     # Generate badges
     poetry run genbadge tests -o $J_PATH/test-badge.svg && \
     poetry run genbadge coverage -o $C_PATH/coverage-badge.svg && \
     # Flake8 checks
-    poetry run flake8 app/ --output-file=$F_PATH/flake8.txt --statistics && \
-    poetry run genbadge flake8 -i $F_PATH/flake8.txt -o $F_PATH/flake8-badge.svg
-
-
-###############################
-#        Publish Image        #
-###############################
-FROM dependencies AS publish
-
-ARG PYPI_TOKEN
-
-ENV POETRY_PYPI_TOKEN=$PYPI_TOKEN
-
-# Publish to PyPI
-RUN poetry publish --build
+    poetry run flake8 --exit-zero --format=html --htmldir ${F_PATH} --statistics --tee --output-file ${F_PATH}/flake8stats.txt && \
+    poetry run genbadge flake8 -i $F_PATH/flake8stats.txt -o $F_PATH/flake8-badge.svg
