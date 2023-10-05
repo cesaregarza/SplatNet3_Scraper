@@ -3,8 +3,7 @@ name: Push to Main
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - feature/cicd
 
 jobs:
   built-test-publish:
