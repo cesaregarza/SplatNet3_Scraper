@@ -36,7 +36,7 @@ jobs:
           "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
           | jq -r '.tag_name')
           # echo "::set-output name=release::${LATEST_RELEASE}"
-          echo "release=${LATEST_RELEASE}"" >> $GITHUB_OUTPUT
+          echo "release=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
           echo "Latest Release: ${LATEST_RELEASE}"
         
       - name: Calculate next version
