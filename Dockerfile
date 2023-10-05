@@ -49,6 +49,8 @@ RUN poetry version $BUILD_VERSION && \
 ###############################
 FROM build AS test
 
+RUN poetry install --extras "parquet"
+
 RUN J_PATH=reports/junit \
     C_PATH=reports/coverage \
     F_PATH=reports/flake8 && \
