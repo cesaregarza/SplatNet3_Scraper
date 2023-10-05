@@ -11,6 +11,9 @@ jobs:
     strategy:
       matrix:
         python_image: ["python:3.10-slim", "python:3.11-slim"]
+    env:
+      default_image: "python:3.10-slim"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -81,6 +84,7 @@ jobs:
           docker cp test-container:/app/dist temp-dist/
 
       - name: Commit and Push
+        if: matrix.python_image == env.default_image
         run: |
           git add reports/*
           git commit -m "AUTO: Update reports from CI"
