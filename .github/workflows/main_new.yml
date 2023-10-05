@@ -23,18 +23,55 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-
       
-      - name: Git Semantic Version
+      - name: Read .version file
         id: semver
-        uses: PaulHatch/semantic-version@v5.3.0
-        with:
-          branch: ${{ github.ref }}
+        run: |
+          echo "::set-output name=version::$(cat .version)"
+
+      - name: Get latest release
+        id: latest_release
+        run: |
+          LATEST_RELEASE=\
+          $(curl -sH "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+          | jq -r '.tag_name')
+          echo "::set-output name=release::${LATEST_RELEASE}"
+          echo "Latest Release: ${LATEST_RELEASE}"
+        
+      - name: Calculate next version
+        id: calculate_version
+        run: |
+          LATEST_RELEASE=${{ steps.latest_release.outputs.release }}
+          BASE_VERSION=${{ steps.semver.outputs.version }}
+          CLEANED_LATEST_RELEASE=${LATEST_RELEASE#v}
+
+          echo "Latest Release without v: ${CLEANED_LATEST_RELEASE}"
+          echo "Base Version: ${BASE_VERSION}"
+
+          # Compare versions
+          if [[ "${BASE_VERSION}" > "${CLEANED_LATEST_RELEASE}" ]]; then
+            NEXT_VERSION=${BASE_VERSION}
+          else
+            # Split version into parts
+            MAJOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f1)
+            MINOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f2)
+            PATCH=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f3)
+
+            # Bump version
+            PATCH=$((PATCH + 1))
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "Next Version: ${NEXT_VERSION}"
+          echo "::set-output name=version::${NEXT_VERSION}"
+
       
       - name: Build and Test
         run: |
           echo "Version: ${{ steps.semver.outputs.version }}"
           docker build \
           --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
-          --build-arg BUILD_VERSION=${{ steps.semver.outputs.version }} \
+          --build-arg BUILD_VERSION=${{ steps.calculate_version.outputs.version }} \
           --tag my-image:${{ steps.semver.outputs.version }} \
           .
           docker run --name test-container my-image:${{ steps.semver.outputs.version }}
