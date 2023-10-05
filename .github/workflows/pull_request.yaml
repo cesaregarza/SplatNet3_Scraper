@@ -1,0 +1,42 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_image: ["python:3.10-slim", "python:3.11-slim"]
+    env:
+      default_image: "python:3.10-slim"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Cache Poetry Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Build and Test
+        run: |
+          docker build \
+          --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
+          --build-arg BUILD_VERSION=PR-${{ github.run_number }} \
+          --tag my-image:PR-${{ github.run_number }} \
+          .
+          docker run --name test-container my-image:PR-${{ github.run_number }}
+
+      - name: Cleanup
+        run: |
+          docker rmi my-image:PR-${{ github.run_number }} --force
+          rm -rf temp-dist

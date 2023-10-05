@@ -3,7 +3,7 @@ name: Push to Main
 on:
   push:
     branches:
-      - feature/cicd
+      - main
 
 jobs:
   built-test-publish:
@@ -91,7 +91,7 @@ jobs:
           git push
 
       - name: Publish to PyPi
-        if: false
+        if: success() && matrix.python_image == env.default_image
         run: |
           pip install twine
           for i in {1..5}; do \
