@@ -31,13 +31,14 @@ jobs:
       
       - name: Build and Test
         run: |
+          echo "Version: ${{ steps.semver.outputs.version }}"
           docker build \
           --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
           --build-arg BUILD_VERSION=${{ steps.semver.outputs.version }} \
           --tag my-image:${{ steps.semver.outputs.version }} \
           .
           docker run --name test-container my-image:${{ steps.semver.outputs.version }}
-          docker cp test-container:/app/test-results.xml .
+          docker cp test-container:/app/reports .
           mkdir -p temp-dist
           docker cp test-container:/app/dist temp-dist/
       
@@ -50,9 +51,10 @@ jobs:
           && break \
           || sleep 15; \
           done
-          rm -rf temp-dist
+
       
       - name: Cleanup
         run: |
           docker rmi my-image:${{ steps.semver.outputs.version }} --force
+          rm -rf temp-dist
 
