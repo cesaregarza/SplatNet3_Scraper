@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Cache Poetry Dependencies
         uses: actions/cache@v2
         with:
@@ -22,7 +22,12 @@ jobs:
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-
-      
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
       - name: Read .version file
         id: semver
         run: |
@@ -35,10 +40,9 @@ jobs:
           $(curl -sH "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
           | jq -r '.tag_name')
-          # echo "::set-output name=release::${LATEST_RELEASE}"
           echo "release=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
           echo "Latest Release: ${LATEST_RELEASE}"
-        
+
       - name: Calculate next version
         id: calculate_version
         run: |
@@ -49,25 +53,20 @@ jobs:
           echo "Latest Release without v: ${CLEANED_LATEST_RELEASE}"
           echo "Base Version: ${BASE_VERSION}"
 
-          # Compare versions
           if [[ "${BASE_VERSION}" > "${CLEANED_LATEST_RELEASE}" ]]; then
             NEXT_VERSION=${BASE_VERSION}
           else
-            # Split version into parts
             MAJOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f1)
             MINOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f2)
             PATCH=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f3)
 
-            # Bump version
             PATCH=$((PATCH + 1))
             NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           fi
 
           echo "Next Version: ${NEXT_VERSION}"
-          # echo "::set-output name=version::${NEXT_VERSION}"
           echo "version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
-      
       - name: Build and Test
         run: |
           echo "Version: ${{ steps.semver.outputs.version }}"
@@ -80,7 +79,13 @@ jobs:
           docker cp test-container:/app/reports .
           mkdir -p temp-dist
           docker cp test-container:/app/dist temp-dist/
-      
+
+      - name: Commit and Push
+        run: |
+          git add reports/*
+          git commit -m "AUTO: Update reports from CI"
+          git push
+
       - name: Publish to PyPi
         if: false
         run: |
@@ -91,9 +96,7 @@ jobs:
           || sleep 15; \
           done
 
-      
       - name: Cleanup
         run: |
           docker rmi my-image:${{ steps.semver.outputs.version }} --force
           rm -rf temp-dist
-
