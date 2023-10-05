@@ -1,7 +1,9 @@
 ###############################
 #         Base Image          #
 ###############################
-FROM python:3.11-slim AS base
+ARG BASE_IMAGE=python:3.10-slim
+
+FROM $BASE_IMAGE AS base
 
 WORKDIR /app
 
@@ -29,7 +31,7 @@ RUN poetry config virtualenvs.create false
 FROM base AS dependencies
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-root --extras "parquet"
+RUN poetry install --no-root
 
 ###############################
 #        Build Image          #

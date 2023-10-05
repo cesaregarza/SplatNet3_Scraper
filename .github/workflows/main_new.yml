@@ -1,0 +1,58 @@
+name: Push to Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  built-test-publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_image: ["python:3.10-slim", "python:3.11-slim"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Cache Poetry Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      
+      - name: Git Semantic Version
+        id: semver
+        uses: PaulHatch/semantic-version@v5.3.0
+        with:
+          branch: ${{ github.ref }}
+      
+      - name: Build and Test
+        run: |
+          docker build \
+          --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
+          --build-arg VERSION=${{ steps.semver.outputs.version }} \
+          --tag my-image:${{ steps.semver.outputs.version }} \
+          .
+          docker run --name test-container my-image:${{ steps.semver.outputs.version }}
+          docker cp test-container:/app/test-results.xml .
+          mkdir -p temp-dist
+          docker cp test-container:/app/dist temp-dist/
+      
+      - name: Publish to PyPi
+        if: success()
+        run: |
+          pip install twine
+          for i in {1..5}; do \
+          twine upload -u __token__ -p ${{ secrets.PYPI_TOKEN }} temp-dist/* \
+          && break \
+          || sleep 15; \
+          done
+          rm -rf temp-dist
+      
+      - name: Cleanup
+        run: |
+          docker rmi my-image:${{ steps.semver.outputs.version }} --force
+
