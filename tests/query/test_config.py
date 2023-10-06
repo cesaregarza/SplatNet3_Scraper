@@ -282,3 +282,28 @@ class TestConfig:
 
             mock_from_env.assert_called_once_with(env_manager)
             assert instance.token_manager == mock_token_manager
+
+    @pytest.mark.parametrize(
+        "config_path_var",
+        [
+            "test_path",
+            None,
+        ],
+        ids=["path", "no_path"],
+    )
+    def test_from_s3s_config(self, config_path_var: str | None):
+        mock_token_manager = MagicMock()
+
+        with (
+            patch(token_manager_path + ".from_text_file") as mock_from_s3s,
+            patch(config_path) as mock_config,
+            patch(config_path + ".initialize_options") as mock_initialize,
+        ):
+            mock_from_s3s.return_value = mock_token_manager
+            mock_config.return_value = None
+            mock_initialize.return_value = None
+
+            instance = Config.from_s3s_config(config_path_var)
+
+            mock_from_s3s.assert_called_once_with(config_path_var)
+            assert instance.token_manager == mock_token_manager
