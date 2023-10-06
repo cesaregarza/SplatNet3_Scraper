@@ -1,11 +1,8 @@
 import configparser
-from configparser import ConfigParser
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-import pytest_mock
 
-from splatnet3_scraper.constants import DEFAULT_USER_AGENT
 from splatnet3_scraper.query.config import Config
 from splatnet3_scraper.query.config_options import ConfigOptions
 from tests.mock import MockConfigParser, MockTokenManager
@@ -527,3 +524,26 @@ class TestConfig:
             assert instance.get("deprecated") == "set_value"
             with pytest.raises(KeyError):
                 instance.get("not_supported")
+
+    # TODO: test_get_data
+    @pytest.mark.parametrize(
+        "full_token",
+        [
+            True,
+            False,
+        ],
+        ids=["full_token", "no_full_token"],
+    )
+    def test_get_token(self, full_token: bool):
+        mock_token_manager = MagicMock()
+        mock_token_manager.get_token.return_value = "test_token"
+
+        with patch(config_path + ".generate_token_manager") as mock_generate:
+            mock_generate.return_value = None
+
+            instance = Config()
+            instance.token_manager = mock_token_manager
+            instance.get_token("test_token", full_token)
+            mock_token_manager.get.assert_called_once_with(
+                "test_token", full_token
+            )
