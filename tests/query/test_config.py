@@ -485,3 +485,45 @@ class TestConfig:
             mock_config.remove_option.assert_called_once_with(
                 "options", "deprecated"
             )
+
+    def test_get(self):
+        accepted_options = [
+            "set_key",
+            "not_set_with_default",
+            "not_set_no_default",
+        ]
+        deprecated_options = {"deprecated": "set_key"}
+        default_options = {"not_set_with_default": "default_value"}
+
+        mock_token_manager = MagicMock()
+        mock_config_options = MagicMock()
+
+        with (
+            patch(config_path + ".generate_token_manager") as mock_generate,
+            patch(config_path + ".initialize_options") as mock_initialize,
+            patch(
+                base_config_path + ".ConfigOptions"
+            ) as mock_config_options_class,
+            patch(config_parser_path + ".ConfigParser") as mock_config_parser,
+        ):
+            mock_generate.return_value = None
+            mock_initialize.return_value = None
+            mock_config_parser.return_value = None
+            mock_config_options_class.return_value = None
+
+            instance = Config()
+            instance.token_manager = mock_token_manager
+            instance.config = {"options": {"set_key": "set_value"}}
+            instance.config_options = mock_config_options
+
+            mock_config_options.ACCEPTED_OPTIONS = accepted_options
+            mock_config_options.DEPRECATED_OPTIONS = deprecated_options
+            mock_config_options.DEFAULT_OPTIONS = default_options
+
+            assert instance.get("set_key") == "set_value"
+            assert instance.get("not_set_with_default") == "default_value"
+            with pytest.raises(KeyError):
+                instance.get("not_set_no_default")
+            assert instance.get("deprecated") == "set_value"
+            with pytest.raises(KeyError):
+                instance.get("not_supported")
