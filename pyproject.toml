@@ -72,10 +72,12 @@ addopts = [
     "--tb=auto",
     "--showlocals",
     "--color=yes",
+    "-k not production",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "internet: marks tests as requiring internet access (deselect with '-m \"not internet\"')",
+    "production: marks tests as only running in production (deselect with '-m \"not production\"')",
 ]
 pythonpath = [
     "src"
