@@ -459,7 +459,7 @@ class TestConfig:
                     mock_config.add_section.assert_called_once_with("unknown")
 
                 mock_config.has_section.assert_called_once_with("unknown")
-                mock_config.__getitem__.call_count == 2
+                assert mock_config.__getitem__.call_count == 2
                 getitem = mock_config.__getitem__.return_value
                 getitem.__getitem__.assert_called_once_with(option)
                 option_getitem = getitem.__getitem__.return_value
