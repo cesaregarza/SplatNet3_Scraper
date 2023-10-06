@@ -57,7 +57,7 @@ RUN J_PATH=reports/junit \
     C_PATH=reports/coverage \
     F_PATH=reports/flake8 && \
     # Run tests with coverage
-    poetry run coverage run -m pytest --junitxml=$J_PATH/junit.xml --html=${J_PATH}/report.html && \
+    poetry run coverage run -m pytest --junitxml=$J_PATH/junit.xml --html=${J_PATH}/report.html -k . && \
     poetry run coverage xml -o $C_PATH/coverage.xml --omit="app/tests/*" && \
     poetry run coverage html -d $C_PATH/htmlcov --omit="app/tests/*" && \
     # Generate badges
