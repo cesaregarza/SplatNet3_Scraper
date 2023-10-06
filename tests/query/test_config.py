@@ -1,6 +1,6 @@
 import configparser
 from configparser import ConfigParser
-from unittest.mock import mock_open, patch, MagicMock
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 import pytest_mock
@@ -196,3 +196,67 @@ class TestConfig:
             else:
                 mock_open_file.assert_not_called()
                 mock_config.write.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            "config",
+            None,
+        ],
+        ids=["config", "no_config"],
+    )
+    @pytest.mark.parametrize(
+        "origin",
+        [
+            "env",
+            "other",
+        ],
+        ids=["env", "other"],
+    )
+    def test_initialize_options(self, config: str | None, origin: str):
+        mock_token_manager = MagicMock()
+        mock_token_manager.origin = {"origin": origin}
+        tokens = {
+            "base_token_1": "nonzero_value",
+            "base_token_2": None,
+            "non_base_token_1": "nonzero_value",
+            "non_base_token_2": None,
+        }
+        base_tokens = ["base_token_1", "base_token_2"]
+        mock_token_manager.env_manager.get_all.return_value = tokens
+        mock_token_manager.env_manager.BASE_TOKENS = base_tokens
+        mock_config = MagicMock()
+
+        with (
+            patch(config_path + ".generate_token_manager") as mock_generate,
+            patch(config_parser_path + ".ConfigParser") as mock_config_parser,
+        ):
+            mock_generate.return_value = None
+            mock_config_parser.return_value = mock_config
+
+            instance = Config()
+            instance.token_manager = mock_token_manager
+            instance.initialize_options(config=config)
+
+            if config:
+                assert instance.config == config
+                mock_config_parser.assert_not_called()
+                return
+
+            mock_config_parser.assert_called_once()
+            assert instance.config == mock_config
+            mock_config.add_section.assert_called_once_with("options")
+            mock_config.options.assert_called_once_with("options")
+            assert instance.options == mock_config.options.return_value
+
+            if origin == "other":
+                mock_token_manager.env_manager.get_all.assert_not_called()
+                return
+
+            mock_token_manager.env_manager.get_all.assert_called_once()
+            # assert that mock_config["options"]["non_base_token_1"] is the only
+            # token that was set
+            getitem = mock_config.__getitem__.return_value
+            getitem.__setitem__.assert_called_once_with(
+                "non_base_token_1", "nonzero_value"
+            )
