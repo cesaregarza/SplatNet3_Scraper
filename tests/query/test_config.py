@@ -307,3 +307,77 @@ class TestConfig:
 
             mock_from_s3s.assert_called_once_with(config_path_var)
             assert instance.token_manager == mock_token_manager
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "test_path",
+            None,
+        ],
+        ids=["path", "no_path"],
+    )
+    @pytest.mark.parametrize(
+        "include_tokens",
+        [
+            True,
+            False,
+        ],
+        ids=["include_tokens", "no_include_tokens"],
+    )
+    @pytest.mark.parametrize(
+        "origin",
+        [
+            "env",
+            "other",
+        ],
+        ids=["env", "other"],
+    )
+    @pytest.mark.parametrize(
+        "config_path_var",
+        [
+            "test_path_config",
+            None,
+        ],
+        ids=["config_path", "no_config_path"],
+    )
+    def test_save(
+        self,
+        path: str | None,
+        include_tokens: bool,
+        origin: str,
+        config_path_var: str | None,
+    ):
+        mock_token_manager = MagicMock()
+        mock_token_manager.origin = {"origin": origin}
+        mock_config = MagicMock()
+
+        with (
+            patch(config_path + ".generate_token_manager") as mock_generate,
+            patch(config_path + ".initialize_options") as mock_initialize,
+            patch(config_path + ".manage_option") as mock_manage_option,
+            patch(config_parser_path + ".ConfigParser") as mock_config_parser,
+            patch("builtins.open", mock_open()) as mock_open_file,
+        ):
+            mock_generate.return_value = None
+            mock_initialize.return_value = None
+            mock_manage_option.return_value = None
+            mock_config_parser.return_value = None
+
+            instance = Config()
+            instance.token_manager = mock_token_manager
+            instance.config_path = config_path_var
+            instance.config = mock_config
+            instance.save(path, include_tokens)
+
+            if (not include_tokens) or (origin == "env"):
+                mock_config.remove_section.assert_called_once_with("tokens")
+
+            if (path is None) and (config_path_var is not None):
+                expected_path = config_path_var
+            elif path is None:
+                expected_path = Config.DEFAULT_CONFIG_PATH
+            else:
+                expected_path = path
+
+            mock_open_file.assert_called_once_with(expected_path, "w")
+            mock_config.write.assert_called_once_with(mock_open_file())

@@ -175,14 +175,13 @@ class Config:
                 config file.
         """
         # Check if the user has the tokens in a separate file
-        origin = self.token_manager._origin["origin"]
+        origin = self.token_manager.origin["origin"]
         if (origin == "env") or (not include_tokens):
             # Remove the token manager from the config file
             self.config.remove_section("tokens")
-        if path is None and self.config_path is not None:
-            path = self.config_path
-        elif path is None:
-            path = self.DEFAULT_CONFIG_PATH
+
+        if path is None:
+            path = self.config_path or self.DEFAULT_CONFIG_PATH
 
         with open(path, "w") as configfile:
             self.config.write(configfile)
