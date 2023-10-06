@@ -14,6 +14,7 @@ jobs:
         python_image: ["python:3.10-slim", "python:3.11-slim"]
     env:
       default_image: "python:3.10-slim"
+      temp_build_version: "0.0.0"
 
     steps:
       - name: Checkout
@@ -31,7 +32,8 @@ jobs:
         run: |
           docker build \
           --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
-          --build-arg BUILD_VERSION=PR-${{ github.run_number }} \
+          --build-arg BUILD_VERSION=${{ env.temp_build_version }} \
+          --target test \
           --tag my-image:PR-${{ github.run_number }} \
           .
           docker run --name test-container my-image:PR-${{ github.run_number }}
