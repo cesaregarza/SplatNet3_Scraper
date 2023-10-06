@@ -13,6 +13,7 @@ class Config:
     """Class that can access the token manager as well as additional options."""
 
     config: configparser.ConfigParser
+    DEFAULT_CONFIG_PATH = ".splatnet3_scraper"
 
     def __init__(
         self,
@@ -83,7 +84,7 @@ class Config:
             self.token_manager = TokenManager.load()
 
         config_path = (
-            ".splatnet3_scraper" if config_path is None else config_path
+            self.DEFAULT_CONFIG_PATH if config_path is None else config_path
         )
 
         self.config_path = config_path
@@ -181,7 +182,7 @@ class Config:
         if path is None and self.config_path is not None:
             path = self.config_path
         elif path is None:
-            path = ".splatnet3_scraper"
+            path = self.DEFAULT_CONFIG_PATH
 
         with open(path, "w") as configfile:
             self.config.write(configfile)

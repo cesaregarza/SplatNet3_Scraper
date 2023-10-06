@@ -1,6 +1,6 @@
 import configparser
 from configparser import ConfigParser
-from unittest.mock import mock_open, patch
+from unittest.mock import mock_open, patch, MagicMock
 
 import pytest
 import pytest_mock
@@ -10,7 +10,9 @@ from splatnet3_scraper.query.config import Config
 from splatnet3_scraper.query.config_options import ConfigOptions
 from tests.mock import MockConfigParser, MockTokenManager
 
-config_path = "splatnet3_scraper.query.config.Config"
+base_config_path = "splatnet3_scraper.query.config"
+config_path = base_config_path + ".Config"
+config_parser_path = base_config_path + ".configparser"
 config_mangled = config_path + "._Config"
 token_manager_path = "splatnet3_scraper.auth.token_manager.TokenManager"
 
@@ -48,14 +50,20 @@ class TestConfig:
         ],
         ids=["config", "no_config"],
     )
-    def test_init(self, config_path_var, token_manager, write_to_file, config):
+    def test_init(
+        self,
+        config_path_var: str | None,
+        token_manager: MockTokenManager | None,
+        write_to_file: bool,
+        config: MockConfigParser | None,
+    ):
         with (
             patch(config_path + ".generate_token_manager") as mock_generate,
             patch(config_path + ".initialize_options") as mock_initialize,
         ):
             mock_generate.return_value = None
             mock_initialize.return_value = None
-            
+
             instance = Config(
                 config_path=config_path_var,
                 token_manager=token_manager,
@@ -74,3 +82,117 @@ class TestConfig:
                 assert instance.config_path == config_path_var
                 assert instance.token_manager == token_manager
                 mock_initialize.assert_called_once_with(config)
+
+    @pytest.mark.parametrize(
+        "config_path_var",
+        [
+            "test_path",
+            None,
+        ],
+        ids=["path", "no_path"],
+    )
+    @pytest.mark.parametrize(
+        "options",
+        [True, False],
+        ids=["options", "no_options"],
+    )
+    @pytest.mark.parametrize(
+        "write_to_file",
+        [
+            True,
+            False,
+        ],
+        ids=["write_to_file", "no_write_to_file"],
+    )
+    def test_generate_token_manager(
+        self, config_path_var: str | None, options: bool, write_to_file: bool
+    ):
+        # Mock TokenManager and ConfigParser
+        mock_token_manager = MockTokenManager()
+        mock_config = MagicMock()
+
+        # Mock options for ConfigParser
+        mock_option_1 = MagicMock()
+        mock_option_2 = MagicMock()
+        mock_options = [mock_option_1, mock_option_2]
+
+        # Counter to control when to raise NoSectionError
+        count = 0 if options else 1
+
+        # Function to raise NoSectionError on the first call if options is False
+        def raise_on_first_call(*args, **kwargs):
+            nonlocal count
+            if count > 0:
+                count -= 1
+                raise configparser.NoSectionError("options")
+            return mock_options
+
+        # Patching methods and classes
+        with (
+            patch(config_path + ".initialize_options") as mock_initialize,
+            patch(token_manager_path + ".from_config_file") as mock_from_config,
+            patch(token_manager_path + ".load") as mock_load,
+            patch(
+                config_parser_path + ".ConfigParser", return_value=mock_config
+            ) as mock_config_parser,
+            patch("builtins.open", mock_open()) as mock_open_file,
+            patch(config_path + ".manage_option") as mock_manage_option,
+        ):
+            # Set return values for mocks
+            mock_initialize.return_value = None
+            mock_from_config.return_value = mock_token_manager
+            mock_load.return_value = mock_token_manager
+            mock_manage_option.return_value = None
+
+            # Set side effect to raise NoSectionError
+            mock_config.options.side_effect = raise_on_first_call
+
+            # Run method under test
+            instance = Config(
+                token_manager="test_token_manager", write_to_file=write_to_file
+            )
+            instance.generate_token_manager(config_path_var)
+
+            # Assert path logic
+            config_path_var_expected = (
+                config_path_var
+                if config_path_var
+                else Config.DEFAULT_CONFIG_PATH
+            )
+
+            # Assert TokenManager method calls based on config_path_var
+            if config_path_var:
+                mock_from_config.assert_called_once_with(config_path_var)
+                mock_load.assert_not_called()
+            else:
+                mock_from_config.assert_not_called()
+                mock_load.assert_called_once()
+
+            # Assert instance variables
+            assert instance.token_manager == mock_token_manager
+            assert instance.config_path == config_path_var_expected
+            assert instance.config_path is not None
+            assert instance.config == mock_config
+
+            # Assert ConfigParser method calls
+            mock_config.read.assert_called_once_with(config_path_var_expected)
+
+            if options:
+                mock_config.options.assert_called_once_with("options")
+            else:
+                mock_config.add_section.assert_called_once_with("options")
+                assert mock_config.options.call_count == 2
+
+            # Assert option management
+            assert mock_manage_option.call_count == 2
+            assert instance.options == mock_options
+
+            # Assert file write logic
+            if write_to_file:
+                mock_open_file.assert_called_once_with(
+                    config_path_var_expected, "w"
+                )
+                mock_config.write.assert_called_once_with(mock_open_file())
+            else:
+                mock_open_file.assert_not_called()
+                mock_config.write.assert_not_called()
