@@ -260,3 +260,25 @@ class TestConfig:
             getitem.__setitem__.assert_called_once_with(
                 "non_base_token_1", "nonzero_value"
             )
+
+    @pytest.mark.parametrize(
+        "env_manager",
+        ["env_manager", None],
+        ids=["env_manager", "no_env_manager"],
+    )
+    def test_from_env(self, env_manager: str | None):
+        mock_token_manager = MagicMock()
+
+        with (
+            patch(token_manager_path + ".from_env") as mock_from_env,
+            patch(config_path) as mock_config,
+            patch(config_path + ".initialize_options") as mock_initialize,
+        ):
+            mock_from_env.return_value = mock_token_manager
+            mock_config.return_value = None
+            mock_initialize.return_value = None
+
+            instance = Config.from_env(env_manager=env_manager)
+
+            mock_from_env.assert_called_once_with(env_manager)
+            assert instance.token_manager == mock_token_manager
