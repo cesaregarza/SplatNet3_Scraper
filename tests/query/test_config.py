@@ -381,3 +381,107 @@ class TestConfig:
 
             mock_open_file.assert_called_once_with(expected_path, "w")
             mock_config.write.assert_called_once_with(mock_open_file())
+
+    @pytest.mark.parametrize(
+        "has_unknown",
+        [
+            True,
+            False,
+        ],
+        ids=["has_unknown", "no_unknown"],
+    )
+    @pytest.mark.parametrize(
+        "has_deprecated",
+        [
+            True,
+            False,
+        ],
+        ids=["has_deprecated", "no_deprecated"],
+    )
+    @pytest.mark.parametrize(
+        "option",
+        ["supported", "deprecated", "not_supported"],
+        ids=["supported", "deprecated", "not_supported"],
+    )
+    def test_manage_option(
+        self,
+        has_unknown: bool,
+        has_deprecated: bool,
+        option: str,
+    ):
+        mock_token_manager = MagicMock()
+        mock_config = MagicMock()
+        mock_config_options = MagicMock()
+
+        with (
+            patch(config_path + ".generate_token_manager") as mock_generate,
+            patch(config_path + ".initialize_options") as mock_initialize,
+            patch(
+                base_config_path + ".ConfigOptions"
+            ) as mock_config_options_class,
+            patch(config_parser_path + ".ConfigParser") as mock_config_parser,
+        ):
+            mock_generate.return_value = None
+            mock_initialize.return_value = None
+            mock_config_parser.return_value = None
+            mock_config_options_class.return_value = None
+
+            instance = Config()
+            instance.token_manager = mock_token_manager
+            instance.config = mock_config
+            instance.config_options = mock_config_options
+
+            # Set up mock_config.has_section
+            def has_section(section: str) -> bool:
+                if section == "unknown":
+                    return has_unknown
+                if section == "deprecated":
+                    return has_deprecated
+                return True
+
+            mock_config.has_section.side_effect = has_section
+
+            mock_config_options.SUPPORTED_OPTIONS = [
+                "supported",
+                "not_deprecated",
+                "deprecated",
+            ]
+            mock_config_options.DEPRECATED_OPTIONS = {
+                "deprecated": "replacement"
+            }
+
+            instance.manage_option(option)
+
+            if option == "not_supported":
+                if has_unknown:
+                    mock_config.add_section.assert_not_called()
+                else:
+                    mock_config.add_section.assert_called_once_with("unknown")
+
+                mock_config.has_section.assert_called_once_with("unknown")
+                mock_config.__getitem__.call_count == 2
+                getitem = mock_config.__getitem__.return_value
+                getitem.__getitem__.assert_called_once_with(option)
+                option_getitem = getitem.__getitem__.return_value
+                getitem.__setitem__.assert_called_once_with(
+                    option, option_getitem
+                )
+                return
+
+            elif option == "supported":
+                mock_config.has_section.assert_not_called()
+                return
+
+            if has_deprecated:
+                mock_config.add_section.assert_not_called()
+            else:
+                mock_config.add_section.assert_called_once_with("deprecated")
+
+            getitem = mock_config.__getitem__.return_value
+            getitem_getitem = getitem.__getitem__.return_value
+            getitem_setitem = getitem.__setitem__
+            getitem_setitem.assert_any_call("replacement", getitem_getitem)
+            getitem_setitem.assert_any_call("deprecated", getitem_getitem)
+            mock_config.remove_option.assert_called_once_with(
+                "options", "deprecated"
+            )
