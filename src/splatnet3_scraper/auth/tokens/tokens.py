@@ -11,7 +11,7 @@ class Token:
     the token.
     """
 
-    def __init__(self, token: str, token_type: str, timestamp: float) -> None:
+    def __init__(self, value: str, name: str, timestamp: float) -> None:
         """Initializes a ``Token`` object. The expiration time is calculated
         based on the token type, with a default of ``1e10`` seconds (about 316
         days, this should be basically forever for all intents and purposes; if
@@ -19,18 +19,18 @@ class Token:
         problems than a token expiring).
 
         Args:
-            token (str): The value of the token, this is the actual token.
-            token_type (str): The type of token, this is used to identify which
+            value (str): The value of the token, this is the actual token.
+            name (str): The name of the token, this is used to identify which
                 type of token it represents, making it easier for the manager
                 to handle the tokens when searching for a specific one. It also
                 determines the expiration time of the token.
             timestamp (float): The time the token was created, in seconds since
                 the epoch. This is used to determine if the token is expired.
         """
-        self.token = token
-        self.token_type = token_type
+        self.value = value
+        self.name = name
         self.timestamp = timestamp
-        self.expiration = TOKEN_EXPIRATIONS.get(token_type, 1e10) + timestamp
+        self.expiration = TOKEN_EXPIRATIONS.get(name, 1e10) + timestamp
 
     @property
     def is_valid(self) -> bool:
@@ -45,7 +45,7 @@ class Token:
             bool: True if the token is valid (not None and not an empty string)
                 False otherwise.
         """
-        return (self.token is not None) and (self.token != "")
+        return (self.value is not None) and (self.value != "")
 
     @property
     def is_expired(self) -> bool:
@@ -106,9 +106,9 @@ class Token:
         out = "Token("
         spaces = " " * len(out)
         out += (
-            f"token={self.token[:5]}...,\n"
+            f"value={self.value[:5]}...,\n"
             + spaces
-            + f"type={self.token_type},\n"
+            + f"name={self.name},\n"
             + spaces
             + "expires in "
             + self.time_left_str
