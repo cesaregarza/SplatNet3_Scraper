@@ -1,35 +1,15 @@
-import configparser
-import json
 import logging
-import os
-import re
-import time
-from typing import Any, Literal, cast, overload
-
-import requests
 
 from splatnet3_scraper import __version__
-from splatnet3_scraper.auth.exceptions import (
-    FTokenException,
-    NintendoException,
-    SplatNetException,
-)
-from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.tokens.environment_manager import (
     EnvironmentVariablesManager,
 )
 from splatnet3_scraper.auth.tokens.keychain import TokenKeychain
+from splatnet3_scraper.auth.tokens.regenerator import TokenRegenerator
 from splatnet3_scraper.auth.tokens.token_typing import ORIGIN
 from splatnet3_scraper.auth.tokens.tokens import Token
-from splatnet3_scraper.constants import (
-    ENV_VAR_NAMES,
-    GRAPH_QL_REFERENCE_URL,
-    IMINK_URL,
-    TOKEN_EXPIRATIONS,
-    TOKENS,
-)
-from splatnet3_scraper.utils import retry
+from splatnet3_scraper.constants import IMINK_URL, TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -142,3 +122,35 @@ class TokenManager:
             self.nso._gtoken = new_token.value
         elif new_token.name == TOKENS.SESSION_TOKEN:
             self.nso._session_token = new_token.value
+
+    def get_token(self, name: str) -> Token:
+        """Gets a token from the keychain.
+
+        Args:
+            name (str): The name of the token to get.
+
+        Raises:
+            ValueError: If the token is not found in the keychain.
+
+        Returns:
+            Token: The token that was retrieved.
+        """
+        try:
+            token = self.keychain.get(name, full_token=True)
+        except ValueError as e:
+            raise e
+
+        logger.debug("Retrieved token %s from keychain", token.name)
+        return token.value
+
+    def regenerate_tokens(self) -> None:
+        """Regenerates all the tokens. This is done by calling the
+        ``TokenRegenerator.generate_all_tokens`` method. The tokens are then
+        added to the keychain.
+        """
+        logger.info("Regenerating tokens")
+        tokens = TokenRegenerator.generate_all_tokens(
+            self.nso, self.f_token_url
+        )
+        for token in tokens.values():
+            self.add_token(token)
