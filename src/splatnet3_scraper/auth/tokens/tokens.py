@@ -1,8 +1,7 @@
 import time
 
-from splatnet3_scraper.constants import (
-    TOKEN_EXPIRATIONS,
-)
+from splatnet3_scraper.constants import TOKEN_EXPIRATIONS
+
 
 class Token:
     """Class that represents a token. This class is meant to store the token
