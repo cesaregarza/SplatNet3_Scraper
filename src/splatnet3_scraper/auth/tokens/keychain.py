@@ -144,7 +144,7 @@ class TokenKeychain:
         token: str | Token,
         token_name: str | None = None,
         timestamp: float | None = None,
-    ) -> None:
+    ) -> Token:
         """Adds a token to the keychain. If the token is a string, the name of
         the token must be provided. If the token is a ``Token`` object, the
         name of the token will be used.
@@ -159,6 +159,11 @@ class TokenKeychain:
         Raises:
             ValueError: If the token is a string and the name of the token is
                 not provided.
+
+        Returns:
+            Token: The token that was added to the keychain. This is useful if
+                the token was generated from a string, as the timestamp will be
+                set to the current time.
         """
         if isinstance(token, str):
             if token_name is None:
@@ -169,3 +174,4 @@ class TokenKeychain:
 
         logger.info("Adding token %s", token.name)
         self.keychain[token.name] = token
+        return token

@@ -9,9 +9,6 @@ from typing import Any, Literal, cast, overload
 import requests
 
 from splatnet3_scraper import __version__
-from splatnet3_scraper.auth.environment_manager import (
-    EnvironmentVariablesManager,
-)
 from splatnet3_scraper.auth.exceptions import (
     FTokenException,
     NintendoException,
@@ -19,6 +16,9 @@ from splatnet3_scraper.auth.exceptions import (
 )
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.auth.nso import NSO
+from splatnet3_scraper.auth.tokens.environment_manager import (
+    EnvironmentVariablesManager,
+)
 from splatnet3_scraper.constants import (
     ENV_VAR_NAMES,
     GRAPH_QL_REFERENCE_URL,
