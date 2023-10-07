@@ -16,9 +16,9 @@ class TestToken:
     @freezegun.freeze_time("2023-01-01 00:00:00")
     def test_new_token(self):
         timestamp = time.time()
-        token = Token("test", "test_type", timestamp)
-        assert token.token == "test"
-        assert token.token_type == "test_type"
+        token = Token("test", "test_name", timestamp)
+        assert token.value == "test"
+        assert token.name == "test_name"
         assert token.timestamp == timestamp
         assert token.expiration == timestamp + 1e10
 
