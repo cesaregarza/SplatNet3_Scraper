@@ -1,12 +1,6 @@
-import pathlib
-import time
-from typing import Literal
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
-import freezegun
 import pytest
-import pytest_mock
-import requests
 
 from splatnet3_scraper.auth.tokens.manager import ManagerOrigin, TokenManager
 from splatnet3_scraper.constants import IMINK_URL, TOKENS
@@ -203,3 +197,20 @@ class TestTokenManager:
             "test", full_token=True
         )
         assert token == mock_token
+
+    def test_regenerate_tokens(self, mock_token_manager: TokenManager) -> None:
+        with (
+            patch(
+                base_token_manager_path
+                + ".TokenRegenerator.generate_all_tokens"
+            ) as mock_generate_all_tokens,
+            patch(token_manager_path + ".add_token") as mock_add_token,
+        ):
+            mock_generate_all_tokens.return_value = {
+                f"test_token_{i}": f"test_value_{i}" for i in range(15)
+            }
+            mock_token_manager.regenerate_tokens()
+            mock_generate_all_tokens.assert_called_once_with(
+                mock_token_manager.nso, mock_token_manager.f_token_url
+            )
+            assert mock_add_token.call_count == 15
