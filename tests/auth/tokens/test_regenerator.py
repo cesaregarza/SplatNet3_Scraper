@@ -80,6 +80,7 @@ class TestTokenRegenerator:
             mock_generate_gtoken.return_value = test_gtoken
             nso.get_bullet_token.return_value = "test_bullet_token"
             TokenRegenerator.generate_bullet_token(nso, self.ftokens_url)
+
             if with_gtoken:
                 mock_generate_gtoken.assert_not_called()
                 mock_token.assert_called_once_with(
@@ -95,4 +96,102 @@ class TestTokenRegenerator:
                     "test_bullet_token",
                     TOKENS.BULLET_TOKEN,
                     time.time(),
+                )
+
+    def test_generate_all_tokens(self) -> None:
+        nso = MagicMock()
+        with (
+            patch(regen_path + ".generate_gtoken") as mock_gtoken,
+            patch(regen_path + ".generate_bullet_token") as mock_bullet,
+        ):
+            mock_gtoken.return_value = "test_gtoken"
+            expected = TokenRegenerator.generate_all_tokens(
+                nso, self.ftokens_url, "test_user_agent"
+            )
+            mock_gtoken.assert_called_once_with(nso, self.ftokens_url)
+            mock_bullet.assert_called_once_with(
+                nso, self.ftokens_url, "test_user_agent"
+            )
+
+            assert expected == {
+                TOKENS.GTOKEN: "test_gtoken",
+                TOKENS.BULLET_TOKEN: mock_bullet.return_value,
+            }
+
+    @pytest.mark.parametrize(
+        "valid_gtoken",
+        [True, False],
+        ids=["valid_gtoken", "invalid_gtoken"],
+    )
+    @pytest.mark.parametrize(
+        "valid_bullet",
+        [True, False],
+        ids=["valid_bullet", "invalid_bullet"],
+    )
+    @pytest.mark.parametrize(
+        "valid_response",
+        [True, False],
+        ids=["valid_response", "invalid_response"],
+    )
+    def test_validate_tokens(
+        self, valid_gtoken: bool, valid_bullet: bool, valid_response: bool
+    ) -> None:
+        nso = MagicMock()
+        gtoken = MagicMock()
+        bullet_token = MagicMock()
+        response = MagicMock()
+
+        gtoken.is_valid = valid_gtoken
+        bullet_token.is_valid = valid_bullet
+
+        with (
+            patch(regen_path + ".generate_gtoken") as mock_gtoken,
+            patch(regen_path + ".generate_bullet_token") as mock_bullet,
+            patch(base_regen_path + ".requests") as mock_requests,
+            patch(base_regen_path + ".queries") as mock_queries,
+            patch(regen_path + ".generate_all_tokens") as mock_all_tokens,
+        ):
+            mock_gtoken.return_value = gtoken
+            mock_bullet.return_value = bullet_token
+            mock_requests.post.return_value = response
+
+            if valid_response:
+                response.status_code = 200
+            else:
+                response.status_code = 500
+
+            TokenRegenerator.validate_tokens(
+                gtoken,
+                bullet_token,
+                nso,
+                self.ftokens_url,
+                "test_user_agent",
+            )
+            if valid_gtoken:
+                mock_gtoken.assert_not_called()
+            else:
+                mock_gtoken.assert_called_once_with(nso, self.ftokens_url)
+
+            if valid_bullet:
+                mock_bullet.assert_not_called()
+            else:
+                mock_bullet.assert_called_once_with(
+                    nso, self.ftokens_url, "test_user_agent"
+                )
+
+            mock_queries.query_header.assert_called_once_with(
+                bullet_token.value, "en-US", "test_user_agent"
+            )
+            mock_queries.query_body.assert_called_once_with("HomeQuery")
+            mock_requests.post.assert_called_once_with(
+                GRAPH_QL_REFERENCE_URL,
+                data=mock_queries.query_body.return_value,
+                headers=mock_queries.query_header.return_value,
+                cookies={"_gtoken": gtoken.value},
+            )
+            if valid_response:
+                mock_all_tokens.assert_not_called()
+            else:
+                mock_all_tokens.assert_called_once_with(
+                    nso, self.ftokens_url, "test_user_agent"
                 )

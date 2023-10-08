@@ -136,9 +136,9 @@ class TokenRegenerator:
             dict[str, Token]: A dictionary containing all the tokens.
         """
         logger.info("Testing tokens")
-        if gtoken.is_valid:
+        if not gtoken.is_valid:
             gtoken = TokenRegenerator.generate_gtoken(nso, f_token_urls)
-        if bullet_token.is_valid:
+        if not bullet_token.is_valid:
             bullet_token = TokenRegenerator.generate_bullet_token(
                 nso, f_token_urls, user_agent
             )
