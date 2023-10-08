@@ -23,6 +23,16 @@ token_manager_path = base_token_manager_path + ".TokenManager"
 
 
 class TestTokenManager:
+    @pytest.fixture
+    def mock_token_manager(self) -> TokenManager:
+        with (
+            patch(base_token_manager_path + ".NSO"),
+            patch(base_token_manager_path + ".EnvironmentVariablesManager"),
+            patch(base_token_manager_path + ".TokenKeychain"),
+            patch(base_token_manager_path + ".ManagerOrigin"),
+        ):
+            return TokenManager()
+
     @pytest.mark.parametrize(
         "with_nso",
         [True, False],
@@ -109,3 +119,9 @@ class TestTokenManager:
                 "origin" if with_origin else "memory",
                 "test_data" if with_origin_data else None,
             )
+
+    def test_flag_origin(self, mock_token_manager: TokenManager) -> None:
+        mock_token_manager.flag_origin("test_origin", "test_data")
+        assert isinstance(mock_token_manager.origin, ManagerOrigin)
+        assert mock_token_manager.origin.origin == "test_origin"
+        assert mock_token_manager.origin.data == "test_data"
