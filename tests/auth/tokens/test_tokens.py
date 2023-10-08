@@ -1,4 +1,5 @@
 import time
+import math
 
 import freezegun
 
@@ -20,14 +21,14 @@ class TestToken:
         assert token.value == "test"
         assert token.name == "test_name"
         assert token.timestamp == timestamp
-        assert token.expiration == timestamp + 1e10
+        assert math.isclose(token.expiration, timestamp + 1e10)
 
     @freezegun.freeze_time("2023-01-01 00:00:00")
     def test_properties(self):
         token = mock_token("test")
         assert token.is_expired is False
         assert token.is_valid is True
-        assert token.time_left == 1e10
+        assert math.isclose(token.time_left, 1e10)
         assert token.time_left_str == "basically forever"
 
         token = mock_token("gtoken")
