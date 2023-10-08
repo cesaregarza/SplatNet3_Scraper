@@ -1,9 +1,9 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
 from splatnet3_scraper.auth.tokens.manager import ManagerOrigin, TokenManager
-from splatnet3_scraper.constants import IMINK_URL, TOKENS
+from splatnet3_scraper.constants import TOKENS
 
 ftoken_urls = [
     "ftoken_url_1",
@@ -29,17 +29,16 @@ class TestTokenManager:
 
     @pytest.mark.parametrize(
         "with_nso",
-        [True, False],
-        ids=["with_nso", "without_nso"],
+        [True, "without_session", False],
+        ids=["with_nso", "with_nso_no_session", "without_nso"],
     )
     @pytest.mark.parametrize(
         "f_token_url",
         [
             ftoken_urls[0],
             ftoken_urls,
-            None,
         ],
-        ids=["single_url", "multiple_urls", "default_url"],
+        ids=["single_url", "multiple_urls"],
     )
     @pytest.mark.parametrize(
         "with_env_manager",
@@ -58,7 +57,7 @@ class TestTokenManager:
     )
     def test_init(
         self,
-        with_nso: bool,
+        with_nso: bool | str,
         f_token_url: str | list[str] | None,
         with_env_manager: bool,
         with_origin: bool,
@@ -66,6 +65,15 @@ class TestTokenManager:
     ) -> None:
         nso = MagicMock()
         env_manager = MagicMock()
+
+        def session_token_side_effect(*args, **kwargs) -> str:
+            if with_nso == "without_session":
+                raise ValueError("test")
+            return "test_session_token"
+
+        type(nso).session_token = PropertyMock(
+            side_effect=session_token_side_effect
+        )
 
         with (
             patch(base_token_manager_path + ".NSO") as mock_nso,
@@ -77,6 +85,17 @@ class TestTokenManager:
         ):
             mock_nso.new_instance.return_value = nso
             mock_env_manager.return_value = env_manager
+
+            if with_nso == "without_session":
+                with pytest.raises(ValueError):
+                    TokenManager(
+                        nso=None,
+                        f_token_url=f_token_url,
+                        env_manager=env_manager if with_env_manager else None,
+                        origin="origin" if with_origin else "memory",
+                        origin_data="test_data" if with_origin_data else None,
+                    )
+                return
 
             instance = TokenManager(
                 nso=nso if with_nso else None,
@@ -98,8 +117,6 @@ class TestTokenManager:
 
             if isinstance(f_token_url, str):
                 expected_f_token_url = [f_token_url]
-            elif f_token_url is None:
-                expected_f_token_url = [IMINK_URL]
             else:
                 expected_f_token_url = f_token_url
 

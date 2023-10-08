@@ -9,7 +9,11 @@ from splatnet3_scraper.auth.tokens.keychain import TokenKeychain
 from splatnet3_scraper.auth.tokens.regenerator import TokenRegenerator
 from splatnet3_scraper.auth.tokens.token_typing import ORIGIN
 from splatnet3_scraper.auth.tokens.tokens import Token
-from splatnet3_scraper.constants import IMINK_URL, TOKENS
+from splatnet3_scraper.constants import (
+    DEFAULT_F_TOKEN_URL,
+    DEFAULT_USER_AGENT,
+    TOKENS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +33,7 @@ class TokenManager:
     def __init__(
         self,
         nso: NSO | None = None,
-        f_token_url: str | list[str] | None = None,
+        f_token_url: str | list[str] = DEFAULT_F_TOKEN_URL,
         *,
         env_manager: EnvironmentVariablesManager | None = None,
         origin: ORIGIN = "memory",
@@ -59,10 +63,13 @@ class TokenManager:
                 None.
         """
         nso = nso or NSO.new_instance()
+        # Check that nso has a session token
+        try:
+            nso.session_token
+        except ValueError as e:
+            raise e
         self.nso = nso
-        if f_token_url is None:
-            self.f_token_url = [IMINK_URL]
-        elif isinstance(f_token_url, str):
+        if isinstance(f_token_url, str):
             self.f_token_url = [f_token_url]
         else:
             self.f_token_url = f_token_url
@@ -154,3 +161,23 @@ class TokenManager:
         )
         for token in tokens.values():
             self.add_token(token)
+
+    def generate_gtoken(self) -> None:
+        """Generates a gtoken. This is done by calling the
+        ``TokenRegenerator.generate_gtoken`` method. The token is then added to
+        the keychain.
+        """
+        logger.info("Generating gtoken")
+        token = TokenRegenerator.generate_gtoken(self.nso, self.f_token_url)
+        self.add_token(token)
+
+    def generate_bullet_token(self) -> None:
+        """Generates a bullet token. This is done by calling the
+        ``TokenRegenerator.generate_bullet_token`` method. The token is then
+        added to the keychain.
+        """
+        logger.info("Generating bullet token")
+        token = TokenRegenerator.generate_bullet_token(
+            self.nso, self.f_token_url, DEFAULT_USER_AGENT
+        )
+        self.add_token(token)

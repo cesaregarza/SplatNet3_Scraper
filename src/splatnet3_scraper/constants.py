@@ -9,6 +9,7 @@ IOS_APP_URL = (
 )
 IMINK_URL = "https://api.imink.app/f"
 ZNCA_URL = "https://nxapi-znca-api.fancy.org.uk/api/znca/f"
+DEFAULT_F_TOKEN_URL = [IMINK_URL, ZNCA_URL]
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Linux; Android 11; Pixel 5) "
     + "AppleWebKit/537.36 (KHTML, like Gecko) "

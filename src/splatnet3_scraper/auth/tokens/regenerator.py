@@ -128,7 +128,8 @@ class TokenRegenerator:
         Args:
             gtoken (Token): Gtoken to validate.
             bullet_token (Token): Bullet token to validate.
-            nso (NSO): An instance of the NSO class.
+            nso (NSO): An instance of the NSO class. It must have the session
+                token set.
             f_token_urls (list[str]): A list of URLs to fetch the f_token from.
             user_agent (str): The user agent string to use for the request.
 
