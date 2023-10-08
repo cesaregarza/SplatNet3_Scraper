@@ -141,7 +141,7 @@ class TokenManager:
             raise e
 
         logger.debug("Retrieved token %s from keychain", token.name)
-        return token.value
+        return token
 
     def regenerate_tokens(self) -> None:
         """Regenerates all the tokens. This is done by calling the
