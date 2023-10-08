@@ -175,3 +175,31 @@ class TestTokenManager:
             assert nso._session_token == token.value
         else:
             assert nso._session_token != token.value
+
+    @pytest.mark.parametrize(
+        "raise_exception",
+        [True, False],
+        ids=["raise_exception", "no_exception"],
+    )
+    def test_get_token(
+        self, mock_token_manager: TokenManager, raise_exception: bool
+    ) -> None:
+        mock_token = MagicMock()
+
+        def simulate_get(*args, **kwargs):
+            if raise_exception:
+                raise ValueError("test")
+            return mock_token
+
+        mock_token_manager.keychain.get.side_effect = simulate_get
+
+        if raise_exception:
+            with pytest.raises(ValueError):
+                mock_token_manager.get_token("test")
+            return
+
+        token = mock_token_manager.get_token("test")
+        mock_token_manager.keychain.get.assert_called_once_with(
+            "test", full_token=True
+        )
+        assert token == mock_token
