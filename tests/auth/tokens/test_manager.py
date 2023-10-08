@@ -125,3 +125,53 @@ class TestTokenManager:
         assert isinstance(mock_token_manager.origin, ManagerOrigin)
         assert mock_token_manager.origin.origin == "test_origin"
         assert mock_token_manager.origin.data == "test_data"
+
+    @pytest.mark.parametrize(
+        "token_name",
+        [
+            TOKENS.SESSION_TOKEN,
+            TOKENS.GTOKEN,
+            TOKENS.BULLET_TOKEN,
+        ],
+        ids=["session_token", "gtoken", "bullet_token"],
+    )
+    @pytest.mark.parametrize(
+        "raise_exception",
+        [True, False],
+        ids=["raise_exception", "no_exception"],
+    )
+    def test_add_token(
+        self,
+        mock_token_manager: TokenManager,
+        token_name: str,
+        raise_exception: bool,
+    ) -> None:
+        token = MagicMock()
+        token.name = token_name
+        nso = mock_token_manager.nso
+
+        def simulate_add_token(*args, **kwargs):
+            if raise_exception:
+                raise ValueError("test")
+            return token
+
+        mock_token_manager.keychain.add_token.side_effect = simulate_add_token
+
+        if raise_exception:
+            with pytest.raises(ValueError):
+                mock_token_manager.add_token(token)
+            return
+
+        mock_token_manager.add_token(token)
+        mock_token_manager.keychain.add_token.assert_called_once_with(
+            token, None, None
+        )
+        if token_name == TOKENS.GTOKEN:
+            assert nso._gtoken == token.value
+        else:
+            assert nso._gtoken != token.value
+
+        if token_name == TOKENS.SESSION_TOKEN:
+            assert nso._session_token == token.value
+        else:
+            assert nso._session_token != token.value
