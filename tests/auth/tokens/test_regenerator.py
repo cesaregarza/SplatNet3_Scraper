@@ -3,14 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import freezegun
 import pytest
-import requests
 
-from splatnet3_scraper.auth.exceptions import FTokenException, SplatNetException
-from splatnet3_scraper.auth.nso import NSO
+from splatnet3_scraper.auth.exceptions import FTokenException
 from splatnet3_scraper.auth.tokens.regenerator import TokenRegenerator
-from splatnet3_scraper.auth.tokens.tokens import Token
 from splatnet3_scraper.constants import (
-    DEFAULT_USER_AGENT,
     GRAPH_QL_REFERENCE_URL,
     TOKENS,
 )
