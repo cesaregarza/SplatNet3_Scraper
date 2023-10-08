@@ -30,7 +30,7 @@ class TokenManagerConstructor:
         session_token: str,
         *,
         nso: NSO | None = None,
-        f_token_url: str | list[str] | None = DEFAULT_F_TOKEN_URL,
+        f_token_url: str | list[str] = DEFAULT_F_TOKEN_URL,
     ) -> TokenManager:
         """Creates a ``TokenManager`` object from a session token. This method
         is the bare minimum needed to create a ``TokenManager`` object.
@@ -52,7 +52,8 @@ class TokenManagerConstructor:
             TokenManager: The ``TokenManager`` object.
         """
         if nso is None:
-            nso = NSO(session=session_token)
+            nso = NSO.new_instance()
+            nso._session_token = session_token
         else:
             nso._session_token = session_token
         manager = TokenManager(
@@ -94,15 +95,18 @@ class TokenManagerConstructor:
         Returns:
             TokenManager: The ``TokenManager`` object.
         """
-        if nso is None:
-            nso = NSO(session=session_token)
-        else:
-            nso._session_token = session_token
-        manager = TokenManager(
-            nso=nso,
-            f_token_url=f_token_url,
-            origin="memory",
+        manager = TokenManagerConstructor.from_session_token(
+            session_token, nso=nso, f_token_url=f_token_url
         )
-        manager.add_token(session_token, TOKENS.SESSION_TOKEN)
+        if gtoken is None:
+            gtoken = TokenRegenerator.generate_gtoken(
+                manager.nso, manager.f_token_url
+            ).value
+        manager.add_token(gtoken, TOKENS.GTOKEN)
 
+        if bullet_token is None:
+            bullet_token = TokenRegenerator.generate_bullet_token(
+                manager.nso, manager.f_token_url, user_agent=user_agent
+            ).value
+        manager.add_token(bullet_token, TOKENS.BULLET_TOKEN)
         return manager
