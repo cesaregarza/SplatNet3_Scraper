@@ -6,10 +6,7 @@ import pytest
 
 from splatnet3_scraper.auth.exceptions import FTokenException
 from splatnet3_scraper.auth.tokens.regenerator import TokenRegenerator
-from splatnet3_scraper.constants import (
-    GRAPH_QL_REFERENCE_URL,
-    TOKENS,
-)
+from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL, TOKENS
 
 test_date_str = "2023-01-01 00:00:00"
 base_regen_path = "splatnet3_scraper.auth.tokens.regenerator"

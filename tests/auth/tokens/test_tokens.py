@@ -1,5 +1,5 @@
-import time
 import math
+import time
 
 import freezegun
 
