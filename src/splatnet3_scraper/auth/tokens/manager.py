@@ -63,9 +63,11 @@ class TokenManager:
                 None.
         """
         nso = nso or NSO.new_instance()
+        self.keychain = TokenKeychain()
         # Check that nso has a session token
         try:
-            nso.session_token
+            session_token = nso.session_token
+            self.add_token(session_token, TOKENS.SESSION_TOKEN)
         except ValueError as e:
             raise e
         self.nso = nso
@@ -74,7 +76,6 @@ class TokenManager:
         else:
             self.f_token_url = f_token_url
 
-        self.keychain = TokenKeychain()
         self.env_manager = env_manager or EnvironmentVariablesManager()
         self.origin = ManagerOrigin(origin, origin_data)
 

@@ -173,6 +173,8 @@ class TestTokenManager:
                 mock_token_manager.add_token(token)
             return
 
+        # Add token is called on init, so we need to reset the call count
+        mock_token_manager.keychain.add_token.reset_mock()
         mock_token_manager.add_token(token)
         mock_token_manager.keychain.add_token.assert_called_once_with(
             token, None, None
