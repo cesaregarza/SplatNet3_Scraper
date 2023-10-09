@@ -1,16 +1,11 @@
 import logging
-import configparser
 
-from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.tokens.environment_manager import (
     EnvironmentVariablesManager,
 )
-from splatnet3_scraper.auth.tokens.keychain import TokenKeychain
 from splatnet3_scraper.auth.tokens.manager import TokenManager
 from splatnet3_scraper.auth.tokens.regenerator import TokenRegenerator
-from splatnet3_scraper.auth.tokens.token_typing import ORIGIN
-from splatnet3_scraper.auth.tokens.tokens import Token
 from splatnet3_scraper.constants import (
     DEFAULT_F_TOKEN_URL,
     DEFAULT_USER_AGENT,
