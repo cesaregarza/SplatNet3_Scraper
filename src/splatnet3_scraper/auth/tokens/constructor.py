@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.tokens.environment_manager import (
@@ -114,7 +115,7 @@ class TokenManagerConstructor:
         nso: NSO | None = None,
         f_token_url: str | list[str] = DEFAULT_F_TOKEN_URL,
         user_agent: str = DEFAULT_USER_AGENT,
-    ) -> None:
+    ) -> TokenManager:
         """Loads tokens from environment variables.
 
         This method will create a token manager and add the tokens found in the
@@ -144,11 +145,13 @@ class TokenManagerConstructor:
         """
         env_manager = env_manager or EnvironmentVariablesManager()
         tokens = env_manager.get_all()
-        return TokenManagerConstructor.from_tokens(
-            session_token=tokens[TOKENS.SESSION_TOKEN],
+        manager = TokenManagerConstructor.from_tokens(
+            session_token=cast(str, tokens[TOKENS.SESSION_TOKEN]),
             gtoken=tokens.get(TOKENS.GTOKEN, None),
             bullet_token=tokens.get(TOKENS.BULLET_TOKEN, None),
             nso=nso,
             f_token_url=f_token_url,
             user_agent=user_agent,
         )
+        manager.flag_origin("env")
+        return manager
