@@ -1,4 +1,5 @@
 import logging
+import configparser
 
 from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.nso import NSO
@@ -110,3 +111,49 @@ class TokenManagerConstructor:
             ).value
         manager.add_token(bullet_token, TOKENS.BULLET_TOKEN)
         return manager
+
+    @staticmethod
+    def from_env(
+        env_manager: EnvironmentVariablesManager | None = None,
+        *,
+        nso: NSO | None = None,
+        f_token_url: str | list[str] = DEFAULT_F_TOKEN_URL,
+        user_agent: str = DEFAULT_USER_AGENT,
+    ) -> None:
+        """Loads tokens from environment variables.
+
+        This method will create a token manager and add the tokens found in the
+        environment variables to it. The environment variables that are
+        supported are:
+
+        - SN3S_SESSION_TOKEN
+        - SN3S_GTOKEN
+        - SN3S_BULLET_TOKEN
+
+        The session token environment variable is required, and if it is not
+        set, a ValueError will be raised. The other environment variables are
+        optional and will be generated if they are not set.
+
+        Tests the tokens before returning the token manager using the
+        ``test_tokens`` method.
+
+        Args:
+            env_manager (EnvironmentVariablesManager): The environment variables
+                manager to use. If not provided, a new one will be created.
+
+        Raises:
+            ValueError: If the session token environment variable is not set.
+
+        Returns:
+            TokenManager: The token manager with the tokens loaded.
+        """
+        env_manager = env_manager or EnvironmentVariablesManager()
+        tokens = env_manager.get_all()
+        return TokenManagerConstructor.from_tokens(
+            session_token=tokens[TOKENS.SESSION_TOKEN],
+            gtoken=tokens.get(TOKENS.GTOKEN, None),
+            bullet_token=tokens.get(TOKENS.BULLET_TOKEN, None),
+            nso=nso,
+            f_token_url=f_token_url,
+            user_agent=user_agent,
+        )
