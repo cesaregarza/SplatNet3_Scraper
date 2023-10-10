@@ -7,7 +7,7 @@ from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
     TOKENS,
 )
-from splatnet3_scraper.query.config.callbacks import (
+from splatnet3_scraper.query.config_new.callbacks import (
     log_level_callback,
     session_token_callback,
 )
