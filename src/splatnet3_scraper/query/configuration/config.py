@@ -42,7 +42,13 @@ class Config:
         self.initialize()
 
     def initialize(self) -> None:
-        pass
+        """Initializes the class.
+
+        Reads the ConfigParser object from the file and initializes the
+        ``TokenManager`` object.
+        """
+        if self._token_manager is None:
+            self._token_manager = self.initialize_token_manager()
 
     def initialize_token_manager(self) -> TokenManager:
         """Initializes and returns a ``TokenManager`` object from the set
@@ -59,6 +65,16 @@ class Config:
         session_token = tokens.get("session_token")
         gtoken = tokens.get("gtoken")
         bullet_token = tokens.get("bullet_token")
+
+        # Load options from the "Options" section of the config file.
+        try:
+            options = self.config["Options"]
+        except KeyError:
+            options is None
+
+        if options is not None:
+            f_token_url = options.get("f_token_url")
+            user_agent = options.get("user_agent")
 
         return TokenManagerConstructor.from_tokens(
             session_token=session_token,
@@ -93,3 +109,20 @@ class Config:
             file_path=file_path,
             write_to_file=write_to_file,
         )
+
+    @property
+    def token_manager(self) -> TokenManager:
+        """Returns the ``TokenManager`` object.
+
+        Acts as a TypeGuard for the ``_token_manager`` attribute, ensuring that
+        a ``TokenManager`` object is always returned.
+
+        Raises:
+            ValueError: If the ``_token_manager`` attribute is None.
+
+        Returns:
+            TokenManager: The ``TokenManager`` object.
+        """
+        if self._token_manager is None:
+            raise ValueError("Token manager not initialized")
+        return self._token_manager

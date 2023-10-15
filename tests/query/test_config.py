@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from splatnet3_scraper.query.config_new import Config
+from splatnet3_scraper.query.config import Config
 from splatnet3_scraper.query.config_options import ConfigOptions
 from tests.mock import MockConfigParser, MockTokenManager
 
