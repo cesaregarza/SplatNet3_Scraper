@@ -102,3 +102,17 @@ class TestConfigOptionHandler:
         handler = ConfigOptionHandler()
         handler.option_reference = option_reference
         assert handler.SUPPORTED_OPTIONS == list(option_reference.keys())
+
+    def test_SECTIONS(self) -> None:
+        breaks = [3, 3, 3]
+        options = [
+            MagicMock(section=f"section_{i}", name=f"test_{j}")
+            for i, x in enumerate(breaks)
+            for j in range(x)
+        ]
+        with patch(handler_path + ".OPTIONS", new=options):
+            handler = ConfigOptionHandler()
+            # SECTIONS can be in any order, so sort them
+            assert sorted(handler.SECTIONS) == [
+                f"section_{i}" for i in range(len(breaks))
+            ]
