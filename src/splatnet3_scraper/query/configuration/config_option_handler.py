@@ -198,7 +198,7 @@ class ConfigOptionHandler:
         try:
             return self.option_reference[name]
         except KeyError:
-            raise ValueError(f"Option {name} is not supported.")
+            raise KeyError(f"Option {name} is not supported.")
 
     def get_value(self, name: str) -> str | None:
         """Gets the value of an option.

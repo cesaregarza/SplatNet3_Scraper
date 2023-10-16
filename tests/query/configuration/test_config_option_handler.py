@@ -161,3 +161,14 @@ class TestConfigOptionHandler:
                 mock_assign.assert_called_once_with(prefix)
             else:
                 mock_assign.assert_not_called()
+
+    def test_get_option(self) -> None:
+        test_option = MagicMock()
+        option_reference = {
+            "test": test_option,
+        }
+        handler = ConfigOptionHandler()
+        handler.option_reference = option_reference
+        assert handler.get_option("test") == test_option
+        with pytest.raises(KeyError):
+            handler.get_option("invalid")
