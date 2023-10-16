@@ -4,7 +4,7 @@ extend-ignore = E203
 per-file-ignores = 
     __init__.py:F401, E402
     tests\*:DAR101, DAR201, F401
-filename = src/*.py
+
 [darglint]
 docstring_style = google
 strictness = full

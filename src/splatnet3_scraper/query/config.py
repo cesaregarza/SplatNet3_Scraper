@@ -192,6 +192,9 @@ class Config:
         This function will move invalid options to the "unknown" section and
         move deprecated options to the "deprecated" section while replacing them
         with the new option name.
+
+        Args:
+            option (str): The name of the option.
         """
         if option not in self.config_options.SUPPORTED_OPTIONS:
             if not self.config.has_section("unknown"):

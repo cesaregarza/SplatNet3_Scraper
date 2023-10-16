@@ -4,7 +4,6 @@ from typing import cast
 
 import requests
 
-from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.exceptions import FTokenException, SplatNetException
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.auth.nso import NSO
@@ -70,8 +69,8 @@ class TokenRegenerator:
                 any other tokens that are needed.
             f_token_urls (list[str]): A list of ftoken urls to try to generate
                 the gtoken from if it has not already been generated.
-            user_agent (str, optional): The user agent to use when generating
-                the bullet token. Defaults to DEFAULT_USER_AGENT.
+            user_agent (str): The user agent to use when generating the bullet
+                token. Defaults to DEFAULT_USER_AGENT.
 
         Returns:
             Token: The bullet token that was generated.
@@ -98,8 +97,8 @@ class TokenRegenerator:
         Args:
             nso (NSO): An instance of the NSO class.
             f_token_urls (list[str]): A list of URLs to fetch the f_token from.
-            user_agent (str, optional): The user agent string to use for the
-                request. Defaults to DEFAULT_USER_AGENT.
+            user_agent (str): The user agent string to use for the request.
+                Defaults to DEFAULT_USER_AGENT.
 
         Returns:
             dict[str, Token]: A dictionary containing all the generated tokens.

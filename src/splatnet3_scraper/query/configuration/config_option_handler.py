@@ -100,8 +100,8 @@ class ConfigOptionHandler:
         self._ADDITIONAL_OPTIONS: list[ConfigOption] = []
         self.option_reference = self.build_option_reference()
         self.prefix = prefix
-        for option in self.OPTIONS:
-            option.set_prefix(prefix)
+        if prefix is not None:
+            self.assign_prefix(prefix)
 
     def build_option_reference(self) -> dict[str, ConfigOption]:
         """Builds the option reference dictionary.
@@ -114,12 +114,23 @@ class ConfigOptionHandler:
             dict[str, ConfigOption]: The option reference dictionary.
         """
         reference = {option.name: option for option in self.OPTIONS}
-        deprecated_reference = {
-            deprecated_name: option
-            for option in self.OPTIONS
-            for deprecated_name in (option.deprecated_names or [])
-        }
+        deprecated_reference = {}
+        for option in self.OPTIONS:
+            if isinstance(option.deprecated_names, str):
+                deprecated_reference[option.deprecated_names] = option
+                continue
+            for deprecated_name in option.deprecated_names or []:
+                deprecated_reference[deprecated_name] = option
         return {**reference, **deprecated_reference}
+
+    def assign_prefix(self, prefix: str) -> None:
+        """Assigns a prefix to the options.
+
+        Args:
+            prefix (str): The prefix to assign to the options.
+        """
+        for option in self.OPTIONS:
+            option.set_prefix(prefix)
 
     @property
     def OPTIONS(self) -> list[ConfigOption]:
@@ -167,8 +178,8 @@ class ConfigOptionHandler:
             options = [options]
         self._ADDITIONAL_OPTIONS.extend(options)
         self.option_reference = self.build_option_reference()
-        for option in self.OPTIONS:
-            option.set_prefix(self.prefix)
+        if self.prefix is not None:
+            self.assign_prefix(self.prefix)
 
     def get_option(self, name: str) -> ConfigOption:
         """Gets an option from the option reference dictionary.

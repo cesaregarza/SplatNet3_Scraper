@@ -41,9 +41,6 @@ class TokenManagerConstructor:
                 until a token is successfully generated. If None is provided,
                 the default URL provided by imink will be used. Defaults to
                 None.
-            env_manager (EnvironmentVariablesManager | None): An instance of the
-                ``EnvironmentVariablesManager`` class. If one is not provided, a
-                new instance will be created. Defaults to None.
 
         Returns:
             TokenManager: The ``TokenManager`` object.
@@ -88,6 +85,8 @@ class TokenManagerConstructor:
                 until a token is successfully generated. If None is provided,
                 the default URL provided by imink will be used. Defaults to
                 None.
+            user_agent (str): The user agent to use when generating the bullet
+                token. Defaults to DEFAULT_USER_AGENT.
 
         Returns:
             TokenManager: The ``TokenManager`` object.
@@ -136,9 +135,16 @@ class TokenManagerConstructor:
         Args:
             env_manager (EnvironmentVariablesManager): The environment variables
                 manager to use. If not provided, a new one will be created.
-
-        Raises:
-            ValueError: If the session token environment variable is not set.
+                Defaults to None.
+            nso (NSO | None): An instance of the ``NSO`` class. If one is not
+                provided, a new instance will be created. Defaults to None.
+            f_token_url (str | list[str] | None): The URL(s) to use to generate
+                tokens. If a list is provided, each URL will be tried in order
+                until a token is successfully generated. If None is provided,
+                the default URL provided by imink will be used. Defaults to
+                None.
+            user_agent (str): The user agent to use when generating the bullet
+                token. Defaults to DEFAULT_USER_AGENT.
 
         Returns:
             TokenManager: The token manager with the tokens loaded.

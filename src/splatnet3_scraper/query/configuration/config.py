@@ -92,11 +92,11 @@ class Config:
         common way to create a ``Config`` object.
 
         Args:
-            file_path (str | None): The path to the file to load the config from.
-                If None is provided, the default file path will be used.
+            file_path (str | None): The path to the file to load the config
+                from. If None is provided, the default file path will be used.
                 Defaults to None.
-            write_to_file (bool): Whether or not to write the config to the file.
-                Defaults to True.
+            write_to_file (bool): Whether or not to write the config to the
+                file. Defaults to True.
 
         Returns:
             Config: The ``Config`` object created from the file.

@@ -1,6 +1,5 @@
 import logging
 
-from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.tokens.environment_manager import (
     EnvironmentVariablesManager,
@@ -61,6 +60,9 @@ class TokenManager:
                 the origin is "memory" or "env", this is ignored. If the origin
                 is "file", this should be the path to the file. Defaults to
                 None.
+
+        Raises:
+            ValueError: If the ``NSO`` object does not have a session token.
         """
         nso = nso or NSO.new_instance()
         self.keychain = TokenKeychain()
@@ -89,7 +91,8 @@ class TokenManager:
         overwrite the previous origin.
 
         Args:
-            origin (str): The origin of the token manager.
+            origin (ORIGIN): The origin of the token manager. One of "memory",
+                "env", or "file".
             data (str | None): Additional data about the origin. For example,
                 if the token manager was loaded from a config file, this would
                 be the path to the config file. On the other hand, if the token
