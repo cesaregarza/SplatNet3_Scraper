@@ -9,6 +9,7 @@ from splatnet3_scraper.auth.tokens import (
     TokenManager,
     TokenManagerConstructor,
 )
+from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.configuration.config_option_handler import (
     ConfigOptionHandler,
 )
@@ -30,130 +31,68 @@ class Config:
 
     def __init__(
         self,
+        handler: ConfigOptionHandler,
         *,
         token_manager: TokenManager | None = None,
-        file_path: str | None = None,
-        write_to_file: bool = False,
-        prefix: str = "SN3S",
+        output_file_path: str | None = None,
     ) -> None:
-        self.config = configparser.ConfigParser()
         self._token_manager = token_manager
-        self._file_path = file_path
-        self._write_to_file = write_to_file
-        self._prefix = prefix
+        self._output_file_path = output_file_path
 
-        self.handler = ConfigOptionHandler(prefix=self._prefix)
-
-        self.initialize()
-
-    def initialize(self) -> None:
-        """Initializes the class.
-
-        Reads the ConfigParser object from the file and initializes the
-        ``TokenManager`` object.
-        """
-        if self._file_path is not None:
-            self.load_from_file(self._file_path)
-
-        if self._token_manager is None:
-            self._token_manager = self.initialize_token_manager()
-
-    def load_from_file(self, file_path: str) -> None:
-        """Loads the config from a file.
-
-        Args:
-            file_path (str): The path to the file to load the config from.
-        """
-        self.config.read(file_path)
-
-    def initialize_token_manager(self) -> TokenManager:
-        """Initializes and returns a ``TokenManager`` object from the set
-        config attribute.
-
-        Returns:
-            TokenManager: The ``TokenManager`` object.
-        """
-        # The config object is already initialized, so we can just use it. The
-        # tokens are stored in the "token" section of the config object.
-
-        # Get the tokens from the "Tokens" section of the config file.
-        tokens = self.config["Tokens"]
-        session_token = tokens.get("session_token")
-        gtoken = tokens.get("gtoken")
-        bullet_token = tokens.get("bullet_token")
-
-        # Load options from the "Options" section of the config file.
-        try:
-            options = self.config["Options"]
-        except KeyError:
-            options = None
-
-        if options is not None:
-            f_token_url = options.get("f_token_url")
-            user_agent = options.get("user_agent")
-            kwargs = {
-                "f_token_url": f_token_url,
-                "user_agent": user_agent,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        else:
-            kwargs = {}
-
-        return TokenManagerConstructor.from_tokens(
-            session_token=session_token,
-            gtoken=gtoken,
-            bullet_token=bullet_token,
-            **kwargs,
-        )
-
-    def get_value(self, option: str) -> str | None:
-        """Gets the value of the option.
-
-        Args:
-            option (str): The name of the option.
-
-        Returns:
-            str | None: The value of the option.
-        """
-
-    @staticmethod
-    def from_file(
-        file_path: str | None = None,
-        *,
-        write_to_file: bool = True,
-    ) -> Config:
-        """Creates a ``Config`` object from a file. This method is the most
-        common way to create a ``Config`` object.
-
-        Args:
-            file_path (str | None): The path to the file to load the config
-                from. If None is provided, the default file path will be used.
-                Defaults to None.
-            write_to_file (bool): Whether or not to write the config to the
-                file. Defaults to True.
-
-        Returns:
-            Config: The ``Config`` object created from the file.
-        """
-        file_path = file_path or Config.DEFAULT_CONFIG_PATH
-        return Config(
-            file_path=file_path,
-            write_to_file=write_to_file,
-        )
+        self.handler = handler
 
     @property
     def token_manager(self) -> TokenManager:
-        """Returns the ``TokenManager`` object.
-
-        Acts as a TypeGuard for the ``_token_manager`` attribute, ensuring that
-        a ``TokenManager`` object is always returned.
+        """The ``TokenManager`` object used to manage the tokens. Acts as a
+        TypeGuard for the ``_token_manager`` attribute.
 
         Raises:
-            ValueError: If the ``_token_manager`` attribute is None.
+            ValueError: If the token manager has not been initialized.
 
         Returns:
-            TokenManager: The ``TokenManager`` object.
+            TokenManager: The ``TokenManager`` object used to manage the tokens.
         """
         if self._token_manager is None:
-            raise ValueError("Token manager not initialized")
+            raise ValueError("Token manager not initialized.")
         return self._token_manager
+
+    def regenerate_tokens(self) -> None:
+        """Regenerates the tokens and updates the config."""
+        self.token_manager.regenerate_tokens()
+        # Add tokens to config
+        for token in [
+            TOKENS.SESSION_TOKEN,
+            TOKENS.GTOKEN,
+            TOKENS.BULLET_TOKEN,
+        ]:
+            self.handler.set_value(
+                token,
+                self.token_manager.get_token(token).value,
+            )
+
+    @property
+    def session_token(self) -> str:
+        """The session token.
+
+        Returns:
+            str: The session token.
+        """
+        return self.token_manager.get_token(TOKENS.SESSION_TOKEN).value
+
+    @property
+    def gtoken(self) -> str:
+        """The gtoken.
+
+        Returns:
+            str: The gtoken.
+        """
+        return self.token_manager.get_token(TOKENS.GTOKEN).value
+
+    @property
+    def bullet_token(self) -> str:
+        """The bullet token.
+
+        Returns:
+            str: The bullet token.
+        """
+        return self.token_manager.get_token(TOKENS.BULLET_TOKEN).value
