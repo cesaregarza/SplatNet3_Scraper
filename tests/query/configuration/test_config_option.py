@@ -1,5 +1,5 @@
 from typing import Callable
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -112,3 +112,83 @@ class TestConfigOption:
             assert option.value == default
         else:
             assert option.value == callback(value) or default
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            None,
+            "1",
+        ],
+        ids=[
+            "No value",
+            "With value",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "default",
+        [
+            None,
+            "3",
+        ],
+        ids=[
+            "No default",
+            "With default",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "env_var",
+        [
+            None,
+            "test",
+        ],
+        ids=[
+            "No env var",
+            "With env var",
+        ],
+    )
+    def test_get_value(
+        self,
+        value: str | None,
+        default: str | None,
+        env_var: str | None,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        option = ConfigOption(
+            name="test",
+            default=default,
+            env_var="TEST_ENV_VAR",
+        )
+        if value is not None:
+            option.set_value(value)
+
+        with monkeypatch.context() as m:
+            if env_var is not None:
+                m.setenv("TEST_ENV_VAR", env_var)
+            if (value is None) and (default is None) and (env_var is None):
+                with pytest.raises(ValueError):
+                    option.get_value()
+                return
+
+            return_value = option.get_value()
+            if value is not None:
+                assert return_value == value
+            elif env_var is not None:
+                assert return_value == env_var
+                assert option.value == env_var
+            else:
+                assert return_value == default
+
+    def test_set_prefix(self) -> None:
+        option = ConfigOption(
+            name="test",
+            default=True,
+            deprecated_names=["test2"],
+            deprecated_section="test3",
+            callback=callback,
+            section="test4",
+            env_var="test5",
+            env_prefix="test6",
+        )
+        assert option.env_prefix == "test6"
+        option.set_prefix("test7")
+        assert option.env_prefix == "test7"
