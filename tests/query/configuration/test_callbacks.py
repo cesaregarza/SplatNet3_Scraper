@@ -51,3 +51,33 @@ class TestCallbacks:
                 f_token_url_callback(f_token_url)
         else:
             assert f_token_url_callback(f_token_url) == expected
+
+    @pytest.mark.parametrize(
+        "log_level, expected",
+        [
+            ("CRITICAL", "CRITICAL"),
+            ("ERROR", "ERROR"),
+            ("WARNING", "WARNING"),
+            ("INFO", "INFO"),
+            ("DEBUG", "DEBUG"),
+            (None, "INFO"),
+            ("invalid", None),
+        ],
+        ids=[
+            "CRITICAL",
+            "ERROR",
+            "WARNING",
+            "INFO",
+            "DEBUG",
+            "default",
+            "invalid",
+        ],
+    )
+    def test_log_level_callback(
+        self, log_level: str | None, expected: str | None
+    ) -> None:
+        if log_level == "invalid":
+            with pytest.raises(ValueError):
+                log_level_callback(log_level)
+        else:
+            assert log_level_callback(log_level) == expected
