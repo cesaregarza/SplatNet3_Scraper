@@ -183,6 +183,16 @@ class TestConfigOptionHandler:
         handler.option_reference = option_reference
         assert handler.get_value("test") == "test"
 
+    def test_set_value(self) -> None:
+        test_option = MagicMock()
+        option_reference = {
+            "test": test_option,
+        }
+        handler = ConfigOptionHandler()
+        handler.option_reference = option_reference
+        handler.set_value("test", "test")
+        test_option.set_value.assert_called_once_with("test")
+
     def test_get_section(self) -> None:
         breaks = [3, 3, 3]
         options = [

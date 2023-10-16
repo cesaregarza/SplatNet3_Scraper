@@ -211,6 +211,15 @@ class ConfigOptionHandler:
         """
         return self.get_option(name).get_value()
 
+    def set_value(self, name: str, value: str | None) -> None:
+        """Sets the value of an option.
+
+        Args:
+            name (str): The name of the option to set.
+            value (str | None): The value to set the option to.
+        """
+        self.get_option(name).set_value(value)
+
     def get_section(self, section: str) -> list[ConfigOption]:
         """Gets all the options in a section.
 
