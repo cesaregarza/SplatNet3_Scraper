@@ -182,3 +182,16 @@ class TestConfigOptionHandler:
         handler = ConfigOptionHandler()
         handler.option_reference = option_reference
         assert handler.get_value("test") == "test"
+
+    def test_get_section(self) -> None:
+        breaks = [3, 3, 3]
+        options = [
+            MagicMock(section=f"section_{i}", name=f"test_{j}")
+            for i, x in enumerate(breaks)
+            for j in range(x)
+        ]
+        with patch(handler_path + ".OPTIONS", new=options):
+            handler = ConfigOptionHandler()
+            assert handler.get_section("section_0") == options[:3]
+            assert handler.get_section("section_1") == options[3:6]
+            assert handler.get_section("section_2") == options[6:]
