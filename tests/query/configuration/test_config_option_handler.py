@@ -74,3 +74,11 @@ class TestConfigOptionHandler:
 
         for i in range(sum(deprecated_nums)):
             assert f"deprecated_{i}" in option_reference
+    
+    def test_assign_prefix(self) -> None:
+        prefix = "test"
+        handler = ConfigOptionHandler()
+        handler.assign_prefix_to_options(prefix)
+        assert handler.prefix is None
+        for option in handler.OPTIONS:
+            assert option.env_prefix == prefix

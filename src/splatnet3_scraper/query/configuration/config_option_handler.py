@@ -101,7 +101,7 @@ class ConfigOptionHandler:
         self.option_reference = self.build_option_reference()
         self.prefix = prefix
         if prefix is not None:
-            self.assign_prefix(prefix)
+            self.assign_prefix_to_options(prefix)
 
     def build_option_reference(self) -> dict[str, ConfigOption]:
         """Builds the option reference dictionary.
@@ -123,8 +123,10 @@ class ConfigOptionHandler:
                 deprecated_reference[deprecated_name] = option
         return {**reference, **deprecated_reference}
 
-    def assign_prefix(self, prefix: str) -> None:
+    def assign_prefix_to_options(self, prefix: str) -> None:
         """Assigns a prefix to the options.
+
+        Does NOT assign the prefix to the object itself.
 
         Args:
             prefix (str): The prefix to assign to the options.
@@ -179,7 +181,7 @@ class ConfigOptionHandler:
         self._ADDITIONAL_OPTIONS.extend(options)
         self.option_reference = self.build_option_reference()
         if self.prefix is not None:
-            self.assign_prefix(self.prefix)
+            self.assign_prefix_to_options(self.prefix)
 
     def get_option(self, name: str) -> ConfigOption:
         """Gets an option from the option reference dictionary.
