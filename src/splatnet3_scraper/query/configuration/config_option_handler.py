@@ -176,7 +176,7 @@ class ConfigOptionHandler:
             options (ConfigOption | list[ConfigOption]): The list of options to
                 add.
         """
-        if isinstance(options, ConfigOption):
+        if not isinstance(options, list):
             options = [options]
         self._ADDITIONAL_OPTIONS.extend(options)
         self.option_reference = self.build_option_reference()

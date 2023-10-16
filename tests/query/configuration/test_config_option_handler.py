@@ -116,3 +116,48 @@ class TestConfigOptionHandler:
             assert sorted(handler.SECTIONS) == [
                 f"section_{i}" for i in range(len(breaks))
             ]
+
+    @pytest.mark.parametrize(
+        "option_type",
+        [
+            "ConfigOption",
+            "list",
+        ],
+        ids=[
+            "ConfigOption",
+            "list[ConfigOption]",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "prefix",
+        [
+            "test",
+            None,
+        ],
+        ids=[
+            "prefix",
+            "no prefix",
+        ],
+    )
+    def test_add_options(self, option_type: str, prefix: str | None) -> None:
+        option = MagicMock()
+        if option_type == "list":
+            option = [option]
+            expected = option
+        else:
+            expected = [option]
+        with (
+            patch(handler_path + ".build_option_reference") as mock_build,
+            patch(handler_path + ".assign_prefix_to_options") as mock_assign,
+        ):
+            handler = ConfigOptionHandler(prefix=prefix)
+            mock_build.reset_mock()
+            mock_assign.reset_mock()
+            handler.add_options(option)
+            assert handler._ADDITIONAL_OPTIONS == expected
+            mock_build.assert_called_once_with()
+
+            if prefix is not None:
+                mock_assign.assert_called_once_with(prefix)
+            else:
+                mock_assign.assert_not_called()
