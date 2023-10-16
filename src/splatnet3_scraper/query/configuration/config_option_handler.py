@@ -91,15 +91,13 @@ class ConfigOptionHandler:
         ),
     )
 
-    _ADDITIONAL_OPTIONS: list[ConfigOption]
-
-    def __init__(self, prefix: str) -> None:
+    def __init__(self, prefix: str | None = None) -> None:
         """Initializes the class.
 
         This method initializes the class and sets up the additional options
         attribute. It also builds the option reference dictionary.
         """
-        self._ADDITIONAL_OPTIONS = []
+        self._ADDITIONAL_OPTIONS: list[ConfigOption] = []
         self.option_reference = self.build_option_reference()
         self.prefix = prefix
         for option in self.OPTIONS:
