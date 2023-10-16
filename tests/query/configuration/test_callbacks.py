@@ -27,3 +27,27 @@ class TestCallbacks:
                 session_token_callback(session_token)
         else:
             assert session_token_callback(session_token) == session_token
+
+    @pytest.mark.parametrize(
+        "f_token_url, expected",
+        [
+            ("f_token_url", ["f_token_url"]),
+            ("f_token_url_1,f_token_url_2", ["f_token_url_1", "f_token_url_2"]),
+            (["f_token_url"], ["f_token_url"]),
+            (None, None),
+        ],
+        ids=[
+            "valid",
+            "valid comma separated",
+            "valid list",
+            "invalid",
+        ],
+    )
+    def test_f_token_url_callback(
+        self, f_token_url: str | list[str] | None, expected: list[str] | None
+    ) -> None:
+        if f_token_url is None:
+            with pytest.raises(ValueError):
+                f_token_url_callback(f_token_url)
+        else:
+            assert f_token_url_callback(f_token_url) == expected
