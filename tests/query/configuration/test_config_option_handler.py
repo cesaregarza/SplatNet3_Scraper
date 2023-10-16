@@ -74,7 +74,7 @@ class TestConfigOptionHandler:
 
         for i in range(sum(deprecated_nums)):
             assert f"deprecated_{i}" in option_reference
-    
+
     def test_assign_prefix(self) -> None:
         prefix = "test"
         handler = ConfigOptionHandler()
@@ -82,7 +82,7 @@ class TestConfigOptionHandler:
         assert handler.prefix is None
         for option in handler.OPTIONS:
             assert option.env_prefix == prefix
-    
+
     def test_OPTIONS(self) -> None:
         options = (1, 2, 3)
         add_options = [4, 5, 6]
@@ -94,3 +94,11 @@ class TestConfigOptionHandler:
             handler = ConfigOptionHandler()
             handler._ADDITIONAL_OPTIONS = add_options
             assert handler.OPTIONS == list(options) + add_options
+
+    def test_SUPPORTED_OPTIONS(self) -> None:
+        option_reference = {
+            f"test_{i}": MagicMock(name=f"test_{i}") for i in range(10)
+        }
+        handler = ConfigOptionHandler()
+        handler.option_reference = option_reference
+        assert handler.SUPPORTED_OPTIONS == list(option_reference.keys())
