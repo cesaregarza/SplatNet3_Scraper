@@ -172,3 +172,13 @@ class TestConfigOptionHandler:
         assert handler.get_option("test") == test_option
         with pytest.raises(KeyError):
             handler.get_option("invalid")
+
+    def test_get_value(self) -> None:
+        test_option = MagicMock()
+        test_option.get_value.return_value = "test"
+        option_reference = {
+            "test": test_option,
+        }
+        handler = ConfigOptionHandler()
+        handler.option_reference = option_reference
+        assert handler.get_value("test") == "test"
