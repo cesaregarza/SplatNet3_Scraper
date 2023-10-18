@@ -217,6 +217,13 @@ class TestConfig:
                 output_file_path=expected_file_path,
             )
 
+    class TestFromFileNoMock:
+        def test_extra_tokens(self, extra_tokens: str) -> None:
+            config = Config.from_file(
+                extra_tokens,
+            )
+            assert config.session_token == "test_session_token"
+
     @pytest.mark.parametrize(
         "prefix",
         [

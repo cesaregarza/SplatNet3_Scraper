@@ -69,10 +69,11 @@ class TokenManager:
         # Check that nso has a session token
         try:
             session_token = nso.session_token
+            self.nso = nso
             self.add_token(session_token, TOKENS.SESSION_TOKEN)
         except ValueError as e:
             raise e
-        self.nso = nso
+
         if isinstance(f_token_url, str):
             self.f_token_url = [f_token_url]
         else:
