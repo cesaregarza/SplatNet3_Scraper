@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
+from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.configuration.config import Config
 from splatnet3_scraper.query.configuration.config_option_handler import (
     ConfigOptionHandler,
@@ -43,3 +44,19 @@ class TestConfig:
         config.regenerate_tokens()
         mock_token_manager.regenerate_tokens.assert_called_once_with()
         assert mock_handler.set_value.call_count == 3
+
+    @pytest.mark.parametrize(
+        "token",
+        [
+            TOKENS.SESSION_TOKEN,
+            TOKENS.GTOKEN,
+            TOKENS.BULLET_TOKEN,
+        ],
+        ids=["session_token", "gtoken", "bullet_token"],
+    )
+    def test_token_properties(self, token: str) -> None:
+        mock_token_manager = MagicMock()
+        mock_token_manager.get_token.return_value.value = "test"
+        config = Config(MagicMock(), token_manager=mock_token_manager)
+        assert getattr(config, token.lower()) == "test"
+        mock_token_manager.get_token.assert_called_once_with(token)
