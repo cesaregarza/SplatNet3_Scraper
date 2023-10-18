@@ -1,14 +1,9 @@
 from __future__ import annotations
 
 import configparser
-from typing import Literal, TypeVar, overload
+from typing import TypeVar
 
-from splatnet3_scraper.auth.tokens import (
-    EnvironmentVariablesManager,
-    Token,
-    TokenManager,
-    TokenManagerConstructor,
-)
+from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.configuration.config_option_handler import (
     ConfigOptionHandler,
