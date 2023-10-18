@@ -96,6 +96,29 @@ class TestConfig:
         mock_handler.get_value.assert_called_once_with("test")
 
     @pytest.mark.parametrize(
+        "option",
+        [
+            "test",
+            TOKENS.SESSION_TOKEN,
+        ],
+        ids=[
+            "normal option",
+            "token",
+        ],
+    )
+    def test_set_value(self, option: str) -> None:
+        mock_handler = MagicMock()
+        mock_token_manager = MagicMock()
+        config = Config(mock_handler, token_manager=mock_token_manager)
+        config.set_value(option, "test")
+        mock_handler.set_value.assert_called_once_with(option, "test")
+        if option == TOKENS.SESSION_TOKEN:
+            mock_token_manager.add_token.assert_called_once_with(
+                mock_handler.tokens[option],
+                option,
+            )
+
+    @pytest.mark.parametrize(
         "save_to_file",
         [
             True,

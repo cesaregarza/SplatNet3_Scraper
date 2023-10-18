@@ -132,15 +132,16 @@ class Config:
             value (str | None): The value to set the option to.
         """
         self.handler.set_value(option, value)
-        session_token = self.get_value(TOKENS.SESSION_TOKEN)
-        gtoken = self.get_value(TOKENS.GTOKEN)
-        bullet_token = self.get_value(TOKENS.BULLET_TOKEN)
         if option in [
             TOKENS.SESSION_TOKEN,
             TOKENS.GTOKEN,
             TOKENS.BULLET_TOKEN,
         ]:
-            self.token_manager.add_token(self.tokens)
+            tokens = self.handler.tokens
+            self.token_manager.add_token(
+                tokens[option],
+                option,
+            )
 
     @staticmethod
     def from_config_handler(
