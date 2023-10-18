@@ -60,3 +60,37 @@ class TestConfig:
         config = Config(MagicMock(), token_manager=mock_token_manager)
         assert getattr(config, token.lower()) == "test"
         mock_token_manager.get_token.assert_called_once_with(token)
+
+    @pytest.mark.parametrize(
+        "default",
+        [
+            "default",
+            None,
+        ],
+        ids=[
+            "default",
+            "no default",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "test",
+            None,
+        ],
+        ids=[
+            "value",
+            "no value",
+        ],
+    )
+    def test_get_value(self, value: str | None, default: str | None) -> None:
+        mock_handler = MagicMock()
+        mock_handler.get_value.return_value = value
+        config = Config(mock_handler)
+        if value is None and default is None:
+            assert config.get_value("test") is None
+        elif value is None:
+            assert config.get_value("test", default) == default
+        else:
+            assert config.get_value("test", default) == value
+        mock_handler.get_value.assert_called_once_with("test")
