@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.configuration.config_option import ConfigOption
 from splatnet3_scraper.query.configuration.config_option_handler import (
     ConfigOptionHandler,
@@ -115,6 +116,25 @@ class TestConfigOptionHandler:
             assert sorted(handler.SECTIONS) == [
                 f"section_{i}" for i in range(len(breaks))
             ]
+
+    def test_tokens_property(self) -> None:
+        def mock_get_value(self, name: str) -> str:
+            if name == TOKENS.SESSION_TOKEN:
+                return "session_token"
+            elif name == TOKENS.GTOKEN:
+                return "gtoken"
+            elif name == TOKENS.BULLET_TOKEN:
+                return "bullet_token"
+            else:
+                raise ValueError(f"Invalid token name: {name}")
+
+        with patch(handler_path + ".get_value", new=mock_get_value) as mock_gv:
+            tokens = ConfigOptionHandler().tokens
+            assert tokens == {
+                TOKENS.SESSION_TOKEN: "session_token",
+                TOKENS.GTOKEN: "gtoken",
+                TOKENS.BULLET_TOKEN: "bullet_token",
+            }
 
     @pytest.mark.parametrize(
         "option_type",

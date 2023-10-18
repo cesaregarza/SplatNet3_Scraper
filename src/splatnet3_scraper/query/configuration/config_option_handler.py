@@ -171,6 +171,19 @@ class ConfigOptionHandler:
         """
         return list(set(option.section for option in self.OPTIONS))
 
+    @property
+    def tokens(self) -> dict[str, str]:
+        """The tokens.
+
+        Returns:
+            dict[str, str]: The tokens.
+        """
+        return {
+            TOKENS.SESSION_TOKEN: self.get_value(TOKENS.SESSION_TOKEN),
+            TOKENS.GTOKEN: self.get_value(TOKENS.GTOKEN),
+            TOKENS.BULLET_TOKEN: self.get_value(TOKENS.BULLET_TOKEN),
+        }
+
     def add_options(self, options: ConfigOption | list[ConfigOption]) -> None:
         """Add options to the list of additional options.
 

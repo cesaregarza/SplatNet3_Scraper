@@ -95,6 +95,19 @@ class Config:
         """
         return self.token_manager.get_token(TOKENS.BULLET_TOKEN).value
 
+    @property
+    def tokens(self) -> dict[str, str]:
+        """The tokens.
+
+        Returns:
+            dict[str, str]: The tokens.
+        """
+        return {
+            TOKENS.SESSION_TOKEN: self.session_token,
+            TOKENS.GTOKEN: self.gtoken,
+            TOKENS.BULLET_TOKEN: self.bullet_token,
+        }
+
     def get_value(self, option: str, default: T = None) -> str | T:
         """Gets the value of the option.
 
@@ -110,7 +123,7 @@ class Config:
         if return_value is None:
             return default
         return return_value
-    
+
     def set_value(self, option: str, value: str | None) -> None:
         """Sets the value of the option.
 
@@ -119,12 +132,15 @@ class Config:
             value (str | None): The value to set the option to.
         """
         self.handler.set_value(option, value)
+        session_token = self.get_value(TOKENS.SESSION_TOKEN)
+        gtoken = self.get_value(TOKENS.GTOKEN)
+        bullet_token = self.get_value(TOKENS.BULLET_TOKEN)
         if option in [
             TOKENS.SESSION_TOKEN,
             TOKENS.GTOKEN,
             TOKENS.BULLET_TOKEN,
         ]:
-            self.token_manager.get_token(option)
+            self.token_manager.add_token(self.tokens)
 
     @staticmethod
     def from_config_handler(

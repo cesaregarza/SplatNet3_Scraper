@@ -85,7 +85,7 @@ class TestTokenKeychain:
             frozen_time.tick(60)
             new_timestamp = time.time()
             overwrite_token = keychain.add_token(
-                "overwrite_value", self.token.name, new_timestamp 
+                "overwrite_value", self.token.name, new_timestamp
             )
             assert keychain.get(self.token.name) == "overwrite_value"
             assert overwrite_token.timestamp == new_timestamp
