@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import configparser
+import copy
 
 from splatnet3_scraper.constants import (
     DEFAULT_F_TOKEN_URL,
@@ -27,7 +28,7 @@ class ConfigOptionHandler:
     deprecated names an option may have.
     """
 
-    _OPTIONS = (
+    _BASE_OPTIONS = (
         ConfigOption(
             name=TOKENS.SESSION_TOKEN,
             default=None,
@@ -99,6 +100,9 @@ class ConfigOptionHandler:
         This method initializes the class and sets up the additional options
         attribute. It also builds the option reference dictionary.
         """
+        # Make a copy of the base options so that we don't modify the original
+        # class attribute
+        self._OPTIONS = copy.deepcopy(self._BASE_OPTIONS)
         self._ADDITIONAL_OPTIONS: list[ConfigOption] = []
         self.option_reference = self.build_option_reference()
         self.prefix = prefix

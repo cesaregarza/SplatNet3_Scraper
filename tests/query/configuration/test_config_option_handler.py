@@ -87,11 +87,11 @@ class TestConfigOptionHandler:
         options = (1, 2, 3)
         add_options = [4, 5, 6]
         with (
-            patch(handler_path + "._OPTIONS", new=options),
             patch(handler_path + ".build_option_reference"),
             patch(handler_path + ".assign_prefix_to_options"),
         ):
             handler = ConfigOptionHandler()
+            handler._OPTIONS = options
             handler._ADDITIONAL_OPTIONS = add_options
             assert handler.OPTIONS == list(options) + add_options
 
