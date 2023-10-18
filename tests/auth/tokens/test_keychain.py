@@ -73,7 +73,7 @@ class TestTokenKeychain:
                 keychain.add_token(value, token_name, timestamp)
             return
 
-        with freezegun.freeze_time(test_date_str):
+        with freezegun.freeze_time(test_date_str) as frozen_time:
             new_token = keychain.add_token(value, token_name, timestamp)
             assert new_token.value == self.token.value
             assert new_token.name == self.token.name
@@ -82,3 +82,11 @@ class TestTokenKeychain:
             else:
                 assert new_token.timestamp == timestamp
             assert keychain.get(self.token.name) == self.token.value
+            frozen_time.tick(60)
+            new_timestamp = time.time()
+            overwrite_token = keychain.add_token(
+                "overwrite_value", self.token.name, new_timestamp 
+            )
+            assert keychain.get(self.token.name) == "overwrite_value"
+            assert overwrite_token.timestamp == new_timestamp
+            assert overwrite_token != new_token

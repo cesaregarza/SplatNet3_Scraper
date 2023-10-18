@@ -110,6 +110,21 @@ class Config:
         if return_value is None:
             return default
         return return_value
+    
+    def set_value(self, option: str, value: str | None) -> None:
+        """Sets the value of the option.
+
+        Args:
+            option (str): The name of the option.
+            value (str | None): The value to set the option to.
+        """
+        self.handler.set_value(option, value)
+        if option in [
+            TOKENS.SESSION_TOKEN,
+            TOKENS.GTOKEN,
+            TOKENS.BULLET_TOKEN,
+        ]:
+            self.token_manager.get_token(option)
 
     @staticmethod
     def from_config_handler(

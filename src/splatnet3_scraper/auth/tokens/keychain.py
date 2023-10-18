@@ -147,7 +147,8 @@ class TokenKeychain:
     ) -> Token:
         """Adds a token to the keychain. If the token is a string, the name of
         the token must be provided. If the token is a ``Token`` object, the
-        name of the token will be used.
+        name of the token will be used. If the token already exists, it will
+        overwrite the existing token.
 
         Args:
             token (str | Token): The token to add to the keychain.
