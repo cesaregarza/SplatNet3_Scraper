@@ -30,6 +30,7 @@ class Config:
     """
 
     DEFAULT_CONFIG_PATH = ".splatnet3_scraper"
+    DEFAULT_PREFIX = "SN3S"
 
     def __init__(
         self,
@@ -119,8 +120,21 @@ class Config:
     def from_file(
         file_path: str,
         save_to_file: bool = True,
-        prefix: str = "SN3S",
+        prefix: str = "",
     ) -> Config:
+        """Creates a ``Config`` object from a file.
+
+        Args:
+            file_path (str): The path to the file to load the config from.
+            save_to_file (bool): Whether or not to save the config to the file.
+                Defaults to True.
+            prefix (str): The prefix to use for the config options. Defaults to
+                "SN3S".
+
+        Returns:
+            Config: The ``Config`` object created from the file.
+        """
+        prefix = prefix or Config.DEFAULT_PREFIX
         cparse = configparser.ConfigParser()
         cparse.read(file_path)
         handler = ConfigOptionHandler(prefix=prefix)
@@ -144,8 +158,19 @@ class Config:
     @staticmethod
     def from_dict(
         config: dict[str, str],
-        prefix: str = "SN3S",
+        prefix: str = "",
     ) -> Config:
+        """Creates a ``Config`` object from a dictionary.
+
+        Args:
+            config (dict[str, str]): The dictionary to load the config from.
+            prefix (str): The prefix to use for the config options. Defaults to
+                "SN3S".
+
+        Returns:
+            Config: The ``Config`` object created from the dictionary.
+        """
+        prefix = prefix or Config.DEFAULT_PREFIX
         handler = ConfigOptionHandler(prefix=prefix)
         handler.read_from_dict(config)
 
