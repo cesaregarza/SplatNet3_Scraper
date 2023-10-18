@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import configparser
-from typing import Literal, overload
+from typing import Literal, TypeVar, overload
 
 from splatnet3_scraper.auth.tokens import (
     EnvironmentVariablesManager,
@@ -13,6 +13,8 @@ from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.configuration.config_option_handler import (
     ConfigOptionHandler,
 )
+
+T = TypeVar("T")
 
 
 class Config:
@@ -96,3 +98,27 @@ class Config:
             str: The bullet token.
         """
         return self.token_manager.get_token(TOKENS.BULLET_TOKEN).value
+
+    def get_value(self, option: str, default: T = None) -> str | T:
+        """Gets the value of the option.
+
+        Args:
+            option (str): The name of the option.
+            default (T): The default value to return if the option is not
+                defined.
+
+        Returns:
+            str | T: The value of the option.
+        """
+        return_value = self.handler.get_value(option)
+        if return_value is None:
+            return default
+        return return_value
+
+    @staticmethod
+    def from_file(
+        file_path: str,
+        save_to_file: bool = True,
+    ) -> Config:
+        cparse = configparser.ConfigParser()
+        cparse.read(file_path)

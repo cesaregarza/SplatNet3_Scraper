@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import configparser
+
 from splatnet3_scraper.constants import (
     DEFAULT_F_TOKEN_URL,
     DEFAULT_USER_AGENT,
@@ -230,3 +232,52 @@ class ConfigOptionHandler:
             list[ConfigOption]: The list of options in the section.
         """
         return [option for option in self.OPTIONS if option.section == section]
+
+    def read_from_configparser(self, config: configparser.ConfigParser) -> None:
+        """Reads the config from a ConfigParser object and sets the values in
+        the handler.
+
+        Args:
+            config (configparser.ConfigParser): The ConfigParser object to read
+                the config from.
+        """
+        for section in config.sections():
+            for option in config.options(section):
+                value = config.get(section, option)
+                try:
+                    self.set_value(option, value)
+                except KeyError:
+                    pass
+
+    def read_from_dict(self, config: dict[str, str]) -> None:
+        """Reads the config from a dictionary and sets the values in the
+        handler.
+
+        Args:
+            config (dict[str, str]): The dictionary to read the config from.
+        """
+        for option, value in config.items():
+            try:
+                self.set_value(option, value)
+            except KeyError:
+                pass
+
+    def save_to_configparser(
+        self, config: configparser.ConfigParser | None = None
+    ) -> None:
+        """Saves the config to a ConfigParser object.
+
+        Args:
+            config (configparser.ConfigParser | None): The ConfigParser object
+                to save the config to. If None, a new ConfigParser object will
+                be created.
+        """
+        if config is None:
+            config = configparser.ConfigParser()
+        for option in self.OPTIONS:
+            if option.value is None:
+                continue
+            if not config.has_section(option.section):
+                config.add_section(option.section)
+            config.set(option.section, option.name, option.value)
+        return config
