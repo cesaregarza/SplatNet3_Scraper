@@ -112,6 +112,38 @@ class Config:
         return return_value
 
     @staticmethod
+    def from_config_handler(
+        handler: ConfigOptionHandler,
+        output_file_path: str | None = None,
+    ) -> Config:
+        """Creates a ``Config`` object from a ``ConfigOptionHandler`` object.
+
+        Args:
+            handler (ConfigOptionHandler): The ``ConfigOptionHandler`` object
+                to create the ``Config`` object from.
+            output_file_path (str | None): The path to the file to save the
+                config to. Defaults to None.
+
+        Returns:
+            Config: The ``Config`` object created from the
+                ``ConfigOptionHandler`` object.
+        """
+        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
+        gtoken = handler.get_value(TOKENS.GTOKEN)
+        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        token_manager = TokenManagerConstructor.from_tokens(
+            session_token=session_token,
+            gtoken=gtoken,
+            bullet_token=bullet_token,
+        )
+
+        return Config(
+            handler,
+            token_manager=token_manager,
+            output_file_path=output_file_path,
+        )
+
+    @staticmethod
     def from_file(
         file_path: str,
         save_to_file: bool = True,
@@ -134,19 +166,8 @@ class Config:
         cparse.read(file_path)
         handler = ConfigOptionHandler(prefix=prefix)
         handler.read_from_configparser(cparse)
-
-        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
-        gtoken = handler.get_value(TOKENS.GTOKEN)
-        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
-        token_manager = TokenManagerConstructor.from_tokens(
-            session_token=session_token,
-            gtoken=gtoken,
-            bullet_token=bullet_token,
-        )
-
-        return Config(
+        return Config.from_config_handler(
             handler,
-            token_manager=token_manager,
             output_file_path=file_path if save_to_file else None,
         )
 
@@ -169,17 +190,4 @@ class Config:
         handler = ConfigOptionHandler(prefix=prefix)
         handler.read_from_dict(config)
 
-        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
-        gtoken = handler.get_value(TOKENS.GTOKEN)
-        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
-        token_manager = TokenManagerConstructor.from_tokens(
-            session_token=session_token,
-            gtoken=gtoken,
-            bullet_token=bullet_token,
-        )
-
-        return Config(
-            handler,
-            token_manager=token_manager,
-            output_file_path=None,
-        )
+        return Config.from_config_handler(handler)

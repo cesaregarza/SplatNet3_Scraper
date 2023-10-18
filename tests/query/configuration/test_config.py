@@ -96,6 +96,45 @@ class TestConfig:
         mock_handler.get_value.assert_called_once_with("test")
 
     @pytest.mark.parametrize(
+        "save_to_file",
+        [
+            True,
+            False,
+        ],
+        ids=[
+            "save to file",
+            "no save to file",
+        ],
+    )
+    def test_from_config_handler(self, save_to_file: bool) -> None:
+        mock_handler = MagicMock()
+        mock_token_manager = MagicMock()
+        expected_file_path = "test" if save_to_file else None
+
+        with (
+            patch(config_path) as mock_config,
+            patch(base_config_path + ".TokenManagerConstructor") as mock_tmc,
+        ):
+            mock_config.DEFAULT_PREFIX = "SN3S"
+            mock_tmc.from_tokens.return_value = mock_token_manager
+
+            config = Config.from_config_handler(
+                mock_handler,
+                output_file_path=expected_file_path,
+            )
+            mock_tmc.from_tokens.assert_called_once_with(
+                session_token=mock_handler.get_value.return_value,
+                gtoken=mock_handler.get_value.return_value,
+                bullet_token=mock_handler.get_value.return_value,
+            )
+            mock_config.assert_called_once_with(
+                mock_handler,
+                token_manager=mock_token_manager,
+                output_file_path=expected_file_path,
+            )
+            assert mock_handler.get_value.call_count == 3
+
+    @pytest.mark.parametrize(
         "prefix",
         [
             "test",
@@ -124,8 +163,6 @@ class TestConfig:
     ) -> None:
         mock_handler_instance = MagicMock()
         mock_configp = MagicMock()
-        mock_config_instance = MagicMock()
-        mock_constructor = MagicMock()
 
         expected_prefix = prefix or "SN3S"
         expected_file_path = "test" if save_to_file else None
@@ -135,14 +172,11 @@ class TestConfig:
                 base_config_path + ".configparser.ConfigParser"
             ) as mock_configparser,
             patch(base_config_path + ".ConfigOptionHandler") as mock_handler,
-            patch(config_path) as mock_config,
-            patch(base_config_path + ".TokenManagerConstructor") as mock_tmc,
+            patch(config_path + ".from_config_handler") as mock_config,
         ):
             mock_configparser.return_value = mock_configp
             mock_handler.return_value = mock_handler_instance
-            mock_config.return_value = mock_config_instance
             mock_config.DEFAULT_PREFIX = "SN3S"
-            mock_tmc.from_tokens.return_value = mock_constructor
 
             config = Config.from_file(
                 "test",
@@ -155,15 +189,43 @@ class TestConfig:
             mock_handler_instance.read_from_configparser.assert_called_once_with(
                 mock_configp
             )
+            mock_config.assert_called_once_with(
+                mock_handler_instance,
+                output_file_path=expected_file_path,
+            )
 
-            assert mock_handler_instance.get_value.call_count == 3
-            mock_tmc.from_tokens.assert_called_once_with(
-                session_token=mock_handler_instance.get_value.return_value,
-                gtoken=mock_handler_instance.get_value.return_value,
-                bullet_token=mock_handler_instance.get_value.return_value,
+    @pytest.mark.parametrize(
+        "prefix",
+        [
+            "test",
+            None,
+        ],
+        ids=[
+            "prefix",
+            "no prefix",
+        ],
+    )
+    def test_from_dict(
+        self,
+        prefix: str | None,
+    ) -> None:
+        mock_handler_instance = MagicMock()
+        mock_dict = MagicMock()
+
+        expected_prefix = prefix or "SN3S"
+
+        with (
+            patch(base_config_path + ".ConfigOptionHandler") as mock_handler,
+            patch(config_path + ".from_config_handler") as mock_config,
+        ):
+            mock_handler.return_value = mock_handler_instance
+            mock_config.DEFAULT_PREFIX = "SN3S"
+
+            config = Config.from_dict(mock_dict, prefix=prefix)
+            mock_handler.assert_called_once_with(prefix=expected_prefix)
+            mock_handler_instance.read_from_dict.assert_called_once_with(
+                mock_dict
             )
             mock_config.assert_called_once_with(
                 mock_handler_instance,
-                token_manager=mock_constructor,
-                output_file_path=expected_file_path,
             )
