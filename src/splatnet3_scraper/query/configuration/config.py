@@ -119,6 +119,47 @@ class Config:
     def from_file(
         file_path: str,
         save_to_file: bool = True,
+        prefix: str = "SN3S",
     ) -> Config:
         cparse = configparser.ConfigParser()
         cparse.read(file_path)
+        handler = ConfigOptionHandler(prefix=prefix)
+        handler.read_from_configparser(cparse)
+
+        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
+        gtoken = handler.get_value(TOKENS.GTOKEN)
+        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        token_manager = TokenManagerConstructor.from_tokens(
+            session_token=session_token,
+            gtoken=gtoken,
+            bullet_token=bullet_token,
+        )
+
+        return Config(
+            handler,
+            token_manager=token_manager,
+            output_file_path=file_path if save_to_file else None,
+        )
+
+    @staticmethod
+    def from_dict(
+        config: dict[str, str],
+        prefix: str = "SN3S",
+    ) -> Config:
+        handler = ConfigOptionHandler(prefix=prefix)
+        handler.read_from_dict(config)
+
+        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
+        gtoken = handler.get_value(TOKENS.GTOKEN)
+        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        token_manager = TokenManagerConstructor.from_tokens(
+            session_token=session_token,
+            gtoken=gtoken,
+            bullet_token=bullet_token,
+        )
+
+        return Config(
+            handler,
+            token_manager=token_manager,
+            output_file_path=None,
+        )
