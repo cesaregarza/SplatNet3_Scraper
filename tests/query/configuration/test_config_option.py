@@ -58,9 +58,11 @@ class TestConfigOption:
         [
             None,
             callback_add_one,
+            callback,
         ],
         ids=[
             "No callback",
+            "With transform callback",
             "With callback",
         ],
     )

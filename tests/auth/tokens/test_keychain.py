@@ -27,6 +27,10 @@ class TestTokenKeychain:
         keychain = TokenKeychain.from_list([self.token])
         assert keychain.keychain == {self.token.name: self.token}
 
+    def test_to_dict(self) -> None:
+        keychain = TokenKeychain.from_list([self.token])
+        assert keychain.to_dict() == {self.token.name: self.token.value}
+
     def test_get(self) -> None:
         keychain = TokenKeychain.from_list([self.token])
         assert keychain.get(self.token.name) == self.token.value

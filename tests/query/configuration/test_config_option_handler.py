@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+import configparser
 
 import pytest
 
@@ -125,8 +126,6 @@ class TestConfigOptionHandler:
                 return "gtoken"
             elif name == TOKENS.BULLET_TOKEN:
                 return "bullet_token"
-            else:
-                raise ValueError(f"Invalid token name: {name}")
 
         with patch(handler_path + ".get_value", new=mock_get_value) as mock_gv:
             tokens = ConfigOptionHandler().tokens
@@ -224,3 +223,26 @@ class TestConfigOptionHandler:
             assert handler.get_section("section_0") == options[:3]
             assert handler.get_section("section_1") == options[3:6]
             assert handler.get_section("section_2") == options[6:]
+
+    def test_read_from_configparser(self) -> None:
+        count = 0
+
+        def mock_set_value(self, name: str) -> str:
+            nonlocal count
+            count += 1
+            if count == 1:
+                raise KeyError("test")
+            return name
+
+        mock_configp = MagicMock()
+        mock_sections = [MagicMock()]
+        mock_options = [MagicMock(), MagicMock(), MagicMock()]
+        mock_configp.sections.return_value = mock_sections
+        mock_configp.options.return_value = mock_options
+        with patch(handler_path + ".set_value") as mock_set:
+            mock_set.side_effect = mock_set_value
+            handler = ConfigOptionHandler()
+            handler.read_from_configparser(mock_configp)
+            mock_configp.sections.assert_called_once_with()
+            mock_configp.options.assert_called_once_with(mock_sections[0])
+            assert mock_set.call_count == len(mock_options)
