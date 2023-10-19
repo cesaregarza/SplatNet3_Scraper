@@ -238,6 +238,10 @@ class Config:
         Args:
             file_path (str | None): The path to the file to save the config to.
                 Defaults to None.
+
+        Raises:
+            ValueError: If no file path is provided and no output file path is
+                set.
         """
         file_path = file_path or self._output_file_path
         if file_path is None:

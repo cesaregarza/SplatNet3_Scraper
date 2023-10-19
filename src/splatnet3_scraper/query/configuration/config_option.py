@@ -111,10 +111,6 @@ class ConfigOption(Generic[T]):
 
         Args:
             value (str | None): The new value of the option.
-
-        Raises:
-            ValueError: If the ConfigOption type is not str and the callback
-                function is not set.
         """
         if value is None:
             self.value = self.default

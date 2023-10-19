@@ -99,6 +99,10 @@ class ConfigOptionHandler:
     def __init__(self, prefix: str | None = None) -> None:
         """Initializes the class.
 
+        Args:
+            prefix (str | None): The prefix to use for the environment
+                variables. If None, no prefix will be used. Defaults to None.
+
         This method initializes the class and sets up the additional options
         attribute. It also builds the option reference dictionary.
         """
@@ -212,7 +216,7 @@ class ConfigOptionHandler:
             name (str): The name of the option to get.
 
         Raises:
-            ValueError: If the option is not defined.
+            KeyError: If the option is not found in the option reference.
 
         Returns:
             ConfigOption: The option that was retrieved.
