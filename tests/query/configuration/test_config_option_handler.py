@@ -1,5 +1,5 @@
-from unittest.mock import MagicMock, patch
 import configparser
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -246,3 +246,26 @@ class TestConfigOptionHandler:
             mock_configp.sections.assert_called_once_with()
             mock_configp.options.assert_called_once_with(mock_sections[0])
             assert mock_set.call_count == len(mock_options)
+
+    def test_read_from_dict(self) -> None:
+        mock_dict = {
+            "test_0": "test_0",
+            "test_1": "test_1",
+            "test_2": "test_2",
+        }
+        count = 0
+
+        def mock_set_value(self, name: str) -> str:
+            nonlocal count
+            count += 1
+            if count == 1:
+                raise KeyError("test")
+            return name
+
+        with patch(handler_path + ".set_value") as mock_set:
+            mock_set.side_effect = mock_set_value
+            handler = ConfigOptionHandler()
+            handler.read_from_dict(mock_dict)
+            assert mock_set.call_count == len(mock_dict)
+            for key, value in mock_dict.items():
+                mock_set.assert_any_call(key, value)
