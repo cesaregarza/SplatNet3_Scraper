@@ -1,3 +1,6 @@
+import re
+
+delimiter = re.compile(r"\s*\,\s*")
 # Make sure all callbacks return values, even if they are not transformed.
 def session_token_callback(
     session_token: str | None,
@@ -13,7 +16,7 @@ def f_token_url_callback(f_token_url: str | list[str] | None) -> list[str]:
     elif isinstance(f_token_url, list):
         return f_token_url
     else:
-        return f_token_url.split(",")
+        return delimiter.split(f_token_url)
 
 
 def log_level_callback(log_level: str | None) -> str:

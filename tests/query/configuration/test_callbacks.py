@@ -33,12 +33,17 @@ class TestCallbacks:
         [
             ("f_token_url", ["f_token_url"]),
             ("f_token_url_1,f_token_url_2", ["f_token_url_1", "f_token_url_2"]),
+            (
+                "f_token_url_1  ,      f_token_url_2",
+                ["f_token_url_1", "f_token_url_2"],
+            ),
             (["f_token_url"], ["f_token_url"]),
             (None, None),
         ],
         ids=[
             "valid",
             "valid comma separated",
+            "valid whitespace comma separated",
             "valid list",
             "invalid",
         ],

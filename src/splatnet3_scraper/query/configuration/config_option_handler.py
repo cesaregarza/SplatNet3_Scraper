@@ -104,6 +104,7 @@ class ConfigOptionHandler:
         # class attribute
         self._OPTIONS = copy.deepcopy(self._BASE_OPTIONS)
         self._ADDITIONAL_OPTIONS: list[ConfigOption] = []
+        self.unknown_options: list[tuple[str, str]] = []
         self.option_reference = self.build_option_reference()
         self.prefix = prefix
         if prefix is not None:
@@ -214,6 +215,7 @@ class ConfigOptionHandler:
         Returns:
             ConfigOption: The option that was retrieved.
         """
+        name = name.lower()
         try:
             return self.option_reference[name]
         except KeyError:
@@ -264,7 +266,7 @@ class ConfigOptionHandler:
                 try:
                     self.set_value(option, value)
                 except KeyError:
-                    pass
+                    self.unknown_options.append((option, value))
 
     def read_from_dict(self, config: dict[str, str]) -> None:
         """Reads the config from a dictionary and sets the values in the
@@ -277,17 +279,21 @@ class ConfigOptionHandler:
             try:
                 self.set_value(option, value)
             except KeyError:
-                pass
+                self.unknown_options.append((option, value))
 
     def save_to_configparser(
         self, config: configparser.ConfigParser | None = None
-    ) -> None:
+    ) -> configparser.ConfigParser:
         """Saves the config to a ConfigParser object.
 
         Args:
             config (configparser.ConfigParser | None): The ConfigParser object
                 to save the config to. If None, a new ConfigParser object will
                 be created.
+
+        Returns:
+            configparser.ConfigParser: The ConfigParser object with the config
+                saved to it.
         """
         if config is None:
             config = configparser.ConfigParser()
@@ -297,4 +303,9 @@ class ConfigOptionHandler:
             if not config.has_section(option.section):
                 config.add_section(option.section)
             config.set(option.section, option.name, option.value)
+
+        if not config.has_section("Unknown"):
+            config.add_section("Unknown")
+        for option, value in self.unknown_options:
+            config.set("Unknown", option, value)
         return config

@@ -223,6 +223,80 @@ class TestConfig:
                 extra_tokens,
             )
             assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.unknown_options == [
+                ("extra_token", "test_extra_token")
+            ]
+            assert config.handler.get_value("country") == "US"
+            assert config.handler.get_value("language") == "en-US"
+
+        def test_no_data(self, no_data: str) -> None:
+            config = Config.from_file(
+                no_data,
+            )
+            assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.get_value("user_agent") == "test_user_agent"
+            assert config.handler.get_option("user_agent").section == "Options"
+
+        def test_no_tokens_section(self, no_tokens_section: str) -> None:
+            config = Config.from_file(
+                no_tokens_section,
+            )
+            assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.get_value("country") == "US"
+            assert config.handler.get_value("language") == "en-US"
+            assert config.handler.get_value("user_agent") == "test_user_agent"
+            assert config.handler.get_option("user_agent").section == "Options"
+
+        def test_valid(self, valid: str) -> None:
+            config = Config.from_file(
+                valid,
+            )
+            assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.get_value("country") == "US"
+            assert config.handler.get_value("language") == "en-US"
+            assert config.handler.get_value("user_agent") == "test_user_agent"
+            assert config.handler.get_option("user_agent").section == "Options"
+
+        def test_valid_with_ftoken(self, valid_with_ftoken: str) -> None:
+            config = Config.from_file(
+                valid_with_ftoken,
+            )
+            assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.get_value("country") == "US"
+            assert config.handler.get_value("language") == "en-US"
+            assert config.handler.get_value("user_agent") == "test_user_agent"
+            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_value("f_token_url") == [
+                "test_f_token_url"
+            ]
+
+        def test_valid_with_ftoken_list(
+            self, valid_with_ftoken_list: str
+        ) -> None:
+            config = Config.from_file(
+                valid_with_ftoken_list,
+            )
+            assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.get_value("country") == "US"
+            assert config.handler.get_value("language") == "en-US"
+            assert config.handler.get_value("user_agent") == "test_user_agent"
+            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_value("f_token_url") == [
+                "test_f_token_url0",
+                "test_f_token_url1",
+            ]
 
     @pytest.mark.parametrize(
         "prefix",
