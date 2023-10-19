@@ -64,8 +64,8 @@ RUN J_PATH=reports/junit \
     # Generate badges
     poetry run genbadge tests -o $J_PATH/test-badge.svg && \
     poetry run genbadge coverage -o $C_PATH/coverage-badge.svg && \
-    # Flake8 checks
-    poetry run flake8 src/ --exit-zero --format=html --htmldir ${F_PATH} --statistics --tee --output-file ${F_PATH}/flake8stats.txt && \
-    poetry run genbadge flake8 -i $F_PATH/flake8stats.txt -o $F_PATH/flake8-badge.svg && \
     # Mypy checks
-    poetry run mypy .
+    poetry run mypy . && \
+    # Flake8 checks
+    poetry run flake8 src/ --format=html --htmldir ${F_PATH} --statistics --tee --output-file ${F_PATH}/flake8stats.txt && \
+    poetry run genbadge flake8 -i $F_PATH/flake8stats.txt -o $F_PATH/flake8-badge.svg
