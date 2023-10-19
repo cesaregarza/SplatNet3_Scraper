@@ -269,3 +269,23 @@ class TestConfigOptionHandler:
             assert mock_set.call_count == len(mock_dict)
             for key, value in mock_dict.items():
                 mock_set.assert_any_call(key, value)
+
+    def test_save_to_configparser(
+        self,
+        all_config: configparser.ConfigParser,
+        expected_all: str,
+        temp_file: str,
+    ) -> None:
+        handler = ConfigOptionHandler()
+        handler.read_from_configparser(all_config)
+        config = handler.save_to_configparser()
+        with open(temp_file, "w") as f:
+            config.write(f)
+
+        with (
+            open(expected_all, "r") as f1,
+            open(temp_file, "r") as f2,
+        ):
+            f1_lines = f1.readlines().sort()
+            f2_lines = f2.readlines().sort()
+            assert f1_lines == f2_lines

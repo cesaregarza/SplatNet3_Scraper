@@ -19,6 +19,12 @@ def f_token_url_callback(f_token_url: str | list[str] | None) -> list[str]:
         return delimiter.split(f_token_url)
 
 
+def f_token_url_save_callback(f_token_url: list[str] | None) -> str:
+    if f_token_url is None:
+        raise ValueError("F token URL must be provided.")
+    return ",".join(f_token_url)
+
+
 def log_level_callback(log_level: str | None) -> str:
     # Does not set the log level, just checks that it is valid
     if log_level is None:

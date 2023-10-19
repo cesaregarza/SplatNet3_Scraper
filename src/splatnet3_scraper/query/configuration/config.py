@@ -108,7 +108,9 @@ class Config:
             TOKENS.BULLET_TOKEN: self.bullet_token,
         }
 
-    def get_value(self, option: str, default: T = None) -> str | T:
+    def get_value(
+        self, option: str, default: T | None = None
+    ) -> str | T | None:
         """Gets the value of the option.
 
         Args:
@@ -137,11 +139,11 @@ class Config:
             TOKENS.GTOKEN,
             TOKENS.BULLET_TOKEN,
         ]:
-            tokens = self.handler.tokens
-            self.token_manager.add_token(
-                tokens[option],
-                option,
-            )
+            if (token := self.handler.tokens[option]) is not None:
+                self.token_manager.add_token(
+                    token,
+                    option,
+                )
 
     @staticmethod
     def from_config_handler(
@@ -156,6 +158,9 @@ class Config:
             output_file_path (str | None): The path to the file to save the
                 config to. Defaults to None.
 
+        Raises:
+            ValueError: If the session token is not provided.
+
         Returns:
             Config: The ``Config`` object created from the
                 ``ConfigOptionHandler`` object.
@@ -163,6 +168,9 @@ class Config:
         session_token = handler.get_value(TOKENS.SESSION_TOKEN)
         gtoken = handler.get_value(TOKENS.GTOKEN)
         bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        if session_token is None:
+            raise ValueError("Session token not provided.")
+
         token_manager = TokenManagerConstructor.from_tokens(
             session_token=session_token,
             gtoken=gtoken,

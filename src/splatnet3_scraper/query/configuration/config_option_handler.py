@@ -10,6 +10,7 @@ from splatnet3_scraper.constants import (
 )
 from splatnet3_scraper.query.configuration.callbacks import (
     f_token_url_callback,
+    f_token_url_save_callback,
     log_level_callback,
     session_token_callback,
 )
@@ -28,65 +29,66 @@ class ConfigOptionHandler:
     deprecated names an option may have.
     """
 
-    _BASE_OPTIONS = (
-        ConfigOption(
+    _BASE_OPTIONS: tuple[ConfigOption, ...] = (
+        ConfigOption[str](
             name=TOKENS.SESSION_TOKEN,
             default=None,
             callback=session_token_callback,
             section="tokens",
             env_var="SESSION_TOKEN",
         ),
-        ConfigOption(
+        ConfigOption[str](
             name=TOKENS.GTOKEN,
             default=None,
             section="tokens",
             env_var="GTOKEN",
         ),
-        ConfigOption(
+        ConfigOption[str](
             name=TOKENS.BULLET_TOKEN,
             default=None,
             section="tokens",
             env_var="BULLET_TOKEN",
         ),
-        ConfigOption(
+        ConfigOption[str](
             name="user_agent",
             default=DEFAULT_USER_AGENT,
             section="options",
             env_var="SPLATNET3_USER_AGENT",
         ),
-        ConfigOption(
+        ConfigOption[list[str]](
             name="f_token_url",
             default=DEFAULT_F_TOKEN_URL,
             callback=f_token_url_callback,
+            save_callback=f_token_url_save_callback,
             section="options",
             deprecated_names=["f_gen", "ftoken_url"],
             env_var="F_TOKEN_URL",
         ),
-        ConfigOption(
+        ConfigOption[str](
             name="export_path",
             default="",
             section="options",
         ),
-        ConfigOption(
+        ConfigOption[str](
             name="language",
             default="en-US",
             section="options",
             env_var="SPLATNET3_LANGUAGE",
         ),
-        ConfigOption(
+        ConfigOption[str](
             name="country",
             default="US",
             section="options",
             env_var="SPLATNET3_COUNTRY",
         ),
-        ConfigOption(
+        ConfigOption[str](
             "log_level",
             default="INFO",
             section="logging",
             callback=log_level_callback,
             env_var="LOG_LEVEL",
         ),
-        ConfigOption(
+        ConfigOption[str](
             "log_file",
             default=None,
             section="logging",
@@ -177,11 +179,11 @@ class ConfigOptionHandler:
         return list(set(option.section for option in self.OPTIONS))
 
     @property
-    def tokens(self) -> dict[str, str]:
+    def tokens(self) -> dict[str, str | None]:
         """The tokens.
 
         Returns:
-            dict[str, str]: The tokens.
+            dict[str, str | None]: The tokens.
         """
         return {
             TOKENS.SESSION_TOKEN: self.get_value(TOKENS.SESSION_TOKEN),
@@ -302,10 +304,13 @@ class ConfigOptionHandler:
                 continue
             if not config.has_section(option.section):
                 config.add_section(option.section)
-            config.set(option.section, option.name, option.value)
+            if option.save_callback is not None:
+                config.set(option.section, option.name, option.convert())
+            else:
+                config.set(option.section, option.name, option.value)
 
-        if not config.has_section("Unknown"):
-            config.add_section("Unknown")
-        for option, value in self.unknown_options:
-            config.set("Unknown", option, value)
+        if not config.has_section("unknown"):
+            config.add_section("unknown")
+        for unknown_option, value in self.unknown_options:
+            config.set("unknown", unknown_option, value)
         return config

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Callable
+from typing import Callable, Generic, TypeVar, cast
+
+T = TypeVar("T")
 
 
-class ConfigOption:
+class ConfigOption(Generic[T]):
     """Represents a single configuration option in the system.
 
     Each ConfigOption instance contains information about a particular
@@ -19,10 +21,11 @@ class ConfigOption:
     def __init__(
         self,
         name: str,
-        default: Any = None,
+        default: T | None = None,
         deprecated_names: list[str] | str | None = None,
         deprecated_section: str | None = None,
-        callback: Callable[[str | None], Any] | None = None,
+        callback: Callable[[str | None], T] | None = None,
+        save_callback: Callable[[T | None], str] | None = None,
         section: str = "Options",
         env_var: str | None = None,
         env_prefix: str | None = None,
@@ -31,7 +34,7 @@ class ConfigOption:
 
         Args:
             name (str): The name of the option.
-            default (Any): The default value of the option. If None, the option
+            default (T): The default value of the option. If None, the option
                 does not have a default value. Defaults to None.
             deprecated_names (list[str] | str | None): The deprecated names of
                 the option. If None, the option does not have any deprecated
@@ -43,13 +46,20 @@ class ConfigOption:
                 option. This should be used if the option was moved to a
                 different section. If None, the option will be assumed to be in
                 the same section. Defaults to None.
-            callback (Callable[[str  |  None], Any] | None): The callback
-                function to call when the option's value is set. It should take
-                one argument, the new value, and should return the new value,
-                with any modifications. If the callback function returns None,
-                it will act as a verification function. If the callback
-                function raises an exception, the value will not be set. If
-                None, no callback function will be used. Defaults to None.
+            callback (Callable[[str  |  None], T] | None): The callback function
+                to call when the option's value is set. It should take one
+                argument, the new value, and should return the new value, with
+                any modifications. If the callback function returns None, it
+                will act as a verification function. If the callback function
+                raises an exception, the value will not be set. If None, no
+                callback function will be used. Defaults to None.
+            save_callback (Callable[[T], str] | None): The callback function to
+                call when the option's value is saved. It should take one
+                argument, the value, and should return the value to save. If
+                None, no callback function will be used. This must be provided
+                if the callback function transforms the value from a string to
+                another type, otherwise saving the value will fail. Defaults to
+                None.
             section (str): The section of the option. Defaults to "Options".
             env_var (str | None): The environment variable to use for the
                 option. If None, no environment variable will be used. This will
@@ -67,10 +77,11 @@ class ConfigOption:
         self.deprecated_names = deprecated_names
         self.deprecated_section = deprecated_section
         self.callback = callback
+        self.save_callback = save_callback
         self.section = section
         self.env_var = env_var
         self.env_prefix = env_prefix
-        self.value: str | None = None
+        self.value: T | None = None
 
     @property
     def env_key(self) -> str | None:
@@ -92,23 +103,27 @@ class ConfigOption:
     def set_value(self, value: str | None) -> None:
         """Sets the value of the option.
 
-        If the option has a callback function, it will be called with the new
-        value as an argument known as the "original value". If the callback
-        function returns a value, it will be used as the new value known as the
-        "returned value". If the callback function returns None, the original
-        value will be used as the new value. If the callback function raises an
-        exception, the value will not be set. If the value is None and the
-        option has a default value, the default value will be used as the new
-        value.
+        If the value is None, the default value will be used. If the option has
+        a callback function, it will be called with the value as an argument. If
+        the callback function returns None, the default value will be used. If
+        no callback function is set, the value will be set directly only if the
+        ConfigOption type is str, otherwise a ValueError will be raised.
 
         Args:
             value (str | None): The new value of the option.
-        """
-        if (self.callback is not None) and (value is not None):
-            value = self.callback(value)
-        self.value = value or self.default
 
-    def get_value(self) -> str | None:
+        Raises:
+            ValueError: If the ConfigOption type is not str and the callback
+                function is not set.
+        """
+        if value is None:
+            self.value = self.default
+        elif self.callback is not None:
+            self.value = self.callback(value) or self.default
+        else:
+            self.value = cast(T, value)
+
+    def get_value(self) -> T | None:
         """Gets the value of the option. It will go through the following steps
         to get the value:
 
@@ -130,7 +145,7 @@ class ConfigOption:
             return self.value
         elif self.env_key is not None and (value := os.getenv(self.env_key)):
             self.set_value(value)
-            return value
+            return self.value
         elif self.default is not None:
             return self.default
         else:
@@ -143,3 +158,17 @@ class ConfigOption:
             prefix (str): The prefix to use for the environment variable.
         """
         self.env_prefix = prefix
+
+    def convert(self) -> str:
+        """Converts the option to a string. It converts the value of the option
+        if there is a save callback function, otherwise it just returns the
+        value of the option.
+
+        Returns:
+            str: The string representation of the option.
+        """
+        value = self.get_value()
+        if self.save_callback is not None:
+            return self.save_callback(value)
+        else:
+            return cast(str, value)

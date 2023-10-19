@@ -1,4 +1,6 @@
+import configparser
 import pathlib
+import tempfile
 
 import pytest
 
@@ -43,3 +45,16 @@ def all_path() -> str:
 @pytest.fixture
 def expected_all() -> str:
     return str(config_path / ".expected_all")
+
+
+@pytest.fixture
+def all_config(all_path) -> configparser.ConfigParser:
+    config = configparser.ConfigParser()
+    config.read(all_path)
+    return config
+
+
+@pytest.fixture
+def temp_file() -> str:
+    with tempfile.NamedTemporaryFile() as f:
+        yield f.name
