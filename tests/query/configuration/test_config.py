@@ -239,7 +239,7 @@ class TestConfig:
             assert config.gtoken == "test_gtoken"
             assert config.bullet_token == "test_bullet_token"
             assert config.handler.get_value("user_agent") == "test_user_agent"
-            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_option("user_agent").section == "options"
 
         def test_no_tokens_section(self, no_tokens_section: str) -> None:
             config = Config.from_file(
@@ -251,7 +251,7 @@ class TestConfig:
             assert config.handler.get_value("country") == "US"
             assert config.handler.get_value("language") == "en-US"
             assert config.handler.get_value("user_agent") == "test_user_agent"
-            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_option("user_agent").section == "options"
 
         def test_valid(self, valid: str) -> None:
             config = Config.from_file(
@@ -263,7 +263,7 @@ class TestConfig:
             assert config.handler.get_value("country") == "US"
             assert config.handler.get_value("language") == "en-US"
             assert config.handler.get_value("user_agent") == "test_user_agent"
-            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_option("user_agent").section == "options"
 
         def test_valid_with_ftoken(self, valid_with_ftoken: str) -> None:
             config = Config.from_file(
@@ -275,7 +275,7 @@ class TestConfig:
             assert config.handler.get_value("country") == "US"
             assert config.handler.get_value("language") == "en-US"
             assert config.handler.get_value("user_agent") == "test_user_agent"
-            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_option("user_agent").section == "options"
             assert config.handler.get_value("f_token_url") == [
                 "test_f_token_url"
             ]
@@ -292,7 +292,7 @@ class TestConfig:
             assert config.handler.get_value("country") == "US"
             assert config.handler.get_value("language") == "en-US"
             assert config.handler.get_value("user_agent") == "test_user_agent"
-            assert config.handler.get_option("user_agent").section == "Options"
+            assert config.handler.get_option("user_agent").section == "options"
             assert config.handler.get_value("f_token_url") == [
                 "test_f_token_url0",
                 "test_f_token_url1",
