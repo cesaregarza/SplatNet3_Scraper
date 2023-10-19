@@ -33,3 +33,13 @@ def valid_with_ftoken() -> str:
 @pytest.fixture
 def valid_with_ftoken_list() -> str:
     return str(config_path / ".valid_with_ftoken_list")
+
+
+@pytest.fixture
+def all_path() -> str:
+    return str(config_path / ".all")
+
+
+@pytest.fixture
+def expected_all() -> str:
+    return str(config_path / ".expected_all")
