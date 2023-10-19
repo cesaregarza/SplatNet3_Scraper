@@ -223,3 +223,17 @@ class Config:
         handler.read_from_dict(config)
 
         return Config.from_config_handler(handler)
+
+    def save_to_file(self, file_path: str | None = None) -> None:
+        """Saves the config to a file.
+
+        Args:
+            file_path (str | None): The path to the file to save the config to.
+                Defaults to None.
+        """
+        file_path = file_path or self._output_file_path
+        if file_path is None:
+            raise ValueError("No file path provided.")
+        config = self.handler.save_to_configparser()
+        with open(file_path, "w") as f:
+            config.write(f)
