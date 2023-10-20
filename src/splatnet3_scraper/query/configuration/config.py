@@ -146,6 +146,68 @@ class Config:
                 )
 
     @staticmethod
+    def from_empty_handler(prefix: str = "") -> Config:
+        """Creates a ``Config`` object from an empty ``ConfigOptionHandler``
+        object. This is useful if you have environment variables set and want to
+        create a ``Config`` object from them.
+
+        Args:
+            prefix (str): The prefix to use for the config options environment
+                variables. Defaults to "SN3S".
+
+        Returns:
+            Config: The ``Config`` object.
+        """
+        prefix = prefix or Config.DEFAULT_PREFIX
+        handler = ConfigOptionHandler(prefix=prefix)
+        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
+        gtoken = handler.get_value(TOKENS.GTOKEN)
+        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        return Config.from_tokens(
+            session_token=session_token,
+            gtoken=gtoken,
+            bullet_token=bullet_token,
+            prefix=prefix,
+        )
+
+    @staticmethod
+    def from_tokens(
+        session_token: str,
+        gtoken: str | None = None,
+        bullet_token: str | None = None,
+        *,
+        prefix: str = "",
+    ) -> Config:
+        """Creates a ``Config`` object from a session token and other tokens.
+
+        Args:
+            session_token (str): The session token to use.
+            gtoken (str | None): The gtoken to use. If None is provided, a new
+                gtoken will be generated.
+            bullet_token (str | None): The bullet token to use. If None is
+                provided, a new bullet token will be generated.
+
+        Returns:
+            Config: The ``Config`` object.
+        """
+        token_manager = TokenManagerConstructor.from_tokens(
+            session_token=session_token,
+            gtoken=gtoken,
+            bullet_token=bullet_token,
+        )
+
+        prefix = prefix or Config.DEFAULT_PREFIX
+        handler = ConfigOptionHandler(prefix=prefix)
+        handler.set_value(TOKENS.SESSION_TOKEN, session_token)
+        handler.set_value(TOKENS.GTOKEN, gtoken)
+        handler.set_value(TOKENS.BULLET_TOKEN, bullet_token)
+
+        return Config(
+            handler,
+            token_manager=token_manager,
+        )
+
+    @staticmethod
     def from_config_handler(
         handler: ConfigOptionHandler,
         output_file_path: str | None = None,

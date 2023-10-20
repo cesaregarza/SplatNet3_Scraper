@@ -119,6 +119,50 @@ class TestConfig:
             )
 
     @pytest.mark.parametrize(
+        "prefix",
+        [
+            "test",
+            "",
+        ],
+        ids=[
+            "prefix",
+            "no prefix",
+        ],
+    )
+    def test_from_tokens(self, prefix: str) -> None:
+        session_token = MagicMock()
+        gtoken = MagicMock()
+        bullet_token = MagicMock()
+        prefix = MagicMock()
+        mock_token_manager = MagicMock()
+
+        with (
+            patch(base_config_path + ".ConfigOptionHandler") as mock_handler,
+            patch(base_config_path + ".TokenManagerConstructor") as mock_tmc,
+            patch(config_path) as mock_config,
+        ):
+            mock_config.DEFAULT_PREFIX = "SN3S"
+            mock_tmc.from_tokens.return_value = mock_token_manager
+            config = Config.from_tokens(
+                session_token,
+                gtoken=gtoken,
+                bullet_token=bullet_token,
+                prefix=prefix,
+            )
+            mock_tmc.from_tokens.assert_called_once_with(
+                session_token=session_token,
+                gtoken=gtoken,
+                bullet_token=bullet_token,
+            )
+            expected_prefix = prefix or "SN3S"
+            mock_handler.assert_called_once_with(prefix=expected_prefix)
+            assert mock_handler.return_value.set_value.call_count == 3
+            mock_config.assert_called_once_with(
+                mock_handler.return_value,
+                token_manager=mock_token_manager,
+            )
+
+    @pytest.mark.parametrize(
         "save_to_file",
         [
             True,
@@ -297,6 +341,16 @@ class TestConfig:
                 "test_f_token_url0",
                 "test_f_token_url1",
             ]
+
+        def test_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+            with monkeypatch.context() as m:
+                m.setenv("SN3S_SESSION_TOKEN", "test_session_token")
+                m.setenv("SN3S_GTOKEN", "test_gtoken")
+                m.setenv("SN3S_BULLET_TOKEN", "test_bullet_token")
+                config = Config.from_empty_handler("SN3S")
+                assert config.session_token == "test_session_token"
+                assert config.gtoken == "test_gtoken"
+                assert config.bullet_token == "test_bullet_token"
 
     @pytest.mark.parametrize(
         "prefix",
