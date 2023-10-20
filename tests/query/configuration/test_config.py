@@ -129,6 +129,37 @@ class TestConfig:
             "no prefix",
         ],
     )
+    def test_from_empty_handler(self, prefix: str) -> None:
+        mock_handler = MagicMock()
+
+        with (
+            patch(base_config_path + ".ConfigOptionHandler") as mock_handler,
+            patch(config_path) as mock_config,
+        ):
+            mock_config.DEFAULT_PREFIX = "SN3S"
+            expected_prefix = prefix or "SN3S"
+            config = Config.from_empty_handler(prefix)
+            mock_handler.assert_called_once_with(prefix=expected_prefix)
+            mock_get = mock_handler.return_value.get_value
+            assert mock_get.call_count == 3
+            mock_config.from_tokens.assert_called_once_with(
+                session_token=mock_get.return_value,
+                gtoken=mock_get.return_value,
+                bullet_token=mock_get.return_value,
+                prefix=expected_prefix,
+            )
+
+    @pytest.mark.parametrize(
+        "prefix",
+        [
+            "test",
+            "",
+        ],
+        ids=[
+            "prefix",
+            "no prefix",
+        ],
+    )
     def test_from_tokens(self, prefix: str) -> None:
         session_token = MagicMock()
         gtoken = MagicMock()
