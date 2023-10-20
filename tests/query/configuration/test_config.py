@@ -133,7 +133,6 @@ class TestConfig:
         session_token = MagicMock()
         gtoken = MagicMock()
         bullet_token = MagicMock()
-        prefix = MagicMock()
         mock_token_manager = MagicMock()
 
         with (
