@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from splatnet3_scraper.query.configuration.callbacks import (
+from splatnet3_scraper.query.config.callbacks import (
     f_token_url_callback,
     log_level_callback,
     session_token_callback,

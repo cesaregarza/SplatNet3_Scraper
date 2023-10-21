@@ -4,15 +4,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from splatnet3_scraper.constants import TOKENS
-from splatnet3_scraper.query.configuration.config_option import ConfigOption
-from splatnet3_scraper.query.configuration.config_option_handler import (
+from splatnet3_scraper.query.config.config_option import ConfigOption
+from splatnet3_scraper.query.config.config_option_handler import (
     ConfigOptionHandler,
 )
 
-base_option_path = "splatnet3_scraper.query.configuration.config_option"
+base_option_path = "splatnet3_scraper.query.config.config_option"
 option_path = base_option_path + ".ConfigOption"
 base_handler_path = (
-    "splatnet3_scraper.query.configuration.config_option_handler"
+    "splatnet3_scraper.query.config.config_option_handler"
 )
 handler_path = base_handler_path + ".ConfigOptionHandler"
 

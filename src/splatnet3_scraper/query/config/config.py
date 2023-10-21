@@ -6,7 +6,7 @@ from typing import TypeVar, cast
 
 from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
 from splatnet3_scraper.constants import TOKENS
-from splatnet3_scraper.query.configuration.config_option_handler import (
+from splatnet3_scraper.query.config.config_option_handler import (
     ConfigOptionHandler,
 )
 

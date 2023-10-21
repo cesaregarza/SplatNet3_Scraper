@@ -2,7 +2,7 @@ from typing import Callable
 
 import pytest
 
-from splatnet3_scraper.query.configuration.config_option import ConfigOption
+from splatnet3_scraper.query.config.config_option import ConfigOption
 
 
 def callback(value: str | None) -> str | None:

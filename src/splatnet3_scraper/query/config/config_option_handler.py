@@ -8,13 +8,13 @@ from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
     TOKENS,
 )
-from splatnet3_scraper.query.configuration.callbacks import (
+from splatnet3_scraper.query.config.callbacks import (
     f_token_url_callback,
     f_token_url_save_callback,
     log_level_callback,
     session_token_callback,
 )
-from splatnet3_scraper.query.configuration.config_option import ConfigOption
+from splatnet3_scraper.query.config.config_option import ConfigOption
 
 
 class ConfigOptionHandler:
