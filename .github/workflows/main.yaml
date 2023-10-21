@@ -112,7 +112,7 @@ jobs:
         run: |
           pip install twine
           for i in {1..5}; do \
-          twine upload -u __token__ -p ${{ secrets.PYPI_TOKEN }} temp-dist/* \
+          twine upload -u __token__ -p ${{ secrets.PYPI_TOKEN }} temp-dist/dist/* \
           && break \
           || sleep 15; \
           done
