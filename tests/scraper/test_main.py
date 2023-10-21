@@ -66,7 +66,7 @@ class TestSplatNetScraper:
         with patch.object(MockQueryHandler, "query") as mock_handled_query:
             mock_handled_query.return_value = "test_return"
             scraper._SplatNet_Scraper__query("test_query", variables)
-            mock_handled_query.assert_called_once_with("test_query", variables)
+            mock_handled_query.assert_called_once_with("test_query", variables=variables)
 
     @param(
         "query, expected",
