@@ -12,6 +12,7 @@ base_handler_path = "splatnet3_scraper.query.handler"
 config_path = base_handler_path + ".Config"
 handler_path = base_handler_path + ".QueryHandler"
 queries_path = base_handler_path + ".queries"
+query_response_path = base_handler_path + ".QueryResponse"
 
 
 class TestSplatNetQueryHandler:
@@ -158,3 +159,73 @@ class TestSplatNetQueryHandler:
                 variables=variables,
             )
             assert ret == expected_return
+
+    @pytest.mark.parametrize(
+        "response",
+        [
+            "200",
+            "200 with error",
+            "400",
+        ],
+        ids=[
+            "Valid",
+            "Valid with error",
+            "Invalid",
+        ],
+    )
+    def test_query_hash(self, response: str) -> None:
+        config = MagicMock()
+        language = MagicMock()
+        variables = MagicMock()
+        invalid_response = MagicMock()
+        valid_response = MagicMock()
+        invalid_response.status_code = 400
+        valid_response.status_code = 200
+        if response in ("200", "400"):
+            valid_response.json.return_value = {"data": {"test": "test"}}
+        else:
+            valid_response.json.return_value = {"errors": ["test"]}
+
+        counter = 1 if response == "400" else 0
+        total_counter = counter + 1
+
+        def raw_query_hash(*args, **kwargs):
+            nonlocal counter
+            if counter == 0:
+                return valid_response
+            else:
+                counter -= 1
+                return invalid_response
+
+        with (
+            patch(handler_path + ".raw_query_hash") as mock_raw_query_hash,
+            patch(base_handler_path + ".json") as mock_json,
+            patch(query_response_path) as mock_query_response,
+        ):
+            mock_raw_query_hash.side_effect = raw_query_hash
+            handler = QueryHandler(config)
+            mock_json.dumps.return_value = "test"
+            if response == "200 with error":
+                with pytest.raises(
+                    SplatNetException,
+                    match=(
+                        "Query was successful but returned at least one error. "
+                        "Errors: test"
+                    ),
+                ):
+                    handler.query_hash("test")
+                return
+
+            ret = handler.query_hash(
+                "test", language=language, variables=variables
+            )
+            mock_query_response.assert_called_once_with(data={"test": "test"})
+            assert ret == mock_query_response.return_value
+            if response == "200":
+                mock_raw_query_hash.assert_called_once_with(
+                    "test", language, variables
+                )
+                config.regenerate_tokens.assert_not_called()
+            else:
+                assert mock_raw_query_hash.call_count == 2
+                config.regenerate_tokens.assert_called_once_with()
