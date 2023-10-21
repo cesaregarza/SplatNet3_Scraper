@@ -161,7 +161,7 @@ class Config:
         """
         prefix = prefix or Config.DEFAULT_PREFIX
         handler = ConfigOptionHandler(prefix=prefix)
-        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
+        session_token = cast(str, handler.get_value(TOKENS.SESSION_TOKEN))
         gtoken = handler.get_value(TOKENS.GTOKEN)
         bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
         return Config.from_tokens(

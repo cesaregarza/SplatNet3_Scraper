@@ -129,7 +129,7 @@ class SplatNet_Scraper:
         Returns:
             QueryResponse: The QueryResponse.
         """
-        return self._query_handler.query(query, variables)
+        return self._query_handler.query(query, variables=variables)
 
     def __detailed_vs_or_coop(
         self,

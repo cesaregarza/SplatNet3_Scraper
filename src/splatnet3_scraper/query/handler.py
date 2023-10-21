@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import cast
 
 import requests
 
@@ -83,7 +84,8 @@ class QueryHandler:
                 file provided, with all the options set in the configuration
                 file.
         """
-        config = Config.from_file(config_path, prefix=prefix)
+        path = config_path or Config.DEFAULT_CONFIG_PATH
+        config = Config.from_file(path, prefix=prefix)
         return cls(config)
 
     @classmethod
@@ -249,9 +251,9 @@ class QueryHandler:
         """
         return queries.query(
             query_name,
-            self.config.get_value(TOKENS.BULLET_TOKEN),
-            self.config.get_value(TOKENS.GTOKEN),
-            language or self.config.get_value("language"),
+            cast(str, self.config.get_value(TOKENS.BULLET_TOKEN)),
+            cast(str, self.config.get_value(TOKENS.GTOKEN)),
+            language or cast(str, self.config.get_value("language")),
             self.config.get_value("user_agent"),
             variables=variables,
         )
@@ -284,9 +286,9 @@ class QueryHandler:
         """
         return queries.query_hash(
             query_hash,
-            self.config.get_value(TOKENS.BULLET_TOKEN),
-            self.config.get_value(TOKENS.GTOKEN),
-            language or self.config.get_value("language"),
+            cast(str, self.config.get_value(TOKENS.BULLET_TOKEN)),
+            cast(str, self.config.get_value(TOKENS.GTOKEN)),
+            language or cast(str, self.config.get_value("language")),
             self.config.get_value("user_agent"),
             variables=variables,
         )
