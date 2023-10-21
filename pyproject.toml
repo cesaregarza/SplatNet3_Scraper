@@ -4,7 +4,7 @@ version = "0.10.2"
 description = "Scraper for SplatNet 3 for Splatoon 3"
 authors = ["Cesar E Garza <cesar@cegarza.com>"]
 readme = "README.md"
-packages = [{include = "splatnet3_scraper"}]
+packages = [{include = "splatnet3_scraper", from = "src"}]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
@@ -49,6 +49,7 @@ sphinx-immaterial = "^0.11.3"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+
 [tool.black]
 line-length = 80
 target-version = ['py310']
@@ -56,7 +57,7 @@ target-version = ['py310']
 [tool.isort]
 profile = "black"
 line_length = 80
-skip_glob = "^(tests|splatnet3_scraper)"
+skip_glob = "^(tests|src/splatnet3_scraper)"
 
 [tool.mypy]
 python_version = "3.10"
@@ -71,8 +72,13 @@ addopts = [
     "--tb=auto",
     "--showlocals",
     "--color=yes",
+    "-k not production",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "internet: marks tests as requiring internet access (deselect with '-m \"not internet\"')",
+    "production: marks tests as only running in production (deselect with '-m \"not production\"')",
+]
+pythonpath = [
+    "src"
 ]

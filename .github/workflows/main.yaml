@@ -1,0 +1,121 @@
+name: Push to Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  built-test-publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_image: ["python:3.10-slim", "python:3.11-slim"]
+    env:
+      default_image: "python:3.10-slim"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Cache Poetry Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Read .version file
+        id: semver
+        run: |
+          echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+      - name: Get latest release
+        id: latest_release
+        run: |
+          LATEST_RELEASE=\
+          $(curl -sH "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+          | jq -r '.tag_name')
+          echo "release=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
+          echo "Latest Release: ${LATEST_RELEASE}"
+
+      - name: Calculate next version
+        id: calculate_version
+        run: |
+          LATEST_RELEASE=${{ steps.latest_release.outputs.release }}
+          BASE_VERSION=${{ steps.semver.outputs.version }}
+          CLEANED_LATEST_RELEASE=${LATEST_RELEASE#v}
+
+          echo "Latest Release without v: ${CLEANED_LATEST_RELEASE}"
+          echo "Base Version: ${BASE_VERSION}"
+
+          BASE_MAJOR=$(echo ${BASE_VERSION} | cut -d. -f1)
+          BASE_MINOR=$(echo ${BASE_VERSION} | cut -d. -f2)
+          BASE_PATCH=$(echo ${BASE_VERSION} | cut -d. -f3)
+
+          LATEST_MAJOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f1)
+          LATEST_MINOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f2)
+          LATEST_PATCH=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f3)
+
+          if [[ $BASE_MAJOR -gt $LATEST_MAJOR ]] || \
+             [[ $BASE_MAJOR -eq $LATEST_MAJOR && \
+                $BASE_MINOR -gt $LATEST_MINOR ]] || \
+             [[ $BASE_MAJOR -eq $LATEST_MAJOR && \
+                $BASE_MINOR -eq $LATEST_MINOR && \
+                $BASE_PATCH -gt $LATEST_PATCH ]]; then
+            echo "Base Version is greater than Latest Release"
+            NEXT_VERSION=${BASE_VERSION}
+          else
+            echo "Base Version is less or equal to Latest Release"
+            LATEST_PATCH=$((LATEST_PATCH + 1))
+            NEXT_VERSION="${LATEST_MAJOR}.${LATEST_MINOR}.${LATEST_PATCH}"
+          fi
+
+          echo "Next Version: ${NEXT_VERSION}"
+          echo "version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build and Test
+        run: |
+          echo "Version: ${{ steps.semver.outputs.version }}"
+          docker build \
+          --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
+          --build-arg BUILD_VERSION=${{ steps.calculate_version.outputs.version }} \
+          --tag my-image:${{ steps.semver.outputs.version }} \
+          .
+          docker run --name test-container my-image:${{ steps.semver.outputs.version }}
+          docker cp test-container:/app/reports .
+          mkdir -p temp-dist
+          docker cp test-container:/app/dist temp-dist/
+          docker cp test-container:/app/pyproject.toml .
+          docker cp test-container:/app/poetry.lock .
+
+      - name: Commit and Push
+        if: matrix.python_image == env.default_image
+        run: |
+          git add reports/*
+          git add pyproject.toml
+          git add poetry.lock
+          git commit -m "AUTO: Update reports and poetry files from CI"
+          git push
+
+      - name: Publish to PyPi
+        if: success() && matrix.python_image == env.default_image
+        run: |
+          pip install twine
+          for i in {1..5}; do \
+          twine upload -u __token__ -p ${{ secrets.PYPI_TOKEN }} temp-dist/* \
+          && break \
+          || sleep 15; \
+          done
+
+      - name: Cleanup
+        run: |
+          docker rmi my-image:${{ steps.semver.outputs.version }} --force
+          rm -rf temp-dist

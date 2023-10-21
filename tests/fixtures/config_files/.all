@@ -1,0 +1,13 @@
+[tokens]
+session_token = test_session_token
+gtoken = test_gtoken
+bullet_token = test_bullet_token
+extra_token = test_extra_token
+
+[data]
+country = US
+language = en-US
+
+[options]
+user_agent = test_user_agent
+f_gen = test_f_token_url0, test_f_token_url1, test_f_token_url2
