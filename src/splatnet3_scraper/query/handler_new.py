@@ -5,7 +5,6 @@ import logging
 
 import requests
 
-from splatnet3_scraper.auth import NSO
 from splatnet3_scraper.auth.exceptions import SplatNetException
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.constants import TOKENS
@@ -238,6 +237,7 @@ class QueryHandler:
             query_name (str): The name of the query to use.
             language (str | None): The language to use for the query. If None,
                 the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Defaults to {}.
 
         Returns:
@@ -272,6 +272,7 @@ class QueryHandler:
             query_hash (str): The GraphQL query hash to use.
             language (str | None): The language to use for the query. If None,
                 the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Defaults to {}.
 
         Returns:
@@ -311,6 +312,7 @@ class QueryHandler:
                 representation.
             language (str | None): The language to use for the query. If None,
                 the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Some queries do
                 not require variables and so this argument can be omitted. If
                 the query does require variables and this argument is omitted,
@@ -346,4 +348,67 @@ class QueryHandler:
             )
             error_message += " Errors: " + json.dumps(errors, indent=4)
             raise SplatNetException(error_message)
+        return QueryResponse(data=response.json()["data"])
+
+    @retry(times=1, exceptions=ConnectionError)
+    def query(
+        self, query_name: str, language: str | None = None, variables: dict = {}
+    ) -> QueryResponse:
+        """Queries Splatnet 3 and returns the data.
+
+        This method will query SplatNet 3 and return the data from the query.
+        This method will automatically retry once if the query fails and will
+        regenerate the tokens if the query fails for whatever reason. Some
+        queries require variables to be passed in, and this method will allow
+        the user to pass in those variables. This method obtains the query hash
+        from the ``auth`` module and automatically uses the appropriate query
+        hash for the query name provided. As such, it is recommended to use this
+        method rather than the ``query_hash`` method unless the user knows what
+        they are doing.
+
+        Args:
+            query_name (str): The name of the query to use. This name must be
+                valid, and is not case sensitive. For more information on the
+                list of valid queries, see the documentation on the queries that
+                are available.
+            language (str | None): The language to use for the query. If None,
+                the language loaded into the ``Config`` object will be used.
+                Defaults to None.
+            variables (dict): The variables to use in the query. Some queries do
+                not require variables and so this argument can be omitted. If
+                the query does require variables and this argument is omitted,
+                then the query will fail and a ``SplatNetException`` will be
+                raised with the error message from SplatNet 3. Defaults to {}.
+
+        Raises:
+            SplatNetException: If the query is successful but returns a JSON
+                object with an ``errors`` key, then this exception will be
+                raised with the error message from SplatNet 3. This generally
+                means that the query was successfully generated and the current
+                tokens are still valid, but the query itself failed for some
+                reason. This can happen if the user did not provide the correct
+                required variables for the query, or if the variables provided
+                were somehow invalid.
+
+        Returns:
+            QueryResponse: The response from the query. This object will contain
+                the data from the query, and will also contain the query hash
+                that was used to generate the query. This is useful for
+                debugging purposes.
+        """
+        response = self.raw_query(query_name, language, variables)
+        if response.status_code != 200:
+            logger.info("Query failed, regenerating tokens and retrying.")
+            self.config.regenerate_tokens()
+            response = self.raw_query(query_name, language, variables)
+
+        if "errors" in response.json():
+            errors = response.json()["errors"]
+            error_message = (
+                "Query was successful but returned at least one error."
+            )
+
+            error_message += " Errors: " + json.dumps(errors, indent=4)
+            raise SplatNetException(error_message)
+
         return QueryResponse(data=response.json()["data"])
