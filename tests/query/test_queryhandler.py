@@ -21,8 +21,32 @@ class TestSplatNetQueryHandler:
 
     def test_from_config_file(self) -> None:
         config = MagicMock()
+        prefix = MagicMock()
         with patch(config_path) as mock_config:
             mock_config.from_file.return_value = config
-            handler = QueryHandler.from_config_file("test")
-            mock_config.from_file.assert_called_once_with("test")
+            handler = QueryHandler.from_config_file("test", prefix=prefix)
+            mock_config.from_file.assert_called_once_with("test", prefix=prefix)
+            assert handler.config == config
+
+    def test_from_tokens(self) -> None:
+        config = MagicMock()
+        session_token = MagicMock()
+        gtoken = MagicMock()
+        bullet_token = MagicMock()
+        prefix = MagicMock()
+
+        with patch(config_path) as mock_config:
+            mock_config.from_tokens.return_value = config
+            handler = QueryHandler.from_tokens(
+                session_token,
+                gtoken=gtoken,
+                bullet_token=bullet_token,
+                prefix=prefix,
+            )
+            mock_config.from_tokens.assert_called_once_with(
+                session_token=session_token,
+                gtoken=gtoken,
+                bullet_token=bullet_token,
+                prefix=prefix,
+            )
             assert handler.config == config

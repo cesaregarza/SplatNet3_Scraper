@@ -55,6 +55,8 @@ class QueryHandler:
     def from_config_file(
         cls,
         config_path: str | None = None,
+        *,
+        prefix: str = "",
     ) -> QueryHandler:
         """Creates a new instance of the class using a configuration file.
 
@@ -73,13 +75,16 @@ class QueryHandler:
                 None, the default configuration file path of
                 ``.splatnet3_scraper`` in the user's current working directory
                 will be used. Defaults to None.
+            prefix (str): The prefix to use for environment variables. This is
+                useful if the user prefers to use both environment variables and
+                configuration files. Defaults to "SN3S".
 
         Returns:
             QueryHandler: A new instance of the class using the configuration
                 file provided, with all the options set in the configuration
                 file.
         """
-        config = Config.from_file(config_path)
+        config = Config.from_file(config_path, prefix=prefix)
         return cls(config)
 
     @classmethod
