@@ -199,23 +199,17 @@ class QueryHandler:
         *,
         prefix: str = "",
     ) -> QueryHandler:
-        """Creates a new instance of the class using a configuration file.
+        """Creates a new instance of the class from an s3s configuration file.
 
-        If the user does not provide a configuration file path, the default path
-        will be used, which is ``.splatnet3_scraper`` in the user's current
-        working directory. The configuration file this method accepts is one
-        that aligns with the standard configuration file format used by the
-        standard library ``configparser`` module. The configuration file must
-        have a ``[Tokens]`` section, which only requires the ``session_token``
-        option to be set. The ``session_token`` option must be set to the user's
-        session token. For a full list of all options that can be set in the
-        config file, see the documentation for the ``Config`` class.
+        This method will create a new instance of the class using an s3s
+        configuration file. This method is useful if the user is a previous user
+        of ``s3s`` and wants to migrate to ``splatnet3_scraper``.
 
         Args:
-            config_path (str | None): The path to the configuration file. If
-                None, the default configuration file path of
-                ``.splatnet3_scraper`` in the user's current working directory
-                will be used. Defaults to None.
+            path (str): The path to the configuration file.
+            prefix (str): The prefix to use for environment variables. This is
+                useful if the user prefers to use both environment variables and
+                configuration files. Defaults to "SN3S".
 
         Returns:
             QueryHandler: A new instance of the class using the configuration

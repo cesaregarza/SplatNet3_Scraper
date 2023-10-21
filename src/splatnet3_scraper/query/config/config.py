@@ -187,6 +187,8 @@ class Config:
                 gtoken will be generated.
             bullet_token (str | None): The bullet token to use. If None is
                 provided, a new bullet token will be generated.
+            prefix (str): The prefix to use for the config options. Defaults to
+                "SN3S".
 
         Returns:
             Config: The ``Config`` object.
