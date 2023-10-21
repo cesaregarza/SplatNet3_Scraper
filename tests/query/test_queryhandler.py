@@ -11,6 +11,7 @@ from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 base_handler_path = "splatnet3_scraper.query.handler"
 config_path = base_handler_path + ".Config"
 handler_path = base_handler_path + ".QueryHandler"
+queries_path = base_handler_path + ".queries"
 
 
 class TestSplatNetQueryHandler:
@@ -91,3 +92,36 @@ class TestSplatNetQueryHandler:
                 "test", prefix=prefix
             )
             assert handler.config == config
+
+    @pytest.mark.parametrize(
+        "language",
+        [
+            "en-US",
+            None,
+        ],
+        ids=[
+            "with_language",
+            "without_language",
+        ],
+    )
+    def test_raw_query(self, language: str | None) -> None:
+        config = MagicMock()
+        expected_return = MagicMock()
+        variables = MagicMock()
+        handler = QueryHandler(config)
+        getvalue_return = config.get_value.return_value
+
+        with patch(queries_path) as mock_queries:
+            mock_queries.query.return_value = expected_return
+            ret = handler.raw_query(
+                "test", language=language, variables=variables
+            )
+            mock_queries.query.assert_called_once_with(
+                "test",
+                getvalue_return,
+                getvalue_return,
+                language or getvalue_return,
+                getvalue_return,
+                variables=variables,
+            )
+            assert ret == expected_return
