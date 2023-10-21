@@ -68,3 +68,15 @@ class TestSplatNetQueryHandler:
             )
             config.regenerate_tokens.assert_called_once_with()
             assert handler.config == config
+
+    def test_new_instance(self) -> None:
+        config = MagicMock()
+        prefix = MagicMock()
+
+        with patch(config_path) as mock_config:
+            mock_config.from_empty_handler.return_value = config
+            handler = QueryHandler.new_instance(prefix=prefix)
+            mock_config.from_empty_handler.assert_called_once_with(
+                prefix=prefix
+            )
+            assert handler.config == config
