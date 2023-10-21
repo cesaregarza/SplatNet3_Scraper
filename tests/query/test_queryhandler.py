@@ -50,3 +50,21 @@ class TestSplatNetQueryHandler:
                 prefix=prefix,
             )
             assert handler.config == config
+
+    def test_from_session_token(self) -> None:
+        config = MagicMock()
+        session_token = MagicMock()
+        prefix = MagicMock()
+
+        with patch(config_path) as mock_config:
+            mock_config.from_tokens.return_value = config
+            handler = QueryHandler.from_session_token(
+                session_token,
+                prefix=prefix,
+            )
+            mock_config.from_tokens.assert_called_once_with(
+                session_token=session_token,
+                prefix=prefix,
+            )
+            config.regenerate_tokens.assert_called_once_with()
+            assert handler.config == config
