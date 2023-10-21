@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import Callable, Literal, cast, overload
 
@@ -31,7 +33,7 @@ class SplatNet_Scraper:
         return self._query_handler
 
     @staticmethod
-    def from_session_token(session_token: str) -> "SplatNet_Scraper":
+    def from_session_token(session_token: str) -> SplatNet_Scraper:
         """Creates a SplatNet_Scraper instance using the given session token.
 
         Args:
@@ -48,7 +50,7 @@ class SplatNet_Scraper:
         session_token: str,
         gtoken: str | None = None,
         bullet_token: str | None = None,
-    ) -> "SplatNet_Scraper":
+    ) -> SplatNet_Scraper:
         """Creates a SplatNet_Scraper instance using the given tokens. This is
         useful if you already have the tokens and don't want to have to
         retrieve them again. This does not guarantee that the tokens are valid,
@@ -70,7 +72,7 @@ class SplatNet_Scraper:
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def from_config_file(config_path: str | None = None) -> "SplatNet_Scraper":
+    def from_config_file(config_path: str | None = None) -> SplatNet_Scraper:
         """Creates a SplatNet_Scraper instance using the given config file.
 
         Args:
@@ -85,22 +87,26 @@ class SplatNet_Scraper:
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def from_env() -> "SplatNet_Scraper":
+    def from_env(prefix: str = "") -> SplatNet_Scraper:
         """Creates a SplatNet_Scraper instance using the environment variables.
 
+        Args:
+            prefix (str): The prefix to use for the environment variables.
+                Defaults to "SN3S".
+
         Environment variables:
-            SN3S_SESSION_TOKEN: The session token to use.
-            SN3S_GTOKEN: The gtoken to use.
-            SN3S_BULLET_TOKEN: The bullet token to use.
+            (prefix)_SESSION_TOKEN: The session token to use.
+            (prefix)_GTOKEN: The gtoken to use.
+            (prefix)_BULLET_TOKEN: The bullet token to use.
 
         Returns:
             SplatNet_Scraper: The SplatNet_Scraper instance.
         """
-        query_handler = QueryHandler.from_env()
+        query_handler = QueryHandler.new_instance(prefix=prefix)
         return SplatNet_Scraper(query_handler)
 
     @staticmethod
-    def from_s3s_config(config_path: str) -> "SplatNet_Scraper":
+    def from_s3s_config(config_path: str) -> SplatNet_Scraper:
         """Creates a SplatNet_Scraper instance using the config file from s3s.
 
         Args:

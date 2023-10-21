@@ -47,7 +47,10 @@ class TestSplatNetScraper:
     )
     def test_from_methods(self, method, args, monkeypatch: pytest.MonkeyPatch):
         with monkeypatch.context() as m:
-            m.setattr(QueryHandler, method, MockQueryHandler)
+            if method == "from_env":
+                m.setattr(QueryHandler, "new_instance", MockQueryHandler)
+            else:
+                m.setattr(QueryHandler, method, MockQueryHandler)
             if args is None:
                 scraper = getattr(SplatNet_Scraper, method)()
             elif isinstance(args, list):
