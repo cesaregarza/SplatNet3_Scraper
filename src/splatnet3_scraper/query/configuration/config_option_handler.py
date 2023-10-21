@@ -47,12 +47,14 @@ class ConfigOptionHandler:
             name=TOKENS.BULLET_TOKEN,
             default=None,
             section="tokens",
+            deprecated_names=["bullettoken"],
             env_var="BULLET_TOKEN",
         ),
         ConfigOption[str](
             name="user_agent",
             default=DEFAULT_USER_AGENT,
             section="options",
+            deprecated_names=["app_user_agent"],
             env_var="SPLATNET3_USER_AGENT",
         ),
         ConfigOption[list[str]](

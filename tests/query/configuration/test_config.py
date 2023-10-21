@@ -1,4 +1,5 @@
 import configparser
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -370,6 +371,21 @@ class TestConfig:
             assert config.handler.get_value("f_token_url") == [
                 "test_f_token_url0",
                 "test_f_token_url1",
+            ]
+
+        def test_s3s_config(self, s3s_config: str) -> None:
+            config = Config.from_s3s_config(
+                s3s_config,
+            )
+            assert config.session_token == "test_session_token"
+            assert config.gtoken == "test_gtoken"
+            assert config.bullet_token == "test_bullet_token"
+            assert config.handler.get_value("country") == "US"
+            assert config.handler.get_value("language") == "en-US"
+            assert config.handler.get_value("user_agent") == "test_user_agent"
+            assert config.handler.get_option("user_agent").section == "options"
+            assert config.handler.get_value("f_token_url") == [
+                "test_f_token_url",
             ]
 
         def test_env(self, monkeypatch: pytest.MonkeyPatch) -> None:

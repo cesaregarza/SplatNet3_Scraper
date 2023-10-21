@@ -48,6 +48,11 @@ def expected_all() -> str:
 
 
 @pytest.fixture
+def s3s_config() -> str:
+    return str(config_path / "s3sconfig.txt")
+
+
+@pytest.fixture
 def all_config(all_path) -> configparser.ConfigParser:
     config = configparser.ConfigParser()
     config.read(all_path)
