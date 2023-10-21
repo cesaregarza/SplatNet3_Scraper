@@ -51,7 +51,8 @@ RUN poetry version $BUILD_VERSION && \
 ###############################
 FROM build AS test
 
-RUN poetry install --extras "parquet"
+RUN poetry install --extras "parquet" && \
+    poetry update
 
 RUN J_PATH=reports/junit \
     C_PATH=reports/coverage \
@@ -63,6 +64,8 @@ RUN J_PATH=reports/junit \
     # Generate badges
     poetry run genbadge tests -o $J_PATH/test-badge.svg && \
     poetry run genbadge coverage -o $C_PATH/coverage-badge.svg && \
+    # Mypy checks
+    poetry run mypy . && \
     # Flake8 checks
-    poetry run flake8 --exit-zero --format=html --htmldir ${F_PATH} --statistics --tee --output-file ${F_PATH}/flake8stats.txt && \
+    poetry run flake8 src/ --format=html --htmldir ${F_PATH} --statistics --tee --output-file ${F_PATH}/flake8stats.txt && \
     poetry run genbadge flake8 -i $F_PATH/flake8stats.txt -o $F_PATH/flake8-badge.svg

@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import json
 import logging
+from typing import cast
 
 import requests
 
-from splatnet3_scraper.auth import NSO, TokenManager
 from splatnet3_scraper.auth.exceptions import SplatNetException
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.config import Config
 from splatnet3_scraper.query.responses import QueryResponse
 from splatnet3_scraper.utils import retry
+
+logger = logging.getLogger(__name__)
 
 
 class QueryHandler:
@@ -45,13 +49,15 @@ class QueryHandler:
                 constructor.
         """
         self.config = config
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("Initialized QueryHandler.")
+        logging.info("Initialized QueryHandler")
 
-    @staticmethod
+    @classmethod
     def from_config_file(
+        cls,
         config_path: str | None = None,
-    ) -> "QueryHandler":
+        *,
+        prefix: str = "",
+    ) -> QueryHandler:
         """Creates a new instance of the class using a configuration file.
 
         If the user does not provide a configuration file path, the default path
@@ -69,84 +75,28 @@ class QueryHandler:
                 None, the default configuration file path of
                 ``.splatnet3_scraper`` in the user's current working directory
                 will be used. Defaults to None.
+            prefix (str): The prefix to use for environment variables. This is
+                useful if the user prefers to use both environment variables and
+                configuration files. Defaults to "SN3S".
 
         Returns:
             QueryHandler: A new instance of the class using the configuration
                 file provided, with all the options set in the configuration
                 file.
         """
-        config = Config(config_path)
-        return QueryHandler(config)
+        path = config_path or Config.DEFAULT_CONFIG_PATH
+        config = Config.from_file(path, prefix=prefix)
+        return cls(config)
 
-    @staticmethod
-    def generate_session_token_url(
-        user_agent: str | None = None,
-    ) -> tuple[str, bytes, bytes]:
-        """Generates the URL to use to get the session token.
-
-        This method is used to generate the URL to use to get the session token
-        from the Nintendo Switch Online website. The user must then visit this
-        URL in their browser and log in to their Nintendo account. Once they
-        have logged in, they will be redirected to a page that contains the user
-        profile to select. The user must then select their user profile and
-        then copy the URL from the "select this account" button. The URI of the
-        button will contain the session token code, which the user must then
-        pass to the ``parse_npf_uri`` method to get the session token. This
-        method is currently incomplete and will be updated in the future with
-        its counterpart method to parse the URI and return a ``QueryHandler``
-        object with a valid session token already set in the ``Config`` object
-        and saved to the default configuration path in the user's current
-        working directory.
-
-        Args:
-            user_agent (str | None): The user agent to use when making the
-                initial requests to the Nintendo Switch Online service. If None,
-                the default user agent will be used. It is not recommended to
-                change this unless you know what you are doing. Defaults to
-                None.
-
-        Returns:
-            str: The URL to use to get the session token.
-            bytes: The state ID.
-            bytes: The challenge solution.
-        """
-        nso = NSO.new_instance()
-        url = nso.generate_login_url(user_agent)
-        return url, nso.state, nso.verifier
-
-    @staticmethod
-    def from_session_token(session_token: str, **kwargs) -> "QueryHandler":
-        """Creates a new instance of the class using a session token.
-
-        Given a session token, this method will create a new instance of the
-        class with a valid session token already set in the ``Config`` object.
-        This method is useful if the user already has a session token and does
-        not want to generate an accompanying ``GTOKEN`` and ``BULLET_TOKEN``.
-
-        Args:
-            session_token (str): The session token to use. This token must be
-                valid and not expired or revoked. If the token is invalid, the
-                user will not be able to make any queries to the SplatNet 3 API.
-            **kwargs: Any additional keyword arguments to pass to the
-                constructor of the ``TokenManager`` class.
-
-        Returns:
-            QueryHandler: A new instance of the class with a valid session
-                token already set in the ``Config`` object. The ``GTOKEN`` and
-                ``BULLET_TOKEN`` will also have been generated and set in the
-                ``Config`` object.
-        """
-        token_manager = TokenManager.from_session_token(session_token, **kwargs)
-        token_manager.generate_all_tokens()
-        config = Config(token_manager=token_manager)
-        return QueryHandler(config)
-
-    @staticmethod
+    @classmethod
     def from_tokens(
+        cls,
         session_token: str,
         gtoken: str | None = None,
         bullet_token: str | None = None,
-    ) -> "QueryHandler":
+        *,
+        prefix: str = "",
+    ) -> QueryHandler:
         """Creates a new instance of the class using the tokens provided.
 
         Given a session token, a ``GTOKEN``, and a ``BULLET_TOKEN``, this
@@ -166,75 +116,128 @@ class QueryHandler:
             bullet_token (str | None): The ``BULLET_TOKEN`` to use. If None,
                 the method will generate a new ``BULLET_TOKEN``. Defaults to
                 None.
+            prefix (str): The prefix to use for the configuration options. This
+                is useful if the user wants to use multiple instances of the
+                class with different tokens. Defaults to "SN3S".
 
         Returns:
             QueryHandler: A new instance of the class with all the tokens
                 already set in the ``Config`` object.
         """
-        token_manager = TokenManager.from_tokens(
-            session_token, gtoken, bullet_token
+        config = Config.from_tokens(
+            session_token=session_token,
+            gtoken=gtoken,
+            bullet_token=bullet_token,
+            prefix=prefix,
         )
-        config = Config(token_manager=token_manager)
-        return QueryHandler(config)
+        return cls(config)
 
-    @staticmethod
-    def from_env() -> "QueryHandler":
-        """Creates a new instance of the class using the environment
-        variables.
+    @classmethod
+    def from_session_token(
+        cls,
+        session_token: str,
+        *,
+        prefix: str = "",
+    ) -> QueryHandler:
+        """Creates a new instance of the class using a session token.
 
-        This method will create a new instance of the class using the
-        environment variables. This method is useful if the user wants to start
-        up the class in a CI/CD pipeline, a Docker container, or any other
-        environment where the user does not want to store the session token in
-        a file. The environment variables that this method will use are
-        prepended by ``SN3S_`` and are all uppercase. The three environment
-        variables supported are:
+        Given a session token, this method will create a new instance of the
+        class with a valid session token already set in the ``Config`` object.
+        This method is useful if the user already has a session token and does
+        not want to generate an accompanying ``GTOKEN`` and ``BULLET_TOKEN``.
 
-        - ``SN3S_SESSION_TOKEN``: The session token to use. This token must be
-            valid and not expired or revoked.
-        - ``SN3S_GTOKEN``: The GTOKEN to use.
-        - ``SN3S_BULLET_TOKEN``: The BULLET_TOKEN to use.
+        Args:
+            session_token (str): The session token to use. This token must be
+                valid and not expired or revoked. If the token is invalid, the
+                user will not be able to make any queries to the SplatNet 3 API.
+            prefix (str): The prefix to use for the configuration options. This
+                is useful if the user wants to use multiple instances of the
+                class with different tokens. Defaults to "SN3S".
 
         Returns:
             QueryHandler: A new instance of the class with a valid session
-                token already set in the ``Config`` object. The ``Config``
-                object is also flagged as using environment variables, so the
-                user does not need to worry about accidentally saving the
-                session token to disk.
+                token already set in the ``Config`` object. The ``GTOKEN`` and
+                ``BULLET_TOKEN`` will also have been generated and set in the
+                ``Config`` object.
         """
-        config = Config.from_env()
-        return QueryHandler(config)
+        config = Config.from_tokens(
+            session_token=session_token,
+            prefix=prefix,
+        )
+        config.regenerate_tokens()
+        return cls(config)
 
-    @staticmethod
-    def from_s3s_config(path: str) -> "QueryHandler":
-        """Creates a new instance of the class using the ``s3s`` config file.
+    @classmethod
+    def new_instance(
+        cls,
+        *,
+        prefix: str = "",
+    ) -> QueryHandler:
+        """Creates a new instance of the class.
 
-        This method will create a new instance of the class by reading the
-        ``s3s`` config file. The ``s3s`` config file is a file that is used by
-        ``s3s`` to store the user's data. This method is useful if the user
-        already has a ``s3s`` config file. The ``s3s`` config file is a JSON
-        file that contains the user's session token, G token, bullet token, and
-        other options and data.
+        This method will create a new instance of the class with no tokens set
+        in the ``Config`` object. This method is useful if the user wants to
+        generate all the tokens themselves. The user can then use the
+        ``add_token`` method to add the tokens to the ``Config`` object.
 
         Args:
-            path (str): The path to the s3s config file. This file must be a
-                valid JSON file.
+            prefix (str): The prefix to use for the configuration options. This
+                is useful if the user wants to use multiple instances of the
+                class with different tokens. Defaults to "SN3S".
 
         Returns:
-            QueryHandler: A new instance of the class from the ``s3s`` config
-                file provided.
+            QueryHandler: A new instance of the class with no tokens set in the
+                ``Config`` object.
         """
-        config = Config.from_s3s_config(path)
-        return QueryHandler(config)
+        config = Config.from_empty_handler(prefix=prefix)
+        return cls(config)
 
-    def __query(
-        self, query_name: str, variables: dict = {}
+    @classmethod
+    def from_s3s_config(
+        cls,
+        path: str,
+        *,
+        prefix: str = "",
+    ) -> QueryHandler:
+        """Creates a new instance of the class from an s3s configuration file.
+
+        This method will create a new instance of the class using an s3s
+        configuration file. This method is useful if the user is a previous user
+        of ``s3s`` and wants to migrate to ``splatnet3_scraper``.
+
+        Args:
+            path (str): The path to the configuration file.
+            prefix (str): The prefix to use for environment variables. This is
+                useful if the user prefers to use both environment variables and
+                configuration files. Defaults to "SN3S".
+
+        Returns:
+            QueryHandler: A new instance of the class using the configuration
+                file provided, with all the options set in the configuration
+                file.
+        """
+        config = Config.from_s3s_config(path, prefix=prefix)
+        return cls(config)
+
+    def raw_query(
+        self,
+        query_name: str,
+        language: str | None = None,
+        variables: dict = {},
     ) -> requests.Response:
-        """Internal method to query Splatnet 3, it does all of the heavy lifting
-        and is used by the other methods to get the data.
+        """Makes a raw query to the SplatNet 3 API.
+
+        This method is used to make a raw query to the SplatNet 3 API. It is not
+        recommended that the user use this method directly, but rather use the
+        ``query`` method instead, as it will handle all the token management
+        automatically. This method is rarely useful, but it is provided for
+        completeness... and because I don't like hidden methods all that much.
 
         Args:
             query_name (str): The name of the query to use.
+            language (str | None): The language to use for the query. If None,
+                the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Defaults to {}.
 
         Returns:
@@ -242,22 +245,34 @@ class QueryHandler:
         """
         return queries.query(
             query_name,
-            self.config.get_token(TOKENS.BULLET_TOKEN),
-            self.config.get_token(TOKENS.GTOKEN),
-            self.config.get_data("language"),
-            self.config.get("user_agent"),
+            cast(str, self.config.get_value(TOKENS.BULLET_TOKEN)),
+            cast(str, self.config.get_value(TOKENS.GTOKEN)),
+            language or cast(str, self.config.get_value("language")),
+            self.config.get_value("user_agent"),
             variables=variables,
         )
 
-    # Repeat code, but I've elected to do this to make it easier to read
-    def __query_hash(
-        self, query_hash: str, variables: dict = {}
+    def raw_query_hash(
+        self,
+        query_hash: str,
+        language: str | None = None,
+        variables: dict = {},
     ) -> requests.Response:
-        """Internal method to query Splatnet 3, it does all of the heavy lifting
-        and is used by the other methods to get the data.
+        """Makes a raw query to the SplatNet 3 API using the query hash.
+
+        This method is used to make a raw query to the SplatNet 3 API. It is not
+        recommended that the user use this method directly, but rather use the
+        ``query`` method instead, as it will handle all the token management
+        automatically. If you MUST use a raw query, it is recommended that you
+        use the ``raw_query`` method instead. This method is even more rarely
+        useful than the ``raw_query`` method, but it is provided for
+        completeness.
 
         Args:
-            query_hash (str): The hash of the query to use.
+            query_hash (str): The GraphQL query hash to use.
+            language (str | None): The language to use for the query. If None,
+                the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Defaults to {}.
 
         Returns:
@@ -265,17 +280,19 @@ class QueryHandler:
         """
         return queries.query_hash(
             query_hash,
-            self.config.get_token(TOKENS.BULLET_TOKEN),
-            self.config.get_token(TOKENS.GTOKEN),
-            self.config.get_data("language"),
-            self.config.get("user_agent"),
+            cast(str, self.config.get_value(TOKENS.BULLET_TOKEN)),
+            cast(str, self.config.get_value(TOKENS.GTOKEN)),
+            language or cast(str, self.config.get_value("language")),
+            self.config.get_value("user_agent"),
             variables=variables,
         )
 
-    # Repeat code, but I've elected to do this to make it easier to read
     @retry(times=1, exceptions=ConnectionError)
     def query_hash(
-        self, query_hash: str, variables: dict = {}
+        self,
+        query_hash: str,
+        language: str | None = None,
+        variables: dict = {},
     ) -> QueryResponse:
         """Given a query hash, it will query SplatNet 3 and return the response.
 
@@ -293,6 +310,9 @@ class QueryHandler:
             query_hash (str): The query hash to use. This hash must be valid,
                 and must be a string representation rather than a byte
                 representation.
+            language (str | None): The language to use for the query. If None,
+                the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Some queries do
                 not require variables and so this argument can be omitted. If
                 the query does require variables and this argument is omitted,
@@ -315,25 +335,25 @@ class QueryHandler:
                 that was used to generate the query. This is useful for
                 debugging purposes.
         """
-        response = self.__query_hash(query_hash, variables)
+        response = self.raw_query_hash(query_hash, language, variables)
         if response.status_code != 200:
-            self.logger.info("Query failed, regenerating tokens and retrying.")
-            self.config.token_manager.generate_all_tokens()
-            response = self.__query_hash(query_hash, variables)
+            logger.info("Query failed, regenerating tokens and retrying")
+            self.config.regenerate_tokens()
+            response = self.raw_query_hash(query_hash, language, variables)
 
         if "errors" in response.json():
             errors = response.json()["errors"]
             error_message = (
                 "Query was successful but returned at least one error."
             )
-
             error_message += " Errors: " + json.dumps(errors, indent=4)
             raise SplatNetException(error_message)
-
         return QueryResponse(data=response.json()["data"])
 
     @retry(times=1, exceptions=ConnectionError)
-    def query(self, query_name: str, variables: dict = {}) -> QueryResponse:
+    def query(
+        self, query_name: str, language: str | None = None, variables: dict = {}
+    ) -> QueryResponse:
         """Queries Splatnet 3 and returns the data.
 
         This method will query SplatNet 3 and return the data from the query.
@@ -351,6 +371,9 @@ class QueryHandler:
                 valid, and is not case sensitive. For more information on the
                 list of valid queries, see the documentation on the queries that
                 are available.
+            language (str | None): The language to use for the query. If None,
+                the language loaded into the ``Config`` object will be used.
+                Defaults to None.
             variables (dict): The variables to use in the query. Some queries do
                 not require variables and so this argument can be omitted. If
                 the query does require variables and this argument is omitted,
@@ -373,11 +396,11 @@ class QueryHandler:
                 that was used to generate the query. This is useful for
                 debugging purposes.
         """
-        response = self.__query(query_name, variables)
+        response = self.raw_query(query_name, language, variables)
         if response.status_code != 200:
-            self.logger.info("Query failed, regenerating tokens and retrying.")
-            self.config.token_manager.generate_all_tokens()
-            response = self.__query(query_name, variables)
+            logger.info("Query failed, regenerating tokens and retrying.")
+            self.config.regenerate_tokens()
+            response = self.raw_query(query_name, language, variables)
 
         if "errors" in response.json():
             errors = response.json()["errors"]
@@ -389,22 +412,3 @@ class QueryHandler:
             raise SplatNetException(error_message)
 
         return QueryResponse(data=response.json()["data"])
-
-    def export_tokens(self) -> list[tuple[str, str]]:
-        """Exports the tokens to a list of tuples.
-
-        This method will export the tokens to a list of tuples. This method is
-        useful if the user wants to export the tokens to a file or to a database
-        or some other data store. The tokens are returned as a list of tuples
-        with the first element being the token name and the second element being
-        the token value. The list of tokens returned is as follows:
-
-        - ``session_token``
-        - ``gtoken``
-        - ``bullet_token``
-
-        Returns:
-            list[tuple[str, str]]: The list of tokens as a list of tuples.
-        """
-        self.logger.debug("Exporting tokens.")
-        return self.config.token_manager.export_tokens()

@@ -1,0 +1,16 @@
+name: Update Develop On Main Update
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+    update_develop:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+            - name: Update Develop
+              uses: ./.github/actions/update-develop
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  

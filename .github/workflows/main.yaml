@@ -56,15 +56,26 @@ jobs:
           echo "Latest Release without v: ${CLEANED_LATEST_RELEASE}"
           echo "Base Version: ${BASE_VERSION}"
 
-          if [[ "${BASE_VERSION}" > "${CLEANED_LATEST_RELEASE}" ]]; then
+          BASE_MAJOR=$(echo ${BASE_VERSION} | cut -d. -f1)
+          BASE_MINOR=$(echo ${BASE_VERSION} | cut -d. -f2)
+          BASE_PATCH=$(echo ${BASE_VERSION} | cut -d. -f3)
+
+          LATEST_MAJOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f1)
+          LATEST_MINOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f2)
+          LATEST_PATCH=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f3)
+
+          if [[ $BASE_MAJOR -gt $LATEST_MAJOR ]] || \
+             [[ $BASE_MAJOR -eq $LATEST_MAJOR && \
+                $BASE_MINOR -gt $LATEST_MINOR ]] || \
+             [[ $BASE_MAJOR -eq $LATEST_MAJOR && \
+                $BASE_MINOR -eq $LATEST_MINOR && \
+                $BASE_PATCH -gt $LATEST_PATCH ]]; then
+            echo "Base Version is greater than Latest Release"
             NEXT_VERSION=${BASE_VERSION}
           else
-            MAJOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f1)
-            MINOR=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f2)
-            PATCH=$(echo ${CLEANED_LATEST_RELEASE} | cut -d. -f3)
-
-            PATCH=$((PATCH + 1))
-            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            echo "Base Version is less or equal to Latest Release"
+            LATEST_PATCH=$((LATEST_PATCH + 1))
+            NEXT_VERSION="${LATEST_MAJOR}.${LATEST_MINOR}.${LATEST_PATCH}"
           fi
 
           echo "Next Version: ${NEXT_VERSION}"
@@ -82,12 +93,16 @@ jobs:
           docker cp test-container:/app/reports .
           mkdir -p temp-dist
           docker cp test-container:/app/dist temp-dist/
+          docker cp test-container:/app/pyproject.toml .
+          docker cp test-container:/app/poetry.lock .
 
       - name: Commit and Push
         if: matrix.python_image == env.default_image
         run: |
           git add reports/*
-          git commit -m "AUTO: Update reports from CI"
+          git add pyproject.toml
+          git add poetry.lock
+          git commit -m "AUTO: Update reports and poetry files from CI"
           git push
 
       - name: Publish to PyPi
