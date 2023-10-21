@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.CI_SN3S_TOKEN }}
 
       - name: Cache Poetry Dependencies
         uses: actions/cache@v2
