@@ -3,10 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from splatnet3_scraper.auth.exceptions import SplatNetException
-from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.query.handler import QueryHandler
-from splatnet3_scraper.query.responses import QueryResponse
-from tests.mock import MockConfig, MockNSO, MockResponse, MockTokenManager
 
 base_handler_path = "splatnet3_scraper.query.handler"
 config_path = base_handler_path + ".Config"
@@ -187,7 +184,6 @@ class TestSplatNetQueryHandler:
             valid_response.json.return_value = {"errors": ["test"]}
 
         counter = 1 if response == "400" else 0
-        total_counter = counter + 1
 
         def raw_query_hash(*args, **kwargs):
             nonlocal counter
@@ -257,7 +253,6 @@ class TestSplatNetQueryHandler:
             valid_response.json.return_value = {"errors": ["test"]}
 
         counter = 1 if response == "400" else 0
-        total_counter = counter + 1
 
         def raw_query(*args, **kwargs):
             nonlocal counter
