@@ -125,3 +125,36 @@ class TestSplatNetQueryHandler:
                 variables=variables,
             )
             assert ret == expected_return
+
+    @pytest.mark.parametrize(
+        "language",
+        [
+            "en-US",
+            None,
+        ],
+        ids=[
+            "with_language",
+            "without_language",
+        ],
+    )
+    def test_raw_query_hash(self, language: str | None) -> None:
+        config = MagicMock()
+        expected_return = MagicMock()
+        variables = MagicMock()
+        handler = QueryHandler(config)
+        getvalue_return = config.get_value.return_value
+
+        with patch(queries_path) as mock_queries:
+            mock_queries.query_hash.return_value = expected_return
+            ret = handler.raw_query_hash(
+                "test", language=language, variables=variables
+            )
+            mock_queries.query_hash.assert_called_once_with(
+                "test",
+                getvalue_return,
+                getvalue_return,
+                language or getvalue_return,
+                getvalue_return,
+                variables=variables,
+            )
+            assert ret == expected_return
