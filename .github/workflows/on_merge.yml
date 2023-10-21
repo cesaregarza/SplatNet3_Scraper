@@ -1,16 +1,27 @@
-name: Update Develop On Main Update
+name: Update Develop Branch
 
 on:
   push:
     branches:
       - main
+
 jobs:
-    update_develop:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v2
-            - name: Update Develop
-              uses: ./.github/actions/update-develop
-              with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
-                  
+  update-develop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.CI_SN3S_TOKEN }}
+
+      - name: Merge main into develop
+        run: |
+          git fetch origin main
+          git merge origin/main
+          
+      - name: Push changes to develop
+        run: |
+          git push origin develop
