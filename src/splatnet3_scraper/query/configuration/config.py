@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import configparser
-from typing import TypeVar
+import json
+from typing import TypeVar, cast
 
 from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
 from splatnet3_scraper.constants import TOKENS
@@ -311,3 +312,37 @@ class Config:
         config = self.handler.save_to_configparser()
         with open(file_path, "w") as f:
             config.write(f)
+
+    @staticmethod
+    def from_s3s_config(
+        path: str,
+        *,
+        prefix: str = "",
+    ) -> Config:
+        """Creates a ``Config`` object from an s3s config file. This method is
+        useful if you already have an s3s config file and want to use it to
+        create a ``Config`` object. It is not recommended to use this method if
+        you can avoid it.
+
+        Args:
+            path (str): The path to the s3s config file.
+            prefix (str): The prefix to use for the config options. Defaults to
+                "SN3S".
+
+        Returns:
+            Config: The ``Config`` object created from the s3s config file.
+        """
+        prefix = prefix or Config.DEFAULT_PREFIX
+        with open(path, "r") as f:
+            data = json.load(f)
+
+        if "acc_loc" in data:
+            acc_loc: str = cast(str, data["acc_loc"])
+            language, country = acc_loc.split("|")
+            data["language"] = language
+            data["country"] = country
+            del data["acc_loc"]
+
+        handler = ConfigOptionHandler(prefix=prefix)
+        handler.read_from_dict(data)
+        return Config.from_config_handler(handler, Config.DEFAULT_CONFIG_PATH)
