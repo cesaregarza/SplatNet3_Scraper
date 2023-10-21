@@ -11,9 +11,7 @@ from splatnet3_scraper.query.config.config_option_handler import (
 
 base_option_path = "splatnet3_scraper.query.config.config_option"
 option_path = base_option_path + ".ConfigOption"
-base_handler_path = (
-    "splatnet3_scraper.query.config.config_option_handler"
-)
+base_handler_path = "splatnet3_scraper.query.config.config_option_handler"
 handler_path = base_handler_path + ".ConfigOptionHandler"
 
 
