@@ -80,3 +80,14 @@ class TestSplatNetQueryHandler:
                 prefix=prefix
             )
             assert handler.config == config
+
+    def test_from_s3s_config(self) -> None:
+        config = MagicMock()
+        prefix = MagicMock()
+        with patch(config_path) as mock_config:
+            mock_config.from_s3s_config.return_value = config
+            handler = QueryHandler.from_s3s_config("test", prefix=prefix)
+            mock_config.from_s3s_config.assert_called_once_with(
+                "test", prefix=prefix
+            )
+            assert handler.config == config
