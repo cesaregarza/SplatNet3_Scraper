@@ -24,7 +24,7 @@ jobs:
         id: check_changes
         run: |
           git fetch origin ${{ github.base_ref }}
-          CHANGES=$(git diff --name-only origin/${{ github.base_ref }}.. ${{ github.sha }} -- 'src/')
+          CHANGES=$(git diff --name-only origin/${{ github.base_ref }}..${{ github.sha }} -- 'src/')
           if [ -n "$CHANGES" ]; then
             echo "Changes detected in src/ directory"
             echo "has_changes=true" >> $GITHUB_OUTPUT
