@@ -6,23 +6,23 @@ on:
       - main
 
 jobs:
-  check_actor:
+  check-if-ci:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.check_actor_step.outputs.skip }}
+      skip: ${{ steps.check_ci_step.outputs.skip }}
     
     steps:
-      - name: Check if actor is CI
-        id: check_actor_step
+      - name: Check if push is from CI from "AUTO:..." commit message
+        id: check_ci_step
         run: |
-          if [[ "${{ github.actor }}" == "github-actions[bot]" ]]; then
-            echo "::set-output name=skip::true"
+          if [[ $(git log -1 --pretty=%B) =~ ^AUTO:.* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=skip::false"
+            echo "skip=false" >> $GITHUB_OUTPUT
           fi
   built-test-publish:
-    needs: check_actor
-    if: needs.check_actor.outputs.skip == 'false'
+    needs: check-if-ci
+    if: needs.check-if-ci.outputs.skip == 'false'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -142,7 +142,7 @@ jobs:
           echo "Next Version: v${NEXT_VERSION}"
           if [[ $NEXT_VERSION != $LATEST_RELEASE ]]; then
             echo "Creating Release"
-            git tag -a $NEXT_VERSION -m "AUTO: Release v$NEXT_VERSION"
+            git tag -a v$NEXT_VERSION -m "AUTO: Release v$NEXT_VERSION"
             git push origin v$NEXT_VERSION
           else
             echo "No new release to create"
@@ -152,3 +152,29 @@ jobs:
         run: |
           docker rmi my-image:${{ steps.semver.outputs.version }} --force
           rm -rf temp-dist
+  
+  update-develop:
+    runs-on: ubuntu-latest
+    needs: built-test-publish
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.CI_SN3S_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "
+      
+      - name: Merge main into develop
+        run: |
+          git fetch origin main
+          git merge origin/main
+      
+      - name: Push to develop
+        run: |
+          git push origin develop
