@@ -6,7 +6,23 @@ on:
       - main
 
 jobs:
+  check_actor:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check_actor_step.outputs.skip }}
+    
+    steps:
+      - name: Check if actor is CI
+        id: check_actor_step
+        run: |
+          if [[ "${{ github.actor }}" == "github-actions[bot]" ]]; then
+            echo "::set-output name=skip::true"
+          else
+            echo "::set-output name=skip::false"
+          fi
   built-test-publish:
+    needs: check_actor
+    if: needs.check_actor.outputs.skip == 'false'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -116,6 +132,21 @@ jobs:
           && break \
           || sleep 15; \
           done
+      
+      - name: Create Release
+        if: success() && matrix.python_image == env.default_image
+        run: |
+          LATEST_RELEASE=${{ steps.latest_release.outputs.release }}
+          NEXT_VERSION=${{ steps.calculate_version.outputs.version }}
+          echo "Latest Release: ${LATEST_RELEASE}"
+          echo "Next Version: v${NEXT_VERSION}"
+          if [[ $NEXT_VERSION != $LATEST_RELEASE ]]; then
+            echo "Creating Release"
+            git tag -a $NEXT_VERSION -m "AUTO: Release v$NEXT_VERSION"
+            git push origin v$NEXT_VERSION
+          else
+            echo "No new release to create"
+          fi
 
       - name: Cleanup
         run: |
