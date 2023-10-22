@@ -12,6 +12,11 @@ jobs:
       skip: ${{ steps.check_ci_step.outputs.skip }}
     
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.CI_SN3S_TOKEN }}
+
       - name: Check if push is from CI from "AUTO:..." commit message
         id: check_ci_step
         run: |
@@ -20,6 +25,7 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
+
   built-test-publish:
     needs: check-if-ci
     if: needs.check-if-ci.outputs.skip == 'false'
@@ -168,7 +174,7 @@ jobs:
       - name: Setup Git
         run: |
           git config --global user.name "GitHub Actions"
-          git config --global user.email "
+          git config --global user.email "actions@github.com"
       
       - name: Merge main into develop
         run: |
