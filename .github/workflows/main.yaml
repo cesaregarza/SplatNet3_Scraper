@@ -35,6 +35,8 @@ jobs:
         python_image: ["python:3.10-slim", "python:3.11-slim"]
     env:
       default_image: "python:3.10-slim"
+    outputs:
+      version: ${{ steps.calculate_version.outputs.version }}
 
     steps:
       - name: Checkout
@@ -159,9 +161,24 @@ jobs:
           docker rmi my-image:${{ steps.semver.outputs.version }} --force
           rm -rf temp-dist
   
-  update-develop:
+  release:
     runs-on: ubuntu-latest
     needs: built-test-publish
+
+    steps:
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.built-test-publish.outputs.version }}
+        run: |
+          gh release create ${{ env.tag }} \
+          --repo="$GITHUB_REPOSITORY" \
+          --title="${GITHUB_REPOSITORY#*/} ${{ env.tag }}" \
+          --generate-notes
+
+  update-develop:
+    runs-on: ubuntu-latest
+    needs: release
 
     steps:
       - name: Checkout

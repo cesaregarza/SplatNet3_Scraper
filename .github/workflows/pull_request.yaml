@@ -19,6 +19,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          CHANGES=$(git diff --name-only origin/${{ github.base_ref }}..${{ github.sha }} -- 'src/')
+          if [ -n "$CHANGES" ]; then
+            echo "Changes detected in src/ directory"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected in src/ directory"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Cache Poetry Dependencies
         uses: actions/cache@v2
@@ -29,6 +42,7 @@ jobs:
             ${{ runner.os }}-poetry-
 
       - name: Build and Test
+        if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           docker build \
           --build-arg PYTHON_IMAGE=${{ matrix.python_image }} \
