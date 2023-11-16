@@ -10,7 +10,7 @@ license = "GPL-3.0-or-later"
 [tool.poetry.dependencies]
 python = "^3.10"
 requests = "^2.28.1"
-pyarrow = {version = "^10.0.1", optional = true, extras = ["parquet"]}
+pyarrow = {version = ">=10.0.1,<15.0.0", optional = true, extras = ["parquet"]}
 pandas = {version = "^1.5.3", optional = true, extras = ["examples"]}
 sqlalchemy = {version = "^2.0.1", optional = true, extras = ["examples"]}
 psycopg2 = {version = "^2.9.5", optional = true, extras = ["examples"]}
