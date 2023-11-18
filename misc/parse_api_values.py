@@ -20,11 +20,8 @@ def get_github_file_content(github_url: str) -> dict:
     path_parts = github_url.split("github.com/")[1].split("/")
     owner = path_parts[0]
     repo = path_parts[1]
-    path = "/".join(path_parts[3:])
-
-    print("Owner:", owner)
-    print("Repo:", repo)
-    print("Path:", path)
+    # Skips both "blob" and the branch name
+    path = "/".join(path_parts[4:])
 
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
 
