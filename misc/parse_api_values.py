@@ -74,6 +74,8 @@ if __name__ == "__main__":
     # Write the parsed JSON to files
     with open("src/splatnet3_scraper/splatnet3_webview_data.json", "w") as f:
         json.dump(parsed_splatnet3_json, f, indent=4)
+        f.write("\n")
 
     with open("src/splatnet3_scraper/tournament_webview_data.json", "w") as f:
         json.dump(parsed_tournament_json, f, indent=4)
+        f.write("\n")
