@@ -23,10 +23,6 @@ def get_github_file_content(github_url: str) -> dict:
     # Skips both "blob" and the branch name
     path = "/".join(path_parts[4:])
 
-    print("Owner:", owner)
-    print("Repo:", repo)
-    print("Path:", path)
-
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
 
     headers = {"Accept": "application/vnd.github.v3.raw"}
