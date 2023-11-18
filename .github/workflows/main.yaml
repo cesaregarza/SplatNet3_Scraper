@@ -27,17 +27,18 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check for changes in src
+      - name: Check for changes
         id: check_changes
         run: |
-          git fetch --no-tags --prune --depth=1 origin +refs/heads/main:refs/remotes/origin/main
-          CHANGES=$(git diff --name-only HEAD^ HEAD -- 'src/')
+          git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+          git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}
+          CHANGES=$(git diff --name-only refs/remotes/origin/${{ github.base_ref }}...refs/remotes/origin/${{ github.head_ref }} -- 'src/')
           if [ -n "$CHANGES" ]; then
             echo "Changes detected in src/ directory"
-            echo "publish=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_ENV
           else
             echo "No changes detected in src/ directory"
-            echo "publish=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> $GITHUB_ENV
           fi
 
   build-test-publish:
