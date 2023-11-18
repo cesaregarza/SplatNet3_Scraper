@@ -190,9 +190,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.build-test-publish.outputs.version }}
         run: |
-          gh release create ${{ env.tag }} \
+          gh release create v${{ env.tag }} \
           --repo="$GITHUB_REPOSITORY" \
-          --title="${GITHUB_REPOSITORY#*/} ${{ env.tag }}" \
+          --title="${GITHUB_REPOSITORY#*/} v${{ env.tag }}" \
           --generate-notes
 
   update-develop:
