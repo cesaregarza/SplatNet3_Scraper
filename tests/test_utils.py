@@ -320,7 +320,7 @@ class TestHash:
     def test_get_splatnet_hashes_success(self):
         with (
             mock.patch(
-                utils_path + ".get_hash_data",
+                utils_path + ".hash_data.get_hash_data",
                 return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_hash_data,
             freezegun.freeze_time(self.FROZEN_TIME),
@@ -339,12 +339,12 @@ class TestHash:
 
         with (
             mock.patch(
-                utils_path + ".get_hash_data",
+                utils_path + ".hash_data.get_hash_data",
                 side_effect=get_hash_data_fail,
             ) as mock_get_hash_data,
             freezegun.freeze_time(self.FROZEN_TIME),
             mock.patch(
-                utils_path + ".get_fallback_hash_data",
+                utils_path + ".hash_data.get_fallback_hash_data",
                 return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_fallback_hash_data,
             mock.patch(
@@ -360,12 +360,12 @@ class TestHash:
     def test_get_splatnet_hashes_success_empty(self):
         with (
             mock.patch(
-                utils_path + ".get_hash_data",
+                utils_path + ".hash_data.get_hash_data",
                 return_value=({}, self.TEST_VERSION),
             ) as mock_get_hash_data,
             freezegun.freeze_time(self.FROZEN_TIME),
             mock.patch(
-                utils_path + ".get_fallback_hash_data",
+                utils_path + ".hash_data.get_fallback_hash_data",
                 return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_fallback_hash_data,
             mock.patch(
@@ -381,7 +381,7 @@ class TestHash:
     def test_get_splatnet_version_success(self):
         with (
             mock.patch(
-                utils_path + ".get_hash_data",
+                utils_path + ".hash_data.get_hash_data",
                 return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_hash_data,
             freezegun.freeze_time(self.FROZEN_TIME),
@@ -400,12 +400,12 @@ class TestHash:
 
         with (
             mock.patch(
-                utils_path + ".get_hash_data",
+                utils_path + ".hash_data.get_hash_data",
                 side_effect=get_hash_data_fail,
             ) as mock_get_hash_data,
             freezegun.freeze_time(self.FROZEN_TIME),
             mock.patch(
-                utils_path + ".get_fallback_hash_data",
+                utils_path + ".hash_data.get_fallback_hash_data",
                 return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_fallback_hash_data,
             mock.patch(
@@ -421,12 +421,12 @@ class TestHash:
     def test_get_splatnet_version_success_empty(self):
         with (
             mock.patch(
-                utils_path + ".get_hash_data",
+                utils_path + ".hash_data.get_hash_data",
                 return_value=({}, self.TEST_VERSION),
             ) as mock_get_hash_data,
             freezegun.freeze_time(self.FROZEN_TIME),
             mock.patch(
-                utils_path + ".get_fallback_hash_data",
+                utils_path + ".hash_data.get_fallback_hash_data",
                 return_value=(self.TEST_HASH_MAP, self.TEST_VERSION),
             ) as mock_get_fallback_hash_data,
             mock.patch(
