@@ -30,9 +30,9 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
-          git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}
-          CHANGES=$(git diff --name-only refs/remotes/origin/${{ github.base_ref }}...refs/remotes/origin/${{ github.head_ref }} -- 'src/')
+          git fetch origin +refs/heads/${{ github.base_ref }}
+          git fetch origin +refs/heads/${{ github.head_ref }}
+          CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...origin/${{ github.head_ref }} -- 'src/')
           if [ -n "$CHANGES" ]; then
             echo "Changes detected in src/ directory"
             echo "has_changes=true" >> $GITHUB_ENV
