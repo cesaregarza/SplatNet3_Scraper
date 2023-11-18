@@ -152,6 +152,7 @@ input_files
 *.json
 !tests/input_files/*.json
 !splatnet3_webview_data.json
+!tournament_webview_data.json
 *.html
 .python-version
 *.sh
