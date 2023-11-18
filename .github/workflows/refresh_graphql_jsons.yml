@@ -1,0 +1,55 @@
+name: Update query hashes
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 * * * *'
+
+env:
+  PR_TITLE: Update query hashes
+  BASE_BRANCH: develop
+  BRANCH_NAME: update-query-hashes
+  GITHUB_TOKEN: ${{ secrets.CI_SN3S_TOKEN }}
+
+jobs:
+  check-and-create-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run parse_api_values.py script
+        env:
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        run: python misc/parse_api_values.py
+
+      - name: Commit files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/splatnet3_scraper/*.json
+          git commit -m "Update webview data" || echo "No changes to commit"
+          git push
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v4
+        with:
+          title: ${{ env.PR_TITLE }}
+          commit-message: ${{ env.PR_TITLE }}
+          branch: ${{ env.BRANCH_NAME }}
+          base: ${{ env.BASE_BRANCH }}
+          body: ${{ env.PR_TITLE }}
+          delete-branch: true
