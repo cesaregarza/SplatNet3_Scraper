@@ -6,11 +6,11 @@ from functools import lru_cache
 
 import requests
 
+from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
+
 fallback_path = (
     pathlib.Path(__file__).parent.parent / "splatnet3_webview_data.json"
 )
-
-from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
 
 
 @lru_cache()
