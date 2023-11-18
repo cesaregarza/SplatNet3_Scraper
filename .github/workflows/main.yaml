@@ -31,7 +31,6 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          # Now that we have the complete history, we can identify the latest tag
           LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
           echo "Latest release tag is $LATEST_TAG"
 
@@ -39,10 +38,10 @@ jobs:
           CHANGES=$(git diff --name-only $LATEST_TAG HEAD -- 'src/')
           if [ -n "$CHANGES" ]; then
             echo "Changes detected in src/ directory since the last release"
-            echo "has_changes=true" >> $GITHUB_ENV
+            echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "No changes detected in src/ directory since the last release"
-            echo "has_changes=false" >> $GITHUB_ENV
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
   build-test-publish:
