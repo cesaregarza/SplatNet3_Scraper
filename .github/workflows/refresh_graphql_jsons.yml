@@ -36,14 +36,6 @@ jobs:
           GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
         run: python misc/parse_api_values.py
 
-      - name: Commit files
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add src/splatnet3_scraper/*.json
-          git commit -m "Update webview data" || echo "No changes to commit"
-          git push
-
       - name: Create PR
         uses: peter-evans/create-pull-request@v4
         with:
