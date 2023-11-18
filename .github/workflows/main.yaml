@@ -30,8 +30,8 @@ jobs:
       - name: Check for changes in src
         id: check_changes
         run: |
-          git fetch origin ${{ github.base_ref }}
-          CHANGES=$(git diff --name-only origin/${{ github.base_ref }}..${{ github.sha }} -- 'src/')
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          CHANGES=$(git diff --name-only HEAD^ HEAD -- 'src/')
           if [ -n "$CHANGES" ]; then
             echo "Changes detected in src/ directory"
             echo "publish=true" >> $GITHUB_OUTPUT
