@@ -22,9 +22,13 @@ def get_github_file_content(github_url: str) -> dict:
     repo = path_parts[1]
     path = "/".join(path_parts[3:])
 
+    print("Owner:", owner)
+    print("Repo:", repo)
+    print("Path:", path)
+
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
 
-    headers = {"Accept": "application/vnd.github.v3+json"}
+    headers = {"Accept": "application/vnd.github.v3.raw"}
     if "GITHUB_TOKEN" in os.environ:
         print("Using GitHub token to get file content")
         headers["Authorization"] = f"token {os.environ['GITHUB_TOKEN']}"

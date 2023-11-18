@@ -46,7 +46,7 @@ jobs:
 
   build-test-publish:
     needs: check-if-ci
-    if: needs.check-if-ci.outputs.skip == 'false'
+    if: needs.check-if-ci.outputs.skip == 'false' && needs.check-if-ci.outputs.publish == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -141,7 +141,7 @@ jobs:
           docker cp test-container:/app/poetry.lock .
 
       - name: Commit and Push
-        if: matrix.python_image == env.default_image && needs.check-if-ci.outputs.publish == 'true'
+        if: matrix.python_image == env.default_image
         run: |
           git add reports/*
           git add pyproject.toml
@@ -150,7 +150,7 @@ jobs:
           git push
 
       - name: Publish to PyPi
-        if: success() && matrix.python_image == env.default_image && needs.check-if-ci.outputs.publish == 'true'
+        if: success() && matrix.python_image == env.default_image
         run: |
           pip install twine
           for i in {1..5}; do \
@@ -160,7 +160,7 @@ jobs:
           done
       
       - name: Create Release
-        if: success() && matrix.python_image == env.default_image && needs.check-if-ci.outputs.publish == 'true'
+        if: success() && matrix.python_image == env.default_image
         run: |
           LATEST_RELEASE=${{ steps.latest_release.outputs.release }}
           NEXT_VERSION=${{ steps.calculate_version.outputs.version }}
@@ -181,8 +181,8 @@ jobs:
   
   release:
     runs-on: ubuntu-latest
-    needs: [build-test-publish, check-if-ci]
-    if: needs.check-if-ci.outputs.publish == 'true'
+    needs: build-test-publish
+    if: success()
 
     steps:
       - name: Create release
@@ -198,6 +198,7 @@ jobs:
   update-develop:
     runs-on: ubuntu-latest
     needs: build-test-publish
+    if: always()
 
     steps:
       - name: Checkout
