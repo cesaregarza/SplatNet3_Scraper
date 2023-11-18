@@ -30,16 +30,24 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          # Fetch the branches
-          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+          # Fetch tags and the current branch
+          git fetch --tags
           git fetch origin ${{ github.head_ref }}:${{ github.head_ref }}
-          # Check for changes in the src/ directory
-          CHANGES=$(git diff --name-only ${{ github.base_ref }}...${{ github.head_ref }} -- 'src/')
+      
+          # Get the latest release tag. Assuming tags are used for releases.
+          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Latest release tag is $LATEST_TAG"
+      
+          # Checkout the current branch to compare
+          git checkout ${{ github.head_ref }}
+      
+          # Check for changes in the src/ directory since the last release
+          CHANGES=$(git diff --name-only $LATEST_TAG...${{ github.head_ref }} -- 'src/')
           if [ -n "$CHANGES" ]; then
-            echo "Changes detected in src/ directory"
+            echo "Changes detected in src/ directory since the last release"
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
-            echo "No changes detected in src/ directory"
+            echo "No changes detected in src/ directory since the last release"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
