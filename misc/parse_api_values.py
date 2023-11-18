@@ -26,7 +26,10 @@ def get_github_file_content(github_url: str) -> dict:
 
     headers = {"Accept": "application/vnd.github.v3+json"}
     if "GITHUB_TOKEN" in os.environ:
+        print("Using GitHub token to get file content")
         headers["Authorization"] = f"token {os.environ['GITHUB_TOKEN']}"
+    else:
+        print("No GitHub token found, using unauthenticated requests")
 
     response = requests.get(api_url, headers=headers)
 
