@@ -38,10 +38,10 @@ jobs:
           CHANGES=$(git diff --name-only $LATEST_TAG HEAD -- 'src/')
           if [ -n "$CHANGES" ]; then
             echo "Changes detected in src/ directory since the last release"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "publish=true" >> $GITHUB_OUTPUT
           else
             echo "No changes detected in src/ directory since the last release"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "publish=false" >> $GITHUB_OUTPUT
           fi
 
   build-test-publish:
