@@ -4,6 +4,7 @@ from splatnet3_scraper.utils.hash_data import (
     get_hash_data,
     get_splatnet_hashes,
     get_splatnet_version,
+    get_tournament_hashes,
     get_ttl_hash,
 )
 from splatnet3_scraper.utils.json_helpers import (

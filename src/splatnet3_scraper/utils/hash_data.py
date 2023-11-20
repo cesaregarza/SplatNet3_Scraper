@@ -144,7 +144,7 @@ def get_splatnet_version(url: str | None = None) -> str:
     return version
 
 
-@cache()
+@cache
 def get_tournament_hashes() -> dict[str, str]:
     """Gets the hashes for the GraphQL queries.
 
