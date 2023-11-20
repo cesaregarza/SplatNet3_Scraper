@@ -2,7 +2,7 @@ import json
 import logging
 import pathlib
 import time
-from functools import lru_cache
+from functools import cache, lru_cache
 
 import requests
 
@@ -10,6 +10,10 @@ from splatnet3_scraper.constants import GRAPH_QL_REFERENCE_URL
 
 fallback_path = (
     pathlib.Path(__file__).parent.parent / "splatnet3_webview_data.json"
+)
+
+tournament_path = (
+    pathlib.Path(__file__).parent.parent / "tournament_webview_data.json"
 )
 
 
@@ -138,3 +142,21 @@ def get_splatnet_version(url: str | None = None) -> str:
         logging.warning("Using fallback")
         return get_fallback_hash_data()[1]
     return version
+
+
+@cache()
+def get_tournament_hashes() -> dict[str, str]:
+    """Gets the hashes for the GraphQL queries.
+
+    Loads the tournament hash data from the ``tournament_webview_data.json``
+    file and parses it to get the hashes for the queries.
+
+    Returns:
+        dict[str, str]: The hashes for the GraphQL queries. The keys are
+            the names of the queries and the values are the most up to date
+            hashes for the queries.
+    """
+    with open(tournament_path, "r") as f:
+        TOURNAMENT_DATA = json.load(f)
+
+    return TOURNAMENT_DATA["graphql"]["hash_map"]
