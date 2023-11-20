@@ -5,7 +5,7 @@ import requests
 from splatnet3_scraper.auth.graph_ql_queries import GraphQLQueries
 from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
-    GRAPHQL_URL,
+    SPLATNET_GRAPHQL_URL,
     SPLATNET_URL,
 )
 
@@ -127,7 +127,7 @@ class TestGraphQLQueries:
             )
             mock_query_body.assert_called_once_with(query_hash, variables)
             mock_post.assert_called_once_with(
-                GRAPHQL_URL,
+                SPLATNET_GRAPHQL_URL,
                 headers="test_header",
                 data="test_body",
                 cookies={"_gtoken": gtoken},

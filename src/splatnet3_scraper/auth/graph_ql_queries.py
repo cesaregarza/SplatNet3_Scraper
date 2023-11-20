@@ -7,7 +7,7 @@ import requests
 
 from splatnet3_scraper.constants import (
     DEFAULT_USER_AGENT,
-    GRAPHQL_URL,
+    SPLATNET_GRAPHQL_URL,
     SPLATNET_URL,
 )
 from splatnet3_scraper.utils import get_splatnet_hashes, get_splatnet_version
@@ -216,7 +216,7 @@ class GraphQLQueries:
             "_gtoken": gtoken,
         }
         return self.session.post(
-            GRAPHQL_URL, headers=header, data=body, cookies=cookies
+            SPLATNET_GRAPHQL_URL, headers=header, data=body, cookies=cookies
         )
 
     def query(

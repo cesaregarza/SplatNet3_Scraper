@@ -1,5 +1,8 @@
 SPLATNET_URL = "https://api.lp1.av5ja.srv.nintendo.net"
-GRAPHQL_URL = SPLATNET_URL + "/api/graphql"
+TOURNAMENT_URL = "https://c.nintendo.com/splatoon3-tournament/"
+GRAPHQL_ENDPOINT = "/api/graphql"
+SPLATNET_GRAPHQL_URL = SPLATNET_URL + GRAPHQL_ENDPOINT
+TOURNAMENT_GRAPHQL_URL = TOURNAMENT_URL + GRAPHQL_ENDPOINT
 GRAPH_QL_REFERENCE_URL = (
     "https://raw.githubusercontent.com"
     "/imink-app/SplatNet3/master/Data/splatnet3_webview_data.json"
