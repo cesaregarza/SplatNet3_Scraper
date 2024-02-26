@@ -16,8 +16,8 @@ from splatnet3_scraper.auth.exceptions import (
 from splatnet3_scraper.constants import (
     APP_VERSION_FALLBACK,
     DEFAULT_USER_AGENT,
-    IMINK_URL,
     IOS_APP_URL,
+    NXAPI_ZNCA_URL,
     SPLATNET_URL,
 )
 from splatnet3_scraper.utils import get_splatnet_version, retry
@@ -397,7 +397,10 @@ class NSO:
             "Content-Length": "436",
             "Accept": "application/json",
             "Connection": "Keep-Alive",
-            "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 7.1.2)",
+            "User-Agent": (
+                "Dalvik/2.1.0 "
+                "(Linux; U; Android 14; Pixel 7a Build/UQ1A.240105.004)"
+            ),
         }
         body = {
             "client_id": "71b963c1b7b6d119",
@@ -480,7 +483,7 @@ class NSO:
             str: The gtoken. This is used to authenticate requests to the
                 Nintendo Switch Online API. This token is valid for 2 hours.
         """
-        f_token_url = f_token_url if f_token_url is not None else IMINK_URL
+        f_token_url = f_token_url if f_token_url is not None else NXAPI_ZNCA_URL
         # Get user access token
         self.logger.info("Getting user access token")
         user_access_response = self.get_user_access_token(session_token)
@@ -793,9 +796,7 @@ class NSO:
             "Content-Length": str(990 + len(f_token)),
             "Connection": "Keep-Alive",
             "Accept-Encoding": "gzip",
-            "User-Agent": "com.nintendo.znca/"
-            + self.version
-            + "(Android/7.1.2)",
+            "User-Agent": "com.nintendo.znca/" + self.version + "(Android/14)",
         }
         body = {
             "parameter": {
@@ -857,7 +858,7 @@ class NSO:
             "Content-Type": "application/json; charset=utf-8",
             "Content-Length": "391",
             "Accept-Encoding": "gzip",
-            "User-Agent": f"com.nintendo.znca/{self.version}(Android/7.1.2)",
+            "User-Agent": f"com.nintendo.znca/{self.version}(Android/14)",
         }
         body = {
             "parameter": {

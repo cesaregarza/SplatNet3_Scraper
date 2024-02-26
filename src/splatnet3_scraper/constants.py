@@ -8,15 +8,15 @@ IOS_APP_URL = (
     "https://apps.apple.com/us/app/nintendo-switch-online/id1234806557"
 )
 IMINK_URL = "https://api.imink.app/f"
-ZNCA_URL = "https://nxapi-znca-api.fancy.org.uk/api/znca/f"
-DEFAULT_F_TOKEN_URL = [IMINK_URL, ZNCA_URL]
+NXAPI_ZNCA_URL = "https://nxapi-znca-api.fancy.org.uk/api/znca/f"
+DEFAULT_F_TOKEN_URL = [NXAPI_ZNCA_URL, IMINK_URL]
 DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Linux; Android 11; Pixel 5) "
+    "Mozilla/5.0 (Linux; Android 14; Pixel 7a) "
     + "AppleWebKit/537.36 (KHTML, like Gecko) "
-    + "Chrome/94.0.4606.61 "
+    + "Chrome/120.0.6099.230 "
     + "Mobile Safari/537.36"
 )
-APP_VERSION_FALLBACK = "2.7.0"
+APP_VERSION_FALLBACK = "2.9.0"
 
 
 class TOKENS:

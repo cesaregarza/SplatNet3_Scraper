@@ -11,7 +11,7 @@ from splatnet3_scraper.auth.exceptions import (
     SplatNetException,
 )
 from splatnet3_scraper.auth.nso import NSO
-from splatnet3_scraper.constants import APP_VERSION_FALLBACK, IMINK_URL
+from splatnet3_scraper.constants import APP_VERSION_FALLBACK, NXAPI_ZNCA_URL
 from tests.mock import MockResponse
 
 nso_path = "splatnet3_scraper.auth.nso.NSO"
@@ -395,7 +395,7 @@ class TestNSO:
         ],
     )
     def test_get_gtoken(self, f_token_url):
-        expected_url = IMINK_URL if f_token_url is None else f_token_url
+        expected_url = NXAPI_ZNCA_URL if f_token_url is None else f_token_url
         # User Access Failure
         with (
             patch(nso_path + ".get_user_access_token") as mock_guat,
