@@ -37,7 +37,7 @@ jobs:
         run: python misc/parse_api_values.py
 
       - name: Create PR
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v6
         with:
           title: ${{ env.PR_TITLE }}
           commit-message: ${{ env.PR_TITLE }}
