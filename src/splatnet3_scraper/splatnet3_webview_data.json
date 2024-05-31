@@ -1,5 +1,5 @@
 {
-    "version": "6.0.0-eb33aadc",
+    "version": "6.0.0-9f87c815",
     "graphql": {
         "hash_map": {
             "SupportButton_SupportChallengeMutation": "3165b76878d09ea55a7194e675397a5e030a2a89b98a0e81af77e346c625c4fd",
@@ -36,7 +36,7 @@
             "JourneyQuery": "654ab98ebbb2057cb3e5d2c492cf03fd1acfba264108435f50b26295646db8ec",
             "JourneyRefetchQuery": "10f2d2907537c27dd1e941bf74d2dd111a26acfd859d3ed8ef4735bef1928b11",
             "CheckinQuery": "6dfce83d02761395758ae21454cb46924e81c22c3f151f91330b0602278a060e",
-            "CoopHistoryDetailQuery": "42262d241291d7324649e21413b29da88c0314387d8fdf5f6637a2d9d29954ae",
+            "CoopHistoryDetailQuery": "f2d55873a9281213ae27edc171e2b19131b3021a2ae263757543cdd3bf015cc8",
             "CoopHistoryDetailRefetchQuery": "4bf516ccfd9a3f4efc32b215c59ae42c2a06dd2d8f73de95c2676dea6db74446",
             "CoopHistoryQuery": "0f8c33970a425683bb1bdecca50a0ca4fb3c3641c0b2a1237aedfde9c0cb2b8f",
             "refetchableCoopHistory_coopResultQuery": "bdb796803793ada1ee2ea28e2034a31f5c231448e80f5c992e94b021807f40f8",
@@ -108,8 +108,7 @@
             "CatalogRefetchQuery": "c4f5474dfc5d7937618d8a38357ad1e78cc83d6019833b1b68d86a0ce8d4b9e5",
             "HomeQuery": "51fc56bbf006caf37728914aa8bc0e2c86a80cf195b4d4027d6822a3623098a8",
             "VsHistoryDetailPagerRefetchQuery": "973ca7012d8e94da97506cd39dfbb2a45eaae6e382607b650533d4f5077d840d",
-            "VsHistoryDetailQuery": "f893e1ddcfb8a4fd645fd75ced173f18b2750e5cfba41d2669b9814f6ceaec46",
-            "IfTournamentManagerIsAvailableQuery": "8892ce4157248506f51735e2c9eb300c6c980c67ff8c317b927b05e8d35852d9",
+            "VsHistoryDetailQuery": "20f88b10d0b1d264fcb2163b0866de26bbf6f2b362f397a0258a75b7fa900943",
             "ReserveRoomMutation": "7dd691a19092b4df99b67c2157e6b836ab8bafdf65f9e46ccf848c543459ca9d",
             "CancelReservationMutation": "963e7a0e2c37f54df3316e5d170584d3b96f9c2102823fb5788ec0e8d3372eba",
             "OverwriteReservedRoomMutation": "5fd71f88970f80a456d826061a78f1c0b287b5d3daadc6c7c64db50aae9694ee",
