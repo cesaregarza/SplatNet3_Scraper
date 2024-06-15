@@ -296,7 +296,7 @@ class TestNSO:
             with pytest.raises(FTokenException):
                 nso.get_ftoken(*args)
 
-    def test_get_web_service_access_token(
+    def test_get_web_service_access_token_pass(
         self, monkeypatch: pytest.MonkeyPatch
     ):
         def mock_post(*args, **kwargs):
@@ -320,6 +320,59 @@ class TestNSO:
         )
         assert access_token == "test_token"
         assert coral_id == "test_id"
+
+    def test_get_web_service_access_token_fail(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        def mock_post(*args, **kwargs):
+            return MockResponse(400, json={})
+
+        nso = self.get_new_nso(version="5.0.0")
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        with pytest.raises(NintendoException):
+            nso.get_web_service_access_token(
+                "test_id_token",
+                self.mock_user_data,
+                "test_f_token",
+                "test_request_id",
+                "test_timestamp",
+            )
+
+    def test_get_gtoken_request_pass(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_post(*args, **kwargs):
+            out_json = {
+                "result": {
+                    "accessToken": "test_token",
+                }
+            }
+            return MockResponse(200, json=out_json)
+
+        nso = self.get_new_nso(version="5.0.0")
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        gtoken = nso.get_gtoken_request(
+            "test_wsat",
+            "test_f_token",
+            "test_request_id",
+            "test_timestamp",
+        )
+        assert gtoken == "test_token"
+
+    def test_get_gtoken_request_fail(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_post(*args, **kwargs):
+            return MockResponse(400, json={})
+
+        nso = self.get_new_nso(version="5.0.0")
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        with pytest.raises(NintendoException):
+            nso.get_gtoken_request(
+                "test_wsat",
+                "test_f_token",
+                "test_request_id",
+                "test_timestamp",
+            )
 
     def test_g_token_generation_phase_1(self):
         nso = self.get_new_nso()
