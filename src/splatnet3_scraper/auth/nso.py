@@ -198,7 +198,12 @@ class NSO:
                 "Failed to get version from app store, using fallback"
             )
             return APP_VERSION_FALLBACK
-        return version.group(0).strip()
+        # return version.group(0).strip()
+        # TODO: This is a fix for 2.10.1 being broken
+        version_text = version.group(0).strip()
+        if version_text == "2.10.1":
+            return "2.10.0"
+        return version_text
 
     @property
     def state(self) -> bytes:
@@ -785,6 +790,10 @@ class NSO:
             timestamp (str): The ``timestamp`` returned alongside the
                 ``f_token`` and ``request_id``.
 
+        Raises:
+            NintendoException: In the case that the Web Service Credential
+                Access Token cannot be obtained.
+
         Returns:
             str: The Web Service Credential Access Token.
             str: The coral user ID.
@@ -811,6 +820,11 @@ class NSO:
         }
         url = "https://api-lp1.znc.srv.nintendo.net/v3/Account/Login"
         response = self.session.post(url, headers=header, json=body).json()
+        if "result" not in response:
+            raise NintendoException(
+                "Failed to get web service access token. "
+                + f"Response: {response}"
+            )
         response_result = response["result"]
         return (
             response_result["webApiServerCredential"]["accessToken"],
@@ -848,6 +862,10 @@ class NSO:
             timestamp (str): The ``timestamp`` returned alongside the
                 ``f_token`` and ``request_id``.
 
+        Raises:
+            NintendoException: In the case that the ``gtoken`` cannot be
+                obtained.
+
         Returns:
             str: The ``gtoken``.
         """
@@ -871,6 +889,10 @@ class NSO:
         }
         url = "https://api-lp1.znc.srv.nintendo.net/v2/Game/GetWebServiceToken"
         response = self.session.post(url, headers=header, json=body).json()
+        if "result" not in response:
+            raise NintendoException(
+                "Failed to get gtoken. " + f"Response: {response}"
+            )
         return response["result"]["accessToken"]
 
     def get_bullet_token(
