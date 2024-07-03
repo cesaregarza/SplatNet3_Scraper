@@ -198,12 +198,7 @@ class NSO:
                 "Failed to get version from app store, using fallback"
             )
             return APP_VERSION_FALLBACK
-        # return version.group(0).strip()
-        # TODO: This is a fix for 2.10.1 being broken
-        version_text = version.group(0).strip()
-        if version_text == "2.10.1":
-            return "2.10.0"
-        return version_text
+        return version.group(0).strip()
 
     @property
     def state(self) -> bytes:
