@@ -368,34 +368,6 @@ class JSONParser:
         """
         self.__to_json(path, True, **kwargs)
 
-    def to_parquet(self, path: str, **kwargs) -> None:
-        """Saves the JSON object to a Parquet file. Any keyword arguments are
-        passed to the pandas.DataFrame.to_parquet method.
-
-        Args:
-            path (str): The path to save the Parquet file to.
-            **kwargs: Keyword arguments to pass to the pq.write_table method.
-
-        Raises:
-            ImportError: If the parquet extra is not installed.
-        """
-        try:
-            import numpy as np
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-        except ImportError:
-            raise ImportError(
-                "parquet format requires the [parquet] extra to be installed. "
-                'Try "pip install splatnet3_scraper[parquet]" or "poetry '
-                'install --extras parquet" if you are developing.'
-            )
-        linear_json = self.__to_linear_json()
-        numpy_data = np.array(linear_json.data)
-        arrays = [pa.array(data) for data in numpy_data.T]
-        del numpy_data
-        table = pa.Table.from_arrays(arrays, names=linear_json.header)
-        pq.write_table(table, path, **kwargs)
-
     @staticmethod
     def automatic_type_conversion(row: list[str]) -> list[Any]:
         """Converts a row of strings to the most appropriate type.
@@ -463,31 +435,3 @@ class JSONParser:
         """
         with gzip.open(path, "rt", encoding="utf-8") as f:
             return cls(json.load(f))
-
-    @classmethod
-    def from_parquet(cls, path: str) -> "JSONParser":
-        """Loads a JSON object from a Parquet file.
-
-        Args:
-            path (str): The path to load the Parquet file from.
-
-        Raises:
-            ImportError: If the parquet extra is not installed.
-
-        Returns:
-            JSONParser: The JSONParser object.
-        """
-        try:
-            import numpy as np
-            import pyarrow.parquet as pq
-        except ImportError:
-            raise ImportError(
-                "parquet format requires the [parquet] extra to be installed. "
-                'Try "pip install splatnet3_scraper[parquet]" or "poetry '
-                'install --extras parquet" if you are developing.'
-            )
-        table = pq.read_table(path)
-        data = [table.column(i).to_numpy() for i in range(len(table.columns))]
-        out_data = np.array(data).T
-        header = [field.name for field in table.schema]
-        return cls(delinearize_json(header, out_data.tolist()))

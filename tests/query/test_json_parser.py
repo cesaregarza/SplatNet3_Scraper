@@ -2,7 +2,6 @@ import pathlib
 import random
 from unittest.mock import mock_open, patch
 
-import pyarrow as pa
 import pytest
 
 from splatnet3_scraper.query.json_parser import JSONParser, LinearJSON
@@ -379,33 +378,6 @@ class TestJSONParser:
                 "test_path", mode="wt", encoding="utf-8"
             )
             mock_dump.assert_called_once_with(data, mock_file(), indent=4)
-
-    def test_to_parquet(self, monkeypatch: pytest.MonkeyPatch):
-        data = [
-            {"test_key_0": "test_value_0", "test_key_1": "test_value_1"},
-            {"test_key_0": "test_value_2", "test_key_1": "test_value_3"},
-        ]
-        json_parser = JSONParser(data)
-        with (
-            patch("pyarrow.array") as mock_pa_array,
-            patch("pyarrow.parquet.write_table") as mock_write,
-            monkeypatch.context() as m,
-        ):
-            pa_return = ["test_value_0", "test_value_1"]
-            mock_pa_array.return_value = pa_return
-            # PyArrow Table is immutable so we mock the full class instead of
-            # any of the methods
-            m.setattr(pa, "Table", MockPyArrowTable)
-            json_parser.to_parquet("test_path")
-            assert mock_pa_array.call_count == 2
-            array_call_args = mock_pa_array.call_args_list
-            assert array_call_args[0][0][0][0] == "test_value_0"
-            assert array_call_args[0][0][0][1] == "test_value_2"
-            assert array_call_args[1][0][0][0] == "test_value_1"
-            assert array_call_args[1][0][0][1] == "test_value_3"
-            write_call_args = mock_write.call_args_list[0][0]
-            assert isinstance(write_call_args[0], MockPyArrowTable)
-            assert write_call_args[1] == "test_path"
 
     def test_from_csv(self, json_with_none):
 
