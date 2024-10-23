@@ -16,7 +16,7 @@ DEFAULT_USER_AGENT = (
     + "Chrome/120.0.6099.230 "
     + "Mobile Safari/537.36"
 )
-APP_VERSION_FALLBACK = "2.9.0"
+APP_VERSION_FALLBACK = "2.10.1"
 
 
 class TOKENS:
