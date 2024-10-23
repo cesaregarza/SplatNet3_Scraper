@@ -227,7 +227,7 @@ class TestNSO:
             return MockResponse(200, json={"session_token": "test"})
 
         monkeypatch.setattr(requests.Session, "post", mock_get)
-        nso = self.get_new_nso(version="5.0.0", verifier="test_verifier")
+        nso = self.get_new_nso(version="5.0.0", verifier=b"test_verifier")
         assert nso._session_token is None
         session_token = nso.get_session_token("session_code")
         assert session_token == "test"
