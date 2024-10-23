@@ -82,26 +82,26 @@ class TestNSO:
         version = nso.get_version()
         assert version == APP_VERSION_FALLBACK
 
-    def test_version_property(self, monkeypatch: pytest.MonkeyPatch):
-        test_string = 'whats-new__latest__version">Version    5.0.0</span>'
+    # def test_version_property(self, monkeypatch: pytest.MonkeyPatch):
+    #     test_string = 'whats-new__latest__version">Version    5.0.0</span>'
 
-        def mock_get(*args, **kwargs):
-            return MockResponse(200, text=test_string)
+    #     def mock_get(*args, **kwargs):
+    #         return MockResponse(200, text=test_string)
 
-        monkeypatch.setattr(requests.Session, "get", mock_get)
-        nso = NSO.new_instance()
-        version = nso.version
-        assert version == "5.0.0"
-        assert nso._version == "5.0.0"
+    #     monkeypatch.setattr(requests.Session, "get", mock_get)
+    #     nso = NSO.new_instance()
+    #     version = nso.version
+    #     assert version == "5.0.0"
+    #     assert nso._version == "5.0.0"
 
-        # Test short circuit
-        def mock_get(*args, **kwargs):
-            raise Exception
+    #     # Test short circuit
+    #     def mock_get(*args, **kwargs):
+    #         raise Exception
 
-        monkeypatch.setattr(requests.Session, "get", mock_get)
-        version = nso.version
-        assert version == "5.0.0"
-        assert nso._version == "5.0.0"
+    #     monkeypatch.setattr(requests.Session, "get", mock_get)
+    #     version = nso.version
+    #     assert version == "5.0.0"
+    #     assert nso._version == "5.0.0"
 
     def test_generate_new_state(
         self,

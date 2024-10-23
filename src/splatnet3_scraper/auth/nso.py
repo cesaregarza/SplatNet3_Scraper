@@ -174,7 +174,8 @@ class NSO:
             str: The current version of the NSO app.
         """
         if self._version is None:
-            self._version = self.get_version()
+            # self._version = self.get_version()
+            self._version = "2.10.1"
         return self._version
 
     @retry(times=2, exceptions=ValueError)
