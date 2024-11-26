@@ -1,5 +1,5 @@
 {
-    "version": "6.0.0-30a1464a",
+    "version": "6.0.0-9253fd84",
     "graphql": {
         "hash_map": {
             "SupportButton_SupportChallengeMutation": "3165b76878d09ea55a7194e675397a5e030a2a89b98a0e81af77e346c625c4fd",
@@ -116,7 +116,7 @@
             "CancelReservationMutation": "963e7a0e2c37f54df3316e5d170584d3b96f9c2102823fb5788ec0e8d3372eba",
             "OverwriteReservedRoomMutation": "5fd71f88970f80a456d826061a78f1c0b287b5d3daadc6c7c64db50aae9694ee",
             "CreateRoomMutation": "4e664b99a438ae0bb3466fe7df0f6f8e2c36fab2288e2c602cb3339e9ab01325",
-            "TournamentNotificationMainQuery": "93d0a1ccf461da6d23faea6340806f1b6b563f1c375b4a6a0ad35bc5f759f4b4",
+            "TournamentNotificationMainQuery": "9b2b8c1e7a2b0b11b2e52010c461ad1dbb8dce068ff7dc4cfeeca90a7ea2c579",
             "UseShowTournamentSupportNotificationBadgeQuery": "8f40ba6c690211fa2d261a20be7accc063481d377146f7cfb793664ac056df5a",
             "RoomCreatorInvitationQuery": "f7cb0e797b3f51dc4ac8f0cce1bdfafe4407e25dc483998290fc3d187bd6007e",
             "RoomCreatorQuery": "0cdb5030fe7e59ef56e71b0a669bdca29993aebca785b11b99e89076886064cc",
