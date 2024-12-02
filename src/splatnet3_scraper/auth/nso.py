@@ -335,7 +335,7 @@ class NSO:
             str: The session token code. This is *NOT* the session token, but is
                 used to obtain the session token.
         """
-        return uri.split("&")[1][len("session_token_code=") :]
+        return uri.split("&")[0][uri.find("=")+1:]
 
     def get_session_token(self, session_token_code: str) -> str:
         """Obtains the session token from the session token code.
@@ -366,7 +366,7 @@ class NSO:
         params = {
             "client_id": "71b963c1b7b6d119",
             "session_token_code": session_token_code,
-            "session_token_code_verifier": self.verifier,
+            "session_token_code_verifier": self.verifier.replace(b'=', b''),
         }
         uri = "https://accounts.nintendo.com/connect/1.0.0/api/session_token"
         response = self.session.post(uri, headers=header, data=params)
