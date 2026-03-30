@@ -108,6 +108,8 @@ class Config:
                 token,
                 self.token_manager.get_token(token).value,
             )
+        if self._output_file_path is not None:
+            self.save_to_file()
 
     @property
     def session_token(self) -> str:

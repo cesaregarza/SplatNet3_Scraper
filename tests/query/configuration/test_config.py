@@ -48,6 +48,32 @@ class TestConfig:
         mock_token_manager.regenerate_tokens.assert_called_once_with()
         assert mock_handler.set_value.call_count == 3
 
+    def test_regenerate_tokens_saves_file_backed_config(self) -> None:
+        mock_token_manager = MagicMock()
+        mock_handler = MagicMock()
+        config = Config(
+            mock_handler,
+            token_manager=mock_token_manager,
+            output_file_path="test.ini",
+        )
+        config.save_to_file = MagicMock()
+
+        config.regenerate_tokens()
+
+        mock_token_manager.regenerate_tokens.assert_called_once_with()
+        assert mock_handler.set_value.call_count == 3
+        config.save_to_file.assert_called_once_with()
+
+    def test_regenerate_tokens_does_not_save_without_file_path(self) -> None:
+        mock_token_manager = MagicMock()
+        mock_handler = MagicMock()
+        config = Config(mock_handler, token_manager=mock_token_manager)
+        config.save_to_file = MagicMock()
+
+        config.regenerate_tokens()
+
+        config.save_to_file.assert_not_called()
+
     @pytest.mark.parametrize(
         "token",
         [
