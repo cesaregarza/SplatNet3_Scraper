@@ -162,19 +162,21 @@ jobs:
           || sleep 15; \
           done
       
-      - name: Create Release
+      - name: Create Release Tag
         if: success() && matrix.python_image == env.default_image
         run: |
           LATEST_RELEASE=${{ steps.latest_release.outputs.release }}
           NEXT_VERSION=${{ steps.calculate_version.outputs.version }}
           echo "Latest Release: ${LATEST_RELEASE}"
           echo "Next Version: v${NEXT_VERSION}"
-          if [[ $NEXT_VERSION != $LATEST_RELEASE ]]; then
-            echo "Creating Release"
+          if [[ $NEXT_VERSION == $LATEST_RELEASE ]]; then
+            echo "No new release to create"
+          elif git ls-remote --tags origin "refs/tags/v${NEXT_VERSION}" | grep -q .; then
+            echo "Tag v${NEXT_VERSION} already exists on origin"
+          else
+            echo "Creating release tag"
             git tag -a v$NEXT_VERSION -m "AUTO: Release v$NEXT_VERSION"
             git push origin v$NEXT_VERSION
-          else
-            echo "No new release to create"
           fi
 
       - name: Cleanup
@@ -184,19 +186,25 @@ jobs:
   
   release:
     runs-on: ubuntu-latest
-    needs: build-test-publish
-    if: success()
+    needs:
+      - check-if-ci
+      - build-test-publish
+    if: needs.check-if-ci.outputs.skip == 'false' && needs.check-if-ci.outputs.publish == 'true' && needs.build-test-publish.result == 'success'
 
     steps:
       - name: Create release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.build-test-publish.outputs.version }}
         run: |
-          gh release create v${{ env.tag }} \
-          --repo="$GITHUB_REPOSITORY" \
-          --title="${GITHUB_REPOSITORY#*/} v${{ env.tag }}" \
-          --generate-notes
+          if gh release view v${{ env.tag }} --repo="$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v${{ env.tag }} already exists"
+          else
+            gh release create v${{ env.tag }} \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="${GITHUB_REPOSITORY#*/} v${{ env.tag }}" \
+            --generate-notes
+          fi
 
   update-develop:
     runs-on: ubuntu-latest
