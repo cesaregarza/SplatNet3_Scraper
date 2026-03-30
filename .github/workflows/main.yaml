@@ -63,7 +63,7 @@ jobs:
           token: ${{ secrets.CI_SN3S_TOKEN }}
 
       - name: Cache Poetry Dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
