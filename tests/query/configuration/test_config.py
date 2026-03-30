@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
-from splatnet3_scraper.constants import TOKENS
+from splatnet3_scraper.constants import (
+    NXAPI_AUTH_TOKEN_URL,
+    NXAPI_DEFAULT_AUTH_SCOPE,
+    TOKENS,
+)
 from splatnet3_scraper.query.config.config import Config
 from splatnet3_scraper.query.config.config_option_handler import (
     ConfigOptionHandler,
@@ -117,6 +121,79 @@ class TestConfig:
                 option,
             )
 
+    def test_set_value_app_version_override(self) -> None:
+        mock_handler = MagicMock()
+        mock_token_manager = MagicMock()
+        config = Config(mock_handler, token_manager=mock_token_manager)
+        config._apply_app_version_override = MagicMock()
+        config.set_value("app_version_override", "4.5.6")
+        mock_handler.set_value.assert_called_once_with(
+            "app_version_override", "4.5.6"
+        )
+        config._apply_app_version_override.assert_called_once_with()
+
+    def test_config_configures_nxapi_with_client_version(self) -> None:
+        handler = ConfigOptionHandler()
+        handler.set_value(TOKENS.SESSION_TOKEN, "session")
+        handler.set_value(TOKENS.GTOKEN, "gtoken")
+        handler.set_value(TOKENS.BULLET_TOKEN, "bullet")
+        handler.set_value("nxapi_client_id", "client")
+        handler.set_value("nxapi_client_version", "2.0.1")
+
+        mock_token_manager = MagicMock()
+        mock_token_manager.nso = MagicMock()
+        mock_token_manager.uses_nxapi_provider.return_value = True
+
+        Config(handler, token_manager=mock_token_manager)
+
+        mock_token_manager.nso.set_app_version_override.assert_called_once_with(
+            None
+        )
+        mock_token_manager.configure_nxapi.assert_called_once_with(
+            token_url=NXAPI_AUTH_TOKEN_URL,
+            scope=NXAPI_DEFAULT_AUTH_SCOPE,
+            client_id="client",
+            client_secret=None,
+            client_assertion=None,
+            client_assertion_private_key_path=None,
+            client_assertion_jku=None,
+            client_assertion_kid=None,
+            client_assertion_type=None,
+            user_agent=None,
+            client_version="2.0.1",
+        )
+
+    def test_config_configures_generated_nxapi_assertion(self) -> None:
+        handler = ConfigOptionHandler()
+        handler.set_value(TOKENS.SESSION_TOKEN, "session")
+        handler.set_value("nxapi_client_id", "client")
+        handler.set_value(
+            "nxapi_client_assertion_private_key_path",
+            "/tmp/private.pem",
+        )
+        handler.set_value(
+            "nxapi_client_assertion_jku",
+            "https://example.com/.well-known/jwks.json",
+        )
+        handler.set_value("nxapi_client_assertion_kid", "kid-1")
+
+        mock_token_manager = MagicMock()
+        mock_token_manager.nso = MagicMock()
+        mock_token_manager.uses_nxapi_provider.return_value = True
+
+        Config(handler, token_manager=mock_token_manager)
+
+        call_kwargs = mock_token_manager.configure_nxapi.call_args.kwargs
+        assert (
+            call_kwargs["client_assertion_private_key_path"]
+            == "/tmp/private.pem"
+        )
+        assert (
+            call_kwargs["client_assertion_jku"]
+            == "https://example.com/.well-known/jwks.json"
+        )
+        assert call_kwargs["client_assertion_kid"] == "kid-1"
+
     @pytest.mark.parametrize(
         "prefix",
         [
@@ -140,12 +217,13 @@ class TestConfig:
             config = Config.from_empty_handler(prefix)
             mock_handler.assert_called_once_with(prefix=expected_prefix)
             mock_get = mock_handler.return_value.get_value
-            assert mock_get.call_count == 3
+            assert mock_get.call_count == 4
             mock_config.from_tokens.assert_called_once_with(
                 session_token=mock_get.return_value,
                 gtoken=mock_get.return_value,
                 bullet_token=mock_get.return_value,
                 prefix=expected_prefix,
+                app_version=mock_get.return_value,
             )
 
     @pytest.mark.parametrize(
@@ -182,10 +260,14 @@ class TestConfig:
                 session_token=session_token,
                 gtoken=gtoken,
                 bullet_token=bullet_token,
+                app_version=None,
             )
             expected_prefix = prefix or "SN3S"
             mock_handler.assert_called_once_with(prefix=expected_prefix)
-            assert mock_handler.return_value.set_value.call_count == 3
+            assert mock_handler.return_value.set_value.call_count == 4
+            mock_handler.return_value.set_value.assert_any_call(
+                "app_version_override", None
+            )
             mock_config.assert_called_once_with(
                 mock_handler.return_value,
                 token_manager=mock_token_manager,
@@ -207,28 +289,80 @@ class TestConfig:
         mock_token_manager = MagicMock()
         expected_file_path = "test" if save_to_file else None
 
+        mock_session = "session_token_value"
+        mock_gtoken = "gtoken_value"
+        mock_bullet = "bullet_token_value"
+        mock_app_version = "3.2.1"
+
+        def get_value_side_effect(key: str):
+            return {
+                "session_token": mock_session,
+                "gtoken": mock_gtoken,
+                "bullet_token": mock_bullet,
+                "app_version_override": mock_app_version,
+            }[key]
+
+        mock_handler.get_value.side_effect = get_value_side_effect
+
         with (
             patch(config_path) as mock_config,
             patch(base_config_path + ".TokenManagerConstructor") as mock_tmc,
         ):
             mock_config.DEFAULT_PREFIX = "SN3S"
-            mock_tmc.from_tokens.return_value = mock_token_manager
+            mock_tmc.from_session_token.return_value = mock_token_manager
 
             config = Config.from_config_handler(
                 mock_handler,
                 output_file_path=expected_file_path,
             )
-            mock_tmc.from_tokens.assert_called_once_with(
-                session_token=mock_handler.get_value.return_value,
-                gtoken=mock_handler.get_value.return_value,
-                bullet_token=mock_handler.get_value.return_value,
+            mock_tmc.from_session_token.assert_called_once_with(
+                mock_session,
+                app_version=mock_app_version,
+            )
+            mock_token_manager.add_token.assert_any_call(mock_gtoken, "gtoken")
+            mock_token_manager.add_token.assert_any_call(
+                mock_bullet, "bullet_token"
             )
             mock_config.assert_called_once_with(
                 mock_handler,
                 token_manager=mock_token_manager,
                 output_file_path=expected_file_path,
             )
-            assert mock_handler.get_value.call_count == 3
+            assert mock_handler.get_value.call_count == 4
+
+    def test_from_config_handler_without_app_version_uses_none(self) -> None:
+        mock_handler = MagicMock()
+        mock_token_manager = MagicMock()
+
+        def get_value_side_effect(key: str):
+            if key == "app_version_override":
+                raise ValueError("missing")
+            return {
+                "session_token": "session_token_value",
+                "gtoken": "gtoken_value",
+                "bullet_token": "bullet_token_value",
+            }[key]
+
+        mock_handler.get_value.side_effect = get_value_side_effect
+
+        with (
+            patch(config_path) as mock_config,
+            patch(base_config_path + ".TokenManagerConstructor") as mock_tmc,
+        ):
+            mock_config.DEFAULT_PREFIX = "SN3S"
+            mock_tmc.from_session_token.return_value = mock_token_manager
+
+            Config.from_config_handler(mock_handler)
+
+        mock_tmc.from_session_token.assert_called_once_with(
+            "session_token_value",
+            app_version=None,
+        )
+        mock_config.assert_called_once_with(
+            mock_handler,
+            token_manager=mock_token_manager,
+            output_file_path=None,
+        )
 
     @pytest.mark.parametrize(
         "prefix",

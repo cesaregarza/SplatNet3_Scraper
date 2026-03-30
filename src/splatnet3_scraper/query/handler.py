@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import cast
+from typing import Callable, cast
 
 import requests
 
-from splatnet3_scraper.auth.exceptions import SplatNetException
+from splatnet3_scraper.auth.exceptions import (
+    AccountCooldownException,
+    RateLimitException,
+    SplatNetException,
+)
 from splatnet3_scraper.auth.graph_ql_queries import queries
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.config import Config
@@ -51,12 +55,83 @@ class QueryHandler:
         self.config = config
         logging.info("Initialized QueryHandler")
 
+    def _execute_request(
+        self, executor: Callable[[], requests.Response]
+    ) -> requests.Response:
+        token_manager = getattr(self.config, "token_manager", None)
+        if token_manager is None:
+            response = executor()
+            if response.status_code != 200:
+                logger.info(
+                    "Query returned status %s, regenerating"
+                    " tokens and retrying.",
+                    response.status_code,
+                )
+                self.config.regenerate_tokens()
+                response = executor()
+            return response
+
+        def _rate_limit_message(response: requests.Response) -> str:
+            retry_after = response.headers.get("Retry-After")
+            message = (
+                f"SplatNet responded with status {response.status_code};"
+                f" cooldown remaining {token_manager.cooldown_remaining():.1f}s"
+            )
+            if retry_after:
+                message += f"; retry-after={retry_after}"
+            return message
+
+        try:
+            token_manager.ensure_tokens_valid()
+        except AccountCooldownException as exc:
+            raise RateLimitException(str(exc)) from exc
+
+        response = executor()
+
+        if response.status_code in (401, 403):
+            token_manager.record_response(response.status_code)
+            logger.info(
+                "Authentication failed with status %s, regenerating tokens.",
+                response.status_code,
+            )
+            self.config.regenerate_tokens()
+            response = executor()
+        elif response.status_code in (429, 503):
+            token_manager.record_response(response.status_code)
+            raise RateLimitException(_rate_limit_message(response))
+        elif response.status_code != 200:
+            token_manager.record_response(response.status_code)
+            logger.info(
+                "Query returned status %s, regenerating tokens and retrying.",
+                response.status_code,
+            )
+            self.config.regenerate_tokens()
+            response = executor()
+
+        token_manager.record_response(response.status_code)
+
+        if response.status_code in (429, 503):
+            raise RateLimitException(_rate_limit_message(response))
+
+        if response.status_code in (401, 403):
+            raise SplatNetException(
+                "Authentication failed after token refresh attempt."
+            )
+
+        if response.status_code != 200:
+            raise SplatNetException(
+                f"SplatNet responded with status {response.status_code}"
+            )
+
+        return response
+
     @classmethod
     def from_config_file(
         cls,
         config_path: str | None = None,
         *,
         prefix: str = "",
+        app_version: str | None = None,
     ) -> QueryHandler:
         """Creates a new instance of the class using a configuration file.
 
@@ -96,6 +171,7 @@ class QueryHandler:
         bullet_token: str | None = None,
         *,
         prefix: str = "",
+        app_version: str | None = None,
     ) -> QueryHandler:
         """Creates a new instance of the class using the tokens provided.
 
@@ -119,6 +195,8 @@ class QueryHandler:
             prefix (str): The prefix to use for the configuration options. This
                 is useful if the user wants to use multiple instances of the
                 class with different tokens. Defaults to "SN3S".
+            app_version (str | None): Optional NSO app version override to feed
+                into the configuration when constructing the query handler.
 
         Returns:
             QueryHandler: A new instance of the class with all the tokens
@@ -129,6 +207,7 @@ class QueryHandler:
             gtoken=gtoken,
             bullet_token=bullet_token,
             prefix=prefix,
+            app_version=app_version,
         )
         return cls(config)
 
@@ -138,6 +217,7 @@ class QueryHandler:
         session_token: str,
         *,
         prefix: str = "",
+        app_version: str | None = None,
     ) -> QueryHandler:
         """Creates a new instance of the class using a session token.
 
@@ -153,6 +233,8 @@ class QueryHandler:
             prefix (str): The prefix to use for the configuration options. This
                 is useful if the user wants to use multiple instances of the
                 class with different tokens. Defaults to "SN3S".
+            app_version (str | None): Optional NSO app version override to feed
+                into the configuration when constructing the query handler.
 
         Returns:
             QueryHandler: A new instance of the class with a valid session
@@ -163,6 +245,7 @@ class QueryHandler:
         config = Config.from_tokens(
             session_token=session_token,
             prefix=prefix,
+            app_version=app_version,
         )
         config.regenerate_tokens()
         return cls(config)
@@ -243,10 +326,18 @@ class QueryHandler:
         Returns:
             requests.Response: The response from the query.
         """
+        token_manager = getattr(self.config, "token_manager", None)
+        if token_manager is not None:
+            bullet_token = token_manager.get_token(TOKENS.BULLET_TOKEN).value
+            gtoken = token_manager.get_token(TOKENS.GTOKEN).value
+        else:
+            bullet_token = cast(str, self.config.get_value(TOKENS.BULLET_TOKEN))
+            gtoken = cast(str, self.config.get_value(TOKENS.GTOKEN))
+
         return queries.query(
             query_name,
-            cast(str, self.config.get_value(TOKENS.BULLET_TOKEN)),
-            cast(str, self.config.get_value(TOKENS.GTOKEN)),
+            bullet_token,
+            gtoken,
             language or cast(str, self.config.get_value("language")),
             self.config.get_value("user_agent"),
             variables=variables,
@@ -278,10 +369,18 @@ class QueryHandler:
         Returns:
             requests.Response: The response from the query.
         """
+        token_manager = getattr(self.config, "token_manager", None)
+        if token_manager is not None:
+            bullet_token = token_manager.get_token(TOKENS.BULLET_TOKEN).value
+            gtoken = token_manager.get_token(TOKENS.GTOKEN).value
+        else:
+            bullet_token = cast(str, self.config.get_value(TOKENS.BULLET_TOKEN))
+            gtoken = cast(str, self.config.get_value(TOKENS.GTOKEN))
+
         return queries.query_hash(
             query_hash,
-            cast(str, self.config.get_value(TOKENS.BULLET_TOKEN)),
-            cast(str, self.config.get_value(TOKENS.GTOKEN)),
+            bullet_token,
+            gtoken,
             language or cast(str, self.config.get_value("language")),
             self.config.get_value("user_agent"),
             variables=variables,
@@ -335,11 +434,9 @@ class QueryHandler:
                 that was used to generate the query. This is useful for
                 debugging purposes.
         """
-        response = self.raw_query_hash(query_hash, language, variables)
-        if response.status_code != 200:
-            logger.info("Query failed, regenerating tokens and retrying")
-            self.config.regenerate_tokens()
-            response = self.raw_query_hash(query_hash, language, variables)
+        response = self._execute_request(
+            lambda: self.raw_query_hash(query_hash, language, variables)
+        )
 
         if "errors" in response.json():
             errors = response.json()["errors"]
@@ -396,11 +493,9 @@ class QueryHandler:
                 that was used to generate the query. This is useful for
                 debugging purposes.
         """
-        response = self.raw_query(query_name, language, variables)
-        if response.status_code != 200:
-            logger.info("Query failed, regenerating tokens and retrying.")
-            self.config.regenerate_tokens()
-            response = self.raw_query(query_name, language, variables)
+        response = self._execute_request(
+            lambda: self.raw_query(query_name, language, variables)
+        )
 
         if "errors" in response.json():
             errors = response.json()["errors"]

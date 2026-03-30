@@ -97,20 +97,29 @@ be used in a couple of steps later on to obtain different tokens.
 
 In 2019, Nintendo made it more difficult for third party applications to obtain
 a gtoken by introducing an `HMAC code <https://en.wikipedia.org/wiki/HMAC>`_.
-The HMAC code is used to verify  that the user is connecting through the
-official Nintendo Switch Online app and not a third party application, like this
-library. The HMAC code is generated through an obfuscated process that involves
-the ID Token, the timestamp, and the request ID. The ID token is sent to a third
-party server that is run by ``imink`` and returns the HMAC code (known as an "f"
-token), a timestamp, and a request ID. The ID token, user data, "f" token,
-timestamp, and request ID are then sent to the Nintendo Connect API to obtain a
-Web API Server Credential Access Token from the Nintendo Connect API. The Web
-API Server Credential Access Token is then sent to ``imink`` to generate another
-HMAC code, timestamp, and request ID. This time, the Web API Server Credential
-Access Token is sent to ``imink`` instead of the ID token, which returns a new
-"f" token, timestamp, and request ID. The Web API Server Credential Access
-Token, "f" token, timestamp, and request ID are then sent to the Nintendo
-Connect API to obtain a gtoken.
+The HMAC code (commonly called the ``f`` token) is used to verify that the user
+is connecting through the official Nintendo Switch Online app and not a third
+party application, like this library. The ``f`` token is generated through an
+obfuscated process that involves the ID token, the timestamp, and the request
+ID. ``splatnet3_scraper`` relies on a hosted implementation of this algorithm.
+
+Starting with ``splatnet3_scraper`` ``2.0.0`` the default ``f_token`` provider is
+`nxapi-znca-api <https://github.com/samuelthomas2774/nxapi-znca-api>`_. You must
+register an ``nxapi-auth`` client (default scope ``ca:gf ca:er ca:dr``) and configure the corresponding
+``NXAPI_ZNCA_API_CLIENT_*`` environment variables so the library can authenticate
+with the hosted service. The :class:`NXAPIClient` automatically injects the
+``Authorization`` header required by nxapi when it relays the ID token, request
+ID, and timestamp. The environment variables are documented in
+:ref:`Configuring NXAPI Client Authentication <nxapi_client_setup>`.
+
+If the hosted service is unavailable, provide your own ``f_token_url`` list so
+the library can contact an alternate implementation that you trust.
+
+Putting this together: the ID token, user data, ``f`` token, timestamp, and
+request ID are sent to Nintendo to obtain a Web API Server Credential Access
+Token. That access token is in turn sent back to the ``f_token`` provider to
+mint the phase-two values (``f`` token, timestamp, request ID). Sending those
+values to Nintendo yields the gtoken.
 
 Obtaining a Bullet Token
 ------------------------

@@ -67,6 +67,59 @@ The `query` module is an easy-to-use module that enables fast and painless query
 
 The `query` module provides the `QueryHandler` class, which is used to make queries to the SplatNet 3 API. The `QueryHandler` class can be instantiated in one of a few ways: by providing a session token, by providing the path to a configuration file, or by loading environment variables.
 
+### NXAPI authentication (2.0.0+)
+
+Our default `f_token` provider now requires nxapi-auth client credentials. The default scope is `ca:gf ca:er ca:dr`, which matches the hosted nxapi examples and covers f-generation plus the optional encrypt/decrypt helpers. Choose **one** of the following client authentication methods:
+
+- **Public client (no secret):** set only `NXAPI_ZNCA_API_CLIENT_ID`.
+- **Confidential client:** set `NXAPI_ZNCA_API_CLIENT_ID` and `NXAPI_ZNCA_API_CLIENT_SECRET`.
+- **Private key JWT:** either set a prebuilt `NXAPI_ZNCA_API_CLIENT_ASSERTION`, or
+  point the scraper at your PEM/JWKS metadata so it can mint fresh assertions
+  on demand.
+
+Required environment variables:
+
+```bash
+export NXAPI_ZNCA_API_CLIENT_ID="your-client-id"         # required
+# choose ONE auth method
+export NXAPI_ZNCA_API_CLIENT_SECRET="your-secret"        # or
+export NXAPI_ZNCA_API_CLIENT_ASSERTION="eyJhbGciOi..."    # + NXAPI_ZNCA_API_CLIENT_ASSERTION_TYPE=...
+# or generate private_key_jwt assertions locally
+export NXAPI_ZNCA_API_CLIENT_ASSERTION_PRIVATE_KEY_PATH="/path/to/private.pem"
+export NXAPI_ZNCA_API_CLIENT_ASSERTION_JKU="https://example.com/.well-known/jwks.json"
+export NXAPI_ZNCA_API_CLIENT_ASSERTION_KID="my-key-id"
+
+# optional but recommended for clarity
+export NXAPI_ZNCA_API_AUTH_SCOPE="ca:gf ca:er ca:dr"
+export NXAPI_USER_AGENT="my-scraper/2.0.0 (+https://example.com/contact)"
+```
+
+Library wiring example:
+
+```ts
+import { setClientAuthentication, addUserAgent } from 'nxapi';
+
+addUserAgent('my-scraper/2.0.0 (+https://example.com/contact)');
+
+setClientAuthentication({
+  id: process.env.NXAPI_ZNCA_API_CLIENT_ID,
+  // choose ONE of the following:
+  // secret: process.env.NXAPI_ZNCA_API_CLIENT_SECRET,
+  // assertion: process.env.NXAPI_ZNCA_API_CLIENT_ASSERTION,
+  // assertionType: process.env.NXAPI_ZNCA_API_CLIENT_ASSERTION_TYPE,
+  scope: 'ca:gf ca:er ca:dr',
+});
+```
+
+If you store configuration in `.splatnet3_scraper`, `nxapi_client_secret` is the canonical key. The loader also accepts the legacy `nxapi_shared_secret` key when reading older files.
+Generated assertions use `nxapi_client_assertion_private_key_path`,
+`nxapi_client_assertion_jku`, and `nxapi_client_assertion_kid`.
+
+> #### Using the hosted f-generation API?
+> The default hosted `nxapi-znca-api` service receives a Nintendo `id_token` (JWT) to mint the required parameters. Review the Public API terms and status page linked in the upstream repository, and disclose this behaviour to your users.
+
+The handler also tracks account cooldowns and token lifetimes. `401`/`403` responses trigger a token refresh followed by a short cooldown before the account is used again, while `429`/`503` responses schedule an exponential backoff with jitter and raise a `RateLimitException` so that orchestrators can rotate to another Nintendo account. Tokens are refreshed proactively based on the documented lifetimes (~15 minutes for the app `id_token`, ~2 hours for the web-service tokens) instead of minting new `f` values on every request.
+
 ### Using the `auth` module
 
 :warning: **Warning: The `auth` module is intended for advanced users only. Most users should use the `scraper` or `query` modules for a simpler and more convenient experience.**
@@ -98,9 +151,21 @@ The following environment variables are supported:
 - `SN3S_SESSION_TOKEN`
 - `SN3S_GTOKEN`
 - `SN3S_BULLET_TOKEN`
+- `NXAPI_ZNCA_API_CLIENT_ID`
+- `NXAPI_ZNCA_API_CLIENT_SECRET`
+- `NXAPI_ZNCA_API_CLIENT_ASSERTION`
+- `NXAPI_ZNCA_API_CLIENT_ASSERTION_PRIVATE_KEY_PATH`
+- `NXAPI_ZNCA_API_CLIENT_ASSERTION_JKU`
+- `NXAPI_ZNCA_API_CLIENT_ASSERTION_KID`
+- `NXAPI_ZNCA_API_CLIENT_ASSERTION_TYPE`
+- `NXAPI_ZNCA_API_AUTH_SCOPE`
+- `NXAPI_USER_AGENT`
+- `NXAPI_AUTH_TOKEN_URL`
+
+The config file also accepts `nxapi_shared_secret` as a backwards-compatible alias for `nxapi_client_secret`.
 
 ```python
-from splatnet3_scrape.query import QueryHandler
+from splatnet3_scraper.query import QueryHandler
 handler = QueryHandler.from_env()
 handler.query("StageScheduleQuery")
 ```

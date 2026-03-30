@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import base64
 import hashlib
 import logging
 import os
 import re
-from typing import Callable, Literal, TypeAlias, cast
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable, Literal, TypeAlias, cast
+from urllib.parse import parse_qsl, urlparse
 
 import requests
 
@@ -11,25 +15,65 @@ from splatnet3_scraper import __version__
 from splatnet3_scraper.auth.exceptions import (
     FTokenException,
     NintendoException,
+    NXAPIAuthException,
+    NXAPIInvalidTokenError,
+    NXAPIRateLimitError,
+    NXAPIServiceUnavailableError,
     SplatNetException,
 )
+from splatnet3_scraper.auth.nxapi_client import _sanitize_headers
 from splatnet3_scraper.constants import (
     APP_VERSION_FALLBACK,
+    CORAL_ACCOUNT_LOGIN_PATH,
+    CORAL_API_URL,
+    CORAL_GET_WEB_SERVICE_TOKEN_PATH,
     DEFAULT_USER_AGENT,
     IOS_APP_URL,
+    NXAPI_CONFIG_CACHE_TTL,
+    NXAPI_CONFIG_URL,
+    NXAPI_DEFAULT_CLIENT_VERSION,
+    NXAPI_DECRYPT_URL,
+    NXAPI_ENCRYPT_URL,
     NXAPI_ZNCA_URL,
     SPLATNET_URL,
+    ZNCA_PLATFORM_VERSION,
 )
 from splatnet3_scraper.utils import get_splatnet_version, retry
+
+if TYPE_CHECKING:
+    from splatnet3_scraper.auth.nxapi_client import NXAPIClient
 
 version_re = re.compile(
     r"(?<=whats\-new\_\_latest\_\_version\"\>Version)\s+\d+\.\d+\.\d+"
 )
 
+
+@dataclass
+class FTokenResult:
+    """Result from an f-token generation request.
+
+    Attributes:
+        f: The f-token string.
+        request_id: The request ID (may be None with
+            encrypt_token_request flow).
+        timestamp: The timestamp (may be None with
+            encrypt_token_request flow).
+        encrypted_request: Base64-decoded encrypted Coral request
+            body, if the f endpoint returned one.
+    """
+
+    f: str
+    request_id: str | None
+    timestamp: str | int | None
+    encrypted_request: bytes | None = None
+
+
 FToken_Gen: TypeAlias = Callable[
     [str, str, Literal[1] | Literal[2], str, str | None],
-    tuple[str, str, str],
+    FTokenResult,
 ]
+
+_NXAPI_HOST = urlparse(NXAPI_ZNCA_URL).netloc
 
 
 class NSO:
@@ -146,7 +190,9 @@ class NSO:
         self._gtoken: str | None = None
         self._user_info: dict[str, str] | None = None
         self._f_token_function: FToken_Gen = self.get_ftoken
+        self._nxapi_client: NXAPIClient | None = None
         self.logger = logging.getLogger(__name__)
+        self._app_version_override: str | None = None
 
     @staticmethod
     def new_instance() -> "NSO":
@@ -170,13 +216,47 @@ class NSO:
         obtained and stored. If the version cannot be obtained, a fallback
         version will be used.
 
+        The version discovery priority is:
+        1. Explicit override via set_app_version_override()
+        2. NXAPI config endpoint (if NXAPI client is configured)
+        3. Fallback version constant
+
         Returns:
             str: The current version of the NSO app.
         """
         if self._version is None:
-            # self._version = self.get_version()
-            self._version = "2.10.1"
+            override = self._app_version_override
+            if override:
+                self._version = override
+            else:
+                # Try NXAPI config endpoint if client is configured
+                if self._nxapi_client is not None:
+                    nso_version = self._nxapi_client.get_nso_version(
+                        config_url=NXAPI_CONFIG_URL,
+                        cache_ttl=NXAPI_CONFIG_CACHE_TTL,
+                    )
+                    if nso_version:
+                        self._version = nso_version
+                        return self._version
+
+                # Fall back to hardcoded version
+                self._version = APP_VERSION_FALLBACK
         return self._version
+
+    def set_app_version_override(self, version: str | None) -> None:
+        """Overrides the NSO app version used in authentication requests.
+
+        Args:
+            version (str | None): The version string to force. If ``None`` or an
+                empty string is provided, the override is cleared and the
+                fallback behaviour is restored.
+        """
+        normalized = version.strip() if version else None
+        self._app_version_override = normalized or None
+        if self._app_version_override:
+            self._version = self._app_version_override
+        else:
+            self._version = None
 
     @retry(times=2, exceptions=ValueError)
     def get_version(self) -> str:
@@ -319,14 +399,14 @@ class NSO:
         }
         login_url = "https://accounts.nintendo.com/connect/1.0.0/authorize"
         response = self.session.get(
-            login_url, headers=header, params=params  # type: ignore
+            login_url,
+            headers=header,
+            params=params,  # type: ignore
         )
         return response.url
 
     def parse_npf_uri(self, uri: str) -> str:
-        """Parses the uri returned by the Nintendo login page and extracts the
-        session token code. This is used to pass the challenge and verify that
-        the user is who they say they are.
+        """Parses the Nintendo callback URI and extracts the session token code.
 
         Args:
             uri (str): The uri returned by the Nintendo login page.
@@ -334,8 +414,22 @@ class NSO:
         Returns:
             str: The session token code. This is *NOT* the session token, but is
                 used to obtain the session token.
+
+        Raises:
+            ValueError: The session token code could not be found in the URI.
         """
-        return uri.split("&")[1][len("session_token_code=") :]
+        parsed_uri = urlparse(uri)
+        query_sources = [parsed_uri.fragment, parsed_uri.query]
+
+        for source in query_sources:
+            if not source:
+                continue
+            params = dict(parse_qsl(source))
+            session_token_code = params.get("session_token_code")
+            if session_token_code:
+                return session_token_code
+
+        raise ValueError("Session token code not found in callback URI.")
 
     def get_session_token(self, session_token_code: str) -> str:
         """Obtains the session token from the session token code.
@@ -400,7 +494,9 @@ class NSO:
             "Connection": "Keep-Alive",
             "User-Agent": (
                 "Dalvik/2.1.0 "
-                "(Linux; U; Android 14; Pixel 7a Build/UQ1A.240105.004)"
+                "(Linux; U; Android "
+                + ZNCA_PLATFORM_VERSION
+                + "; Pixel 7a Build/UQ1A.240105.004)"
             ),
         }
         body = {
@@ -464,8 +560,9 @@ class NSO:
 
         By default, this method will use a third party's ``f_token`` generation
         API to obtain the ``f_token``. The API used by default is provided by
-        `imink <https://github.com/imink-app>`_. If you do not trust this URL,
-        you can provide your own URL through the ``f_token_url`` argument, or
+        the `NXAPI znca service <https://nxapi-znca-api.fancy.org.uk/>`_. If you
+        do not trust this URL, you can provide your own URL through the
+        ``f_token_url`` argument, or
         you can replace the ``f_token`` generation method used with your own
         through the use of the ``set_new_f_token_function`` method. See the
         documentation for that method for more information.
@@ -473,7 +570,7 @@ class NSO:
         Args:
             session_token (str): The session token.
             f_token_url (str): The url to get the user access token from. This
-                defaults to the ftoken generation url provided by `imink`.
+                defaults to the ftoken generation url provided by NXAPI.
 
         Raises:
             NintendoException: In the case that the user's access token cannot
@@ -568,6 +665,17 @@ class NSO:
             self.logger.info("Setting new ftoken generation method")
             self._f_token_function = new_function
 
+    def set_nxapi_client(self, client: "NXAPIClient" | None) -> None:
+        """Attach or detach the helper used for nxapi-auth requests."""
+        self._nxapi_client = client
+
+    @staticmethod
+    def _is_nxapi_url(url: str) -> bool:
+        try:
+            return urlparse(url).netloc == _NXAPI_HOST
+        except ValueError:
+            return False
+
     def get_ftoken(
         self,
         f_token_url: str,
@@ -575,64 +683,35 @@ class NSO:
         step: Literal[1] | Literal[2],
         na_id: str,
         coral_user_id: str | None = None,
-    ) -> tuple[str, str, str]:
-        """Given the ``f_token_url``, ``id_token``, and ``step``, returns the
-        ``f_token``, ``request_id``, and ``timestamp`` from the response.
+        *,
+        encrypt_request: dict | None = None,
+    ) -> FTokenResult:
+        """Given the ``f_token_url``, ``id_token``, and ``step``, returns
+        an ``FTokenResult`` containing the ``f_token`` and optionally
+        the ``request_id``, ``timestamp``, and ``encrypted_request``.
 
-        Note that this is a third party method, and is not officially
-        sanctioned by Nintendo. The default ftoken generation URL used by this
-        library is provided by `imink <https://github.com/imink-app>`_. In
-        the interest of transparency, the following is the entirety of the
-        request header sent to the ftoken generation URL:
-
-        >>> {
-        ...     "User-Agent": f"splatnet3_scraper/{__version__}",
-        ...     "Content-Type": "application/json; charset=utf-8",
-        ... }
-
-        The following is the entirety of the request body sent to the ftoken
-        generation URL:
-
-        >>> {
-        ...     "token": id_token,
-        ...     "hash_method": step,
-        ... }
-
-        As you can see, the only identifying information sent to the ftoken
-        generation URL is the user's ``id_token``, which cannot be used to
-        identify the user without the user's access token, which is not
-        provided to the ftoken generation URL.
+        When the f endpoint supports ``encrypt_token_request``, the
+        response may include an ``encrypted_token_request`` field
+        containing a pre-built encrypted Coral request body. In that
+        case ``request_id`` and ``timestamp`` may be ``None``.
 
         Args:
-            f_token_url (str): URL to use for ``f_token`` generation. This
-                package provides a default URL, but you can provide your own.
-                The default URL is provided by `imink`.
-            id_token (str): ID token from user access token response. This is
-                obtained from the user access token response, and is used to
-                identify the user. This cannot be used to identify the user
-                without the user's access token, which is not provided to the
-                ftoken generation URL.
-            step (Literal[1] | Literal[2]): The step number. This is either
-                ``1`` or ``2``. This is used to identify the step in the
-                ``f_token`` generation process.
-            na_id (str): The Nintendo Account ID of the user. As of version
-                2.5.1, this is not used for anything. However, it is still
-                required to futureproof in case Nintendo decides to enforce
-                verification of this value.
-            coral_user_id (str | None): The Coral user ID of the user. This is
-                used to verify the ftoken generation process. This is only
-                required for step ``2``.
+            f_token_url (str): URL to use for ``f_token`` generation.
+            id_token (str): ID token or web service access token.
+            step (Literal[1] | Literal[2]): The step number.
+            na_id (str): The Nintendo Account ID of the user.
+            coral_user_id (str | None): The Coral user ID (required
+                for step 2).
+            encrypt_request (dict | None): Optional Coral parameter
+                template to pass to the f endpoint for the
+                ``encrypt_token_request`` flow.
 
         Raises:
-            ValueError: In the case that the ``coral_user_id`` is not provided
-                for step ``2``.
-            FTokenException: In the case that the ftoken cannot be obtained
-                from the ftoken generation URL.
+            ValueError: ``coral_user_id`` not provided for step 2.
+            FTokenException: If the ftoken cannot be obtained.
 
         Returns:
-            str: The f token.
-            str: The request ID.
-            str: The timestamp.
+            FTokenResult: The f-token result.
         """
         header = {
             "User-Agent": f"splatnet3_scraper/{__version__}",
@@ -640,7 +719,38 @@ class NSO:
             "X-znca-Platform": "Android",
             "X-znca-Version": self.version,
         }
-        body = {
+
+        if self._is_nxapi_url(f_token_url):
+            if self._nxapi_client is None:
+                raise FTokenException(
+                    "nxapi client authentication is not configured"
+                )
+            header["X-znca-Client-Version"] = self._nxapi_client.client_version
+            try:
+                nxapi_headers = self._nxapi_client.build_request_headers()
+            except NXAPIAuthException as exc:
+                raise FTokenException(
+                    f"Failed to authenticate with nxapi-auth: {exc}"
+                ) from exc
+
+            user_agent_override = nxapi_headers.pop("User-Agent", None)
+            if user_agent_override:
+                header["User-Agent"] = user_agent_override
+            header.update(nxapi_headers)
+            if not header.get("X-znca-Client-Version"):
+                raise FTokenException(
+                    "NXAPI client version is required when using "
+                    "the default ftoken provider."
+                )
+
+        if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(
+                "Posting to %s with headers %s",
+                f_token_url,
+                _sanitize_headers(header),
+            )
+
+        body: dict = {
             "token": id_token,
             "hash_method": step,
             "na_id": na_id,
@@ -653,17 +763,121 @@ class NSO:
                 "Coral user ID is required for step 2 of ftoken generation"
             )
 
+        if encrypt_request is not None:
+            body["encrypt_token_request"] = encrypt_request
+
         response = self.session.post(f_token_url, headers=header, json=body)
-        response_json = response.json()
+
+        # Handle NXAPI-specific error responses
+        if response.status_code != 200 and self._is_nxapi_url(f_token_url):
+            debug_id = response.headers.get("X-Trace-Id", "unknown")
+            try:
+                error_json = response.json()
+                error_code = error_json.get("error", "unknown_error")
+                error_description = error_json.get("error_description", "")
+            except ValueError:
+                error_code = "unknown_error"
+                error_description = response.text[:500]
+
+            if (
+                error_code == "invalid_request"
+                and "Invalid X-znca-Client-Version header"
+                in error_description
+                and self._nxapi_client is not None
+                and self._nxapi_client.client_version
+                != NXAPI_DEFAULT_CLIENT_VERSION
+            ):
+                stale_version = self._nxapi_client.client_version
+                self.logger.warning(
+                    "NXAPI rejected client version %s; retrying with %s",
+                    stale_version,
+                    NXAPI_DEFAULT_CLIENT_VERSION,
+                )
+                self._nxapi_client.client_version = (
+                    NXAPI_DEFAULT_CLIENT_VERSION
+                )
+                return self.get_ftoken(
+                    f_token_url,
+                    id_token,
+                    step,
+                    na_id,
+                    coral_user_id,
+                    encrypt_request=encrypt_request,
+                )
+
+            if error_code == "invalid_token":
+                raise NXAPIInvalidTokenError(
+                    message=("NXAPI token invalid: " + error_description),
+                    error_code=error_code,
+                    error_description=error_description,
+                    debug_id=debug_id,
+                    http_status=response.status_code,
+                )
+            elif error_code == "rate_limit":
+                raise NXAPIRateLimitError(
+                    message=("NXAPI rate limited: " + error_description),
+                    error_code=error_code,
+                    error_description=error_description,
+                    debug_id=debug_id,
+                    http_status=response.status_code,
+                )
+            elif error_code == "service_unavailable":
+                raise NXAPIServiceUnavailableError(
+                    message=("NXAPI service unavailable: " + error_description),
+                    error_code=error_code,
+                    error_description=error_description,
+                    debug_id=debug_id,
+                    http_status=response.status_code,
+                )
+            else:
+                raise FTokenException(
+                    f"NXAPI ftoken request failed "
+                    f"({error_code}): {error_description} "
+                    f"[debug_id: {debug_id}]"
+                )
+
         try:
-            f_token = response_json["f"]
-            request_id = response_json["request_id"]
-            timestamp = response_json["timestamp"]
-        except (KeyError, TypeError, AttributeError):
+            response_json = response.json()
+        except ValueError as exc:
+            response_snippet = response.text[:500]
+            self.logger.error(
+                "ftoken provider %s returned non-JSON response (status=%s): %s",
+                f_token_url,
+                response.status_code,
+                response_snippet,
+            )
+            raise FTokenException(
+                "Failed to decode ftoken provider response "
+                "as JSON. "
+                + f"Status: {response.status_code}. "
+                + f"Body: {response_snippet}"
+            ) from exc
+
+        f_token = response_json.get("f")
+        if not f_token:
+            self.logger.error(
+                "ftoken provider %s returned an unexpected payload: %s",
+                f_token_url,
+                response_json,
+            )
             raise FTokenException(
                 "Failed to get f token. " + f"Response: {response_json}"
             )
-        return (f_token, request_id, timestamp)
+
+        request_id = response_json.get("request_id")
+        timestamp = response_json.get("timestamp")
+
+        encrypted_request: bytes | None = None
+        raw_encrypted = response_json.get("encrypted_token_request")
+        if raw_encrypted is not None:
+            encrypted_request = base64.b64decode(raw_encrypted)
+
+        return FTokenResult(
+            f=f_token,
+            request_id=request_id,
+            timestamp=timestamp,
+            encrypted_request=encrypted_request,
+        )
 
     @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
     def g_token_generation_phase_1(
@@ -675,41 +889,77 @@ class NSO:
     ) -> tuple[str, str]:
         """First phase of the ``gtoken`` generation process.
 
-        This is the first phase of the ``gtoken`` generation process. This is
-        abstracted away into a separate method to allow the request to be
-        retried once in the event of a failure. This phase involves two steps:
-        first, the ``id_token`` is sent to the ``f_token_url`` in a request to
-        obtain the ``f_token``, which is a ``HMAC`` necessary to obtain the
-        ``gtoken``. The response contains three values: the ``f_token``, the
-        ``request_id``, and the ``timestamp``. These values are then sent to
-        Nintendo's servers along with the  ``id_token`` to obtain the
-        ``gtoken``.
+        Obtains the first ``f_token`` and uses it (or the encrypted
+        Coral request from the f endpoint) to call Account/Login and
+        retrieve the web service access token.
 
         Args:
-            id_token (str): ID token from user access token response. This is
-                obtained from the user access token response, and is used to
-                identify the user to Nintendo's servers. However, this cannot
-                be used to identify the user by a third party by itself.
-            user_info (dict[str, str]): The dictionary of user info returned by
-                ``get_user_info``. This must contain the keys ``language``,
+            id_token (str): ID token from user access token response.
+            user_info (dict[str, str]): User info with ``language``,
                 ``birthday``, and ``country``.
-            na_id (str): The Nintendo Account ID of the user. As of version
-                2.5.1, this is not used for anything. However, it is still
-                required to futureproof in case Nintendo decides to enforce
-                verification of this value.
-            f_token_url (str): URL to use for f token generation. This package
-                provides a default URL, but you can provide your own. The
-                default URL is provided by `imink`.
+            na_id (str): The Nintendo Account ID of the user.
+            f_token_url (str): URL for f token generation.
 
         Returns:
             str: The Web Service Credential Access Token.
             str: The Coral user ID.
         """
-        f_token, request_id, timestamp = self._f_token_function(
-            f_token_url, id_token, 1, na_id, None
+        coral_url = CORAL_API_URL + CORAL_ACCOUNT_LOGIN_PATH
+
+        # Build encrypt_request template when calling the
+        # default get_ftoken and NXAPI client is configured
+        use_encrypt = (
+            self._nxapi_client is not None
+            and self._f_token_function is self.get_ftoken
         )
+
+        if use_encrypt:
+            encrypt_req: dict | None = {
+                "url": coral_url,
+                "parameter": {
+                    "f": "",
+                    "language": user_info["language"],
+                    "naBirthday": user_info["birthday"],
+                    "naCountry": user_info["country"],
+                    "naIdToken": id_token,
+                    "requestId": "",
+                    "timestamp": "",
+                },
+            }
+            ftoken_result = self.get_ftoken(
+                f_token_url,
+                id_token,
+                1,
+                na_id,
+                None,
+                encrypt_request=encrypt_req,
+            )
+        else:
+            result = self._f_token_function(
+                f_token_url,
+                id_token,
+                1,
+                na_id,
+                None,
+            )
+            # Support both FTokenResult and legacy tuple
+            if isinstance(result, FTokenResult):
+                ftoken_result = result
+            else:
+                f, r, t = result
+                ftoken_result = FTokenResult(
+                    f=f,
+                    request_id=r,
+                    timestamp=t,
+                )
+
         return self.get_web_service_access_token(
-            id_token, user_info, f_token, request_id, timestamp
+            id_token,
+            user_info,
+            ftoken_result.f,
+            ftoken_result.request_id,
+            ftoken_result.timestamp,
+            encrypted_body=ftoken_result.encrypted_request,
         )
 
     @retry(times=1, exceptions=(FTokenException, NintendoException, KeyError))
@@ -722,40 +972,71 @@ class NSO:
     ) -> str:
         """Final phase of the ``gtoken`` generation process.
 
-        This is the second phase of the ``gtoken`` generation process. This is
-        abstracted away into a separate method to allow the request to be
-        retried once in the event of a failure. This phase involves two steps:
-        first, the ``web_service_access_token`` is sent to the ``f_token_url``
-        in a request to obtain the ``f_token``, which is a ``HMAC`` necessary to
-        obtain the ``gtoken``. The response contains three values: the
-        ``f_token``, the ``request_id``, and the ``timestamp``. These values are
-        then sent to Nintendo's servers along with the
-        ``web_service_access_token`` to obtain the ``gtoken``.
+        Obtains the second ``f_token`` and uses it (or the encrypted
+        Coral request) to call GetWebServiceToken and retrieve the
+        gtoken.
 
         Args:
-            web_service_access_token (str): The Web Service Credential Access
-                Token obtained from the first half of the gtoken generation
-                process.
-            na_id (str): The Nintendo Account ID of the user. As of version
-                2.5.1, this is not used for anything. However, it is still
-                required to futureproof in case Nintendo decides to enforce
-                verification of this value.
-            coral_user_id (str): The Coral user ID of the user. This is
-                used to verify the ftoken generation process. This is only
-                required for step ``2``.
-            f_token_url (str): URL to use for f token generation. This package
-                provides a default URL, but you can provide your own. The
-                default URL is provided by `imink`.
+            web_service_access_token (str): The Web Service
+                Credential Access Token from phase 1.
+            na_id (str): The Nintendo Account ID of the user.
+            coral_user_id (str): The Coral user ID.
+            f_token_url (str): URL for f token generation.
 
         Returns:
             str: The gtoken from the response.
         """
-        f_token, request_id, timestamp = self._f_token_function(
-            f_token_url, web_service_access_token, 2, na_id, coral_user_id
+        coral_url = CORAL_API_URL + CORAL_GET_WEB_SERVICE_TOKEN_PATH
+
+        use_encrypt = (
+            self._nxapi_client is not None
+            and self._f_token_function is self.get_ftoken
         )
 
+        if use_encrypt:
+            encrypt_req: dict | None = {
+                "url": coral_url,
+                "token": web_service_access_token,
+                "parameter": {
+                    "f": "",
+                    "id": 4834290508791808,
+                    "registrationToken": (web_service_access_token),
+                    "requestId": "",
+                    "timestamp": "",
+                },
+            }
+            ftoken_result = self.get_ftoken(
+                f_token_url,
+                web_service_access_token,
+                2,
+                na_id,
+                coral_user_id,
+                encrypt_request=encrypt_req,
+            )
+        else:
+            result = self._f_token_function(
+                f_token_url,
+                web_service_access_token,
+                2,
+                na_id,
+                coral_user_id,
+            )
+            if isinstance(result, FTokenResult):
+                ftoken_result = result
+            else:
+                f, r, t = result
+                ftoken_result = FTokenResult(
+                    f=f,
+                    request_id=r,
+                    timestamp=t,
+                )
+
         return self.get_gtoken_request(
-            web_service_access_token, f_token, request_id, timestamp
+            web_service_access_token,
+            ftoken_result.f,
+            ftoken_result.request_id,
+            ftoken_result.timestamp,
+            encrypted_body=ftoken_result.encrypted_request,
         )
 
     def get_web_service_access_token(
@@ -763,59 +1044,140 @@ class NSO:
         id_token: str,
         user_info: dict[str, str],
         f_token: str,
-        request_id: str,
-        timestamp: str,
+        request_id: str | None,
+        timestamp: str | int | None,
+        *,
+        encrypted_body: bytes | None = None,
     ) -> tuple[str, str]:
-        """Given the ``id_token``, user data, ``f_token``, ``request_id``, and
-        ``timestamp``, returns the Web Service Credential Access Token.
+        """Given the ``id_token``, user data, ``f_token``,
+        ``request_id``, and ``timestamp``, returns the Web Service
+        Credential Access Token.
 
-        This is the first step of the ``gtoken`` generation process. This will
-        return the Web Service Credential Access Token from Nintendo's servers,
-        which is then used to obtain the ``gtoken``.
+        If ``encrypted_body`` is provided (from the f endpoint's
+        ``encrypt_token_request`` flow), it is sent directly to the
+        Coral API, bypassing local body construction and encryption.
 
         Args:
-            id_token (str): The ``id_token`` from the user access response.
-            user_info (dict[str, str]): The dictionary of user info returned by
-                ``get_user_info``. This must contain the keys ``language``,
+            id_token (str): The ``id_token`` from the user access
+                response.
+            user_info (dict[str, str]): User info with ``language``,
                 ``birthday``, and ``country``.
-            f_token (str): The ``f_token`` generated from the ``id_token``. It
-                is important that this is the ``f_token`` generated from the
-                ``id_token`` using the first hashing method and not the second.
-            request_id (str): The ``request_id`` returned alongside the
-                ``f_token`` and ``timestamp``.
-            timestamp (str): The ``timestamp`` returned alongside the
-                ``f_token`` and ``request_id``.
+            f_token (str): The ``f_token`` from step 1.
+            request_id (str | None): The ``request_id`` (may be None
+                with encrypt_token_request).
+            timestamp (str | int | None): The ``timestamp`` (may be
+                None with encrypt_token_request).
+            encrypted_body (bytes | None): Pre-encrypted Coral
+                request body from the f endpoint.
 
         Raises:
-            NintendoException: In the case that the Web Service Credential
-                Access Token cannot be obtained.
+            NintendoException: If the token cannot be obtained.
 
         Returns:
             str: The Web Service Credential Access Token.
             str: The coral user ID.
         """
-        header = {
-            "X-Platform": "Android",
-            "X-ProductVersion": self.version,
-            "Content-Type": "application/json; charset=utf-8",
-            "Content-Length": str(990 + len(f_token)),
-            "Connection": "Keep-Alive",
-            "Accept-Encoding": "gzip",
-            "User-Agent": "com.nintendo.znca/" + self.version + "(Android/14)",
-        }
-        body = {
-            "parameter": {
-                "f": f_token,
-                "language": user_info["language"],
-                "naBirthday": user_info["birthday"],
-                "naCountry": user_info["country"],
-                "naIdToken": id_token,
-                "requestId": request_id,
-                "timestamp": timestamp,
+        import json
+
+        url = CORAL_API_URL + CORAL_ACCOUNT_LOGIN_PATH
+
+        android_ver = ZNCA_PLATFORM_VERSION
+        ua = (
+            "com.nintendo.znca/"
+            + self.version
+            + "(Android/"
+            + android_ver
+            + ")"
+        )
+
+        if encrypted_body is not None:
+            # Pre-encrypted body from encrypt_token_request
+            assert self._nxapi_client is not None
+            header = {
+                "X-Platform": "Android",
+                "X-ProductVersion": self.version,
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(len(encrypted_body)),
+                "Connection": "Keep-Alive",
+                "Accept-Encoding": "gzip",
+                "User-Agent": ua,
             }
-        }
-        url = "https://api-lp1.znc.srv.nintendo.net/v3/Account/Login"
-        response = self.session.post(url, headers=header, json=body).json()
+            raw_response = self.session.post(
+                url,
+                headers=header,
+                data=encrypted_body,
+            )
+            decrypted = self._nxapi_client.decrypt_response(
+                decrypt_url=NXAPI_DECRYPT_URL,
+                encrypted_data=raw_response.content,
+            )
+            response = json.loads(decrypted)
+        elif self._nxapi_client is not None:
+            # Use encrypt/decrypt via NXAPI client
+            body = {
+                "parameter": {
+                    "f": f_token,
+                    "language": user_info["language"],
+                    "naBirthday": user_info["birthday"],
+                    "naCountry": user_info["country"],
+                    "naIdToken": id_token,
+                    "requestId": request_id,
+                    "timestamp": timestamp,
+                }
+            }
+            enc_body = self._nxapi_client.encrypt_request(
+                encrypt_url=NXAPI_ENCRYPT_URL,
+                coral_url=url,
+                token=None,
+                data=json.dumps(body),
+            )
+            header = {
+                "X-Platform": "Android",
+                "X-ProductVersion": self.version,
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(len(enc_body)),
+                "Connection": "Keep-Alive",
+                "Accept-Encoding": "gzip",
+                "User-Agent": ua,
+            }
+            raw_response = self.session.post(
+                url,
+                headers=header,
+                data=enc_body,
+            )
+            decrypted = self._nxapi_client.decrypt_response(
+                decrypt_url=NXAPI_DECRYPT_URL,
+                encrypted_data=raw_response.content,
+            )
+            response = json.loads(decrypted)
+        else:
+            # Unencrypted request (backward compatibility)
+            body = {
+                "parameter": {
+                    "f": f_token,
+                    "language": user_info["language"],
+                    "naBirthday": user_info["birthday"],
+                    "naCountry": user_info["country"],
+                    "naIdToken": id_token,
+                    "requestId": request_id,
+                    "timestamp": timestamp,
+                }
+            }
+            header = {
+                "X-Platform": "Android",
+                "X-ProductVersion": self.version,
+                "Content-Type": ("application/json; charset=utf-8"),
+                "Content-Length": str(990 + len(f_token)),
+                "Connection": "Keep-Alive",
+                "Accept-Encoding": "gzip",
+                "User-Agent": ua,
+            }
+            response = self.session.post(
+                url,
+                headers=header,
+                json=body,
+            ).json()
+
         if "result" not in response:
             raise NintendoException(
                 "Failed to get web service access token. "
@@ -831,60 +1193,122 @@ class NSO:
         self,
         web_service_access_token: str,
         f_token: str,
-        request_id: str,
-        timestamp: str,
+        request_id: str | None,
+        timestamp: str | int | None,
+        *,
+        encrypted_body: bytes | None = None,
     ) -> str:
-        """Given the ``web_service_access_token``, ``f_token``, ``request_id``,
-        and ``timestamp``, returns the ``gtoken``.
+        """Given the ``web_service_access_token``, ``f_token``,
+        ``request_id``, and ``timestamp``, returns the ``gtoken``.
 
-        This is named differently from the other ``get_gtoken`` function to
-        avoid confusion. This function specifically makes the request to
-        Nintendo's servers to obtain the ``gtoken`` given the web service access
-        token, ``f_token``, ``request_id``, and ``timestamp``. The other
-        function only takes the ``session_token`` and generates all of the other
-        intermediate tokens to obtain the ``gtoken`` by finally calling this
-        function.
+        If ``encrypted_body`` is provided (from the f endpoint's
+        ``encrypt_token_request`` flow), it is sent directly.
 
         Args:
-            web_service_access_token (str): The ``web_service_access_token``
-                obtained from the first half of the ``gtoken`` generation
-                process.
-            f_token (str): The ``f_token`` generated from the
-                ``web_service_access_token``. It is important that this is the
-                ``f_token`` generated from the ``web_service_access_token``
-                using the second hashing method and not the first.
-            request_id (str): The ``request_id`` returned alongside the
-                ``f_token`` and ``timestamp``.
-            timestamp (str): The ``timestamp`` returned alongside the
-                ``f_token`` and ``request_id``.
+            web_service_access_token (str): The web service access
+                token from phase 1.
+            f_token (str): The ``f_token`` from step 2.
+            request_id (str | None): The ``request_id`` (may be
+                None).
+            timestamp (str | int | None): The ``timestamp`` (may be
+                None).
+            encrypted_body (bytes | None): Pre-encrypted Coral
+                request body from the f endpoint.
 
         Raises:
-            NintendoException: In the case that the ``gtoken`` cannot be
-                obtained.
+            NintendoException: If the ``gtoken`` cannot be obtained.
 
         Returns:
             str: The ``gtoken``.
         """
-        header = {
-            "X-Platform": "Android",
-            "X-ProductVersion": self.version,
-            "Authorization": f"Bearer {web_service_access_token}",
-            "Content-Type": "application/json; charset=utf-8",
-            "Content-Length": "391",
-            "Accept-Encoding": "gzip",
-            "User-Agent": f"com.nintendo.znca/{self.version}(Android/14)",
-        }
-        body = {
-            "parameter": {
-                "f": f_token,
-                "id": 4834290508791808,
-                "registrationToken": web_service_access_token,
-                "requestId": request_id,
-                "timestamp": timestamp,
+        import json
+
+        url = CORAL_API_URL + CORAL_GET_WEB_SERVICE_TOKEN_PATH
+
+        android_ver = ZNCA_PLATFORM_VERSION
+        ua = f"com.nintendo.znca/{self.version}(Android/{android_ver})"
+
+        if encrypted_body is not None:
+            assert self._nxapi_client is not None
+            header = {
+                "X-Platform": "Android",
+                "X-ProductVersion": self.version,
+                "Authorization": (f"Bearer {web_service_access_token}"),
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(len(encrypted_body)),
+                "Accept-Encoding": "gzip",
+                "User-Agent": ua,
             }
-        }
-        url = "https://api-lp1.znc.srv.nintendo.net/v2/Game/GetWebServiceToken"
-        response = self.session.post(url, headers=header, json=body).json()
+            raw_response = self.session.post(
+                url,
+                headers=header,
+                data=encrypted_body,
+            )
+            decrypted = self._nxapi_client.decrypt_response(
+                decrypt_url=NXAPI_DECRYPT_URL,
+                encrypted_data=raw_response.content,
+            )
+            response = json.loads(decrypted)
+        elif self._nxapi_client is not None:
+            body = {
+                "parameter": {
+                    "f": f_token,
+                    "id": 4834290508791808,
+                    "registrationToken": (web_service_access_token),
+                    "requestId": request_id,
+                    "timestamp": timestamp,
+                }
+            }
+            enc_body = self._nxapi_client.encrypt_request(
+                encrypt_url=NXAPI_ENCRYPT_URL,
+                coral_url=url,
+                token=web_service_access_token,
+                data=json.dumps(body),
+            )
+            header = {
+                "X-Platform": "Android",
+                "X-ProductVersion": self.version,
+                "Authorization": (f"Bearer {web_service_access_token}"),
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(len(enc_body)),
+                "Accept-Encoding": "gzip",
+                "User-Agent": ua,
+            }
+            raw_response = self.session.post(
+                url,
+                headers=header,
+                data=enc_body,
+            )
+            decrypted = self._nxapi_client.decrypt_response(
+                decrypt_url=NXAPI_DECRYPT_URL,
+                encrypted_data=raw_response.content,
+            )
+            response = json.loads(decrypted)
+        else:
+            body = {
+                "parameter": {
+                    "f": f_token,
+                    "id": 4834290508791808,
+                    "registrationToken": (web_service_access_token),
+                    "requestId": request_id,
+                    "timestamp": timestamp,
+                }
+            }
+            header = {
+                "X-Platform": "Android",
+                "X-ProductVersion": self.version,
+                "Authorization": (f"Bearer {web_service_access_token}"),
+                "Content-Type": ("application/json; charset=utf-8"),
+                "Content-Length": "391",
+                "Accept-Encoding": "gzip",
+                "User-Agent": ua,
+            }
+            response = self.session.post(
+                url,
+                headers=header,
+                json=body,
+            ).json()
+
         if "result" not in response:
             raise NintendoException(
                 "Failed to get gtoken. " + f"Response: {response}"

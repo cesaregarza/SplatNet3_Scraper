@@ -43,13 +43,24 @@ class TokenRegenerator:
         Returns:
             Token: The gtoken that was generated.
         """
+        errors: list[str] = []
         for f_token_url in f_token_urls:
             try:
                 gtoken = nso.get_gtoken(nso.session_token, f_token_url)
                 return Token(gtoken, TOKENS.GTOKEN, time.time())
-            except FTokenException:
+            except FTokenException as exc:
+                logger.error(
+                    "Failed to generate gtoken using %s: %s",
+                    f_token_url,
+                    exc,
+                )
+                errors.append(f"{f_token_url}: {exc}")
                 continue
-        raise FTokenException("Could not get gtoken from any ftoken url")
+        error_detail = "; ".join(errors) if errors else "no providers attempted"
+        raise FTokenException(
+            "Could not get gtoken from any ftoken url. "
+            + f"Reasons: {error_detail}"
+        )
 
     @staticmethod
     @retry(times=1, exceptions=SplatNetException)

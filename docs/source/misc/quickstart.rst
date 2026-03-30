@@ -41,6 +41,59 @@ modules require a Nintendo Switch Online membership as well as having played at
 least one match online in Splatoon 3. For more information on obtaining a
 session token, see :doc:`session_token`.
 
+.. note::
+
+   Beginning with version ``2.0.0`` the default ``f_token`` provider used by
+   the scraper and query modules is `nxapi-znca-api
+   <https://github.com/samuelthomas2774/nxapi-znca-api>`_. Access to this
+   hosted endpoint now requires an ``nxapi-auth`` client credential in addition
+   to the Nintendo accounts you already rotate.
+
+.. _nxapi_client_setup:
+
+Configuring NXAPI Client Authentication
+---------------------------------------
+
+To continue using the hosted ``nxapi-znca-api`` service you must register an
+``nxapi-auth`` client (default scope ``ca:gf ca:er ca:dr``) and expose the credentials to
+``splatnet3_scraper``. The query, scraper, and auth modules read the following
+environment variables when they start up:
+
+* ``NXAPI_ZNCA_API_CLIENT_ID`` (required)
+* ``NXAPI_ZNCA_API_CLIENT_SECRET`` *or*
+  ``NXAPI_ZNCA_API_CLIENT_ASSERTION``/``NXAPI_ZNCA_API_CLIENT_ASSERTION_TYPE``
+  *or*
+  ``NXAPI_ZNCA_API_CLIENT_ASSERTION_PRIVATE_KEY_PATH`` +
+  ``NXAPI_ZNCA_API_CLIENT_ASSERTION_JKU`` +
+  ``NXAPI_ZNCA_API_CLIENT_ASSERTION_KID``
+* ``NXAPI_ZNCA_API_AUTH_SCOPE`` (optional, defaults to ``ca:gf ca:er ca:dr``)
+* ``NXAPI_AUTH_TOKEN_URL`` (optional override for the token endpoint)
+* ``NXAPI_USER_AGENT`` (strongly recommended – include your scraper name,
+  version, and a contact URL/email)
+
+Example shell configuration:
+
+.. code-block:: bash
+
+   export NXAPI_ZNCA_API_CLIENT_ID="your-client-id"
+   export NXAPI_ZNCA_API_CLIENT_SECRET="super-secret"
+   export NXAPI_ZNCA_API_AUTH_SCOPE="ca:gf ca:er ca:dr"
+   export NXAPI_USER_AGENT="my-scraper/2.0.0 (+https://example.com/contact)"
+
+At minimum you must provide ``NXAPI_ZNCA_API_CLIENT_ID``. You may optionally
+set ``NXAPI_ZNCA_API_CLIENT_SECRET``, a prebuilt assertion, or the generated
+assertion fields if your client is configured for those flows. When these
+variables are present the ``TokenManager`` wires the credentials into the
+:class:`NXAPIClient`, and the :class:`NSO` login flow automatically adds the
+``Authorization`` header that the hosted ``nxapi-znca-api`` server now
+enforces.
+
+For configuration files, ``nxapi_client_secret`` remains the canonical key and
+``nxapi_shared_secret`` is accepted as a legacy alias when reading older files.
+
+If you prefer not to use the hosted service, provide your own ``f_token``
+endpoint via the ``f_token_url`` configuration option.
+
 .. _scraper_example:
 
 Obtaining Ranked Battle Data

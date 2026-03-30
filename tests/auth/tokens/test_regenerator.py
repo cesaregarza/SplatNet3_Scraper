@@ -14,7 +14,6 @@ regen_path = base_regen_path + ".TokenRegenerator"
 
 
 class TestTokenRegenerator:
-
     ftokens_url = [
         "test_url_1",
         "test_url_2",
