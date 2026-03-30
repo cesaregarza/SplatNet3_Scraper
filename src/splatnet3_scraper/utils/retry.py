@@ -9,7 +9,9 @@ Backoff: TypeAlias = Literal["fixed", "exponential", "fibonacci"]
 RetryExceptions: TypeAlias = tuple[Type[Exception], ...] | Type[Exception]
 
 
-def _normalize_exceptions(exceptions: RetryExceptions) -> tuple[Type[Exception], ...]:
+def _normalize_exceptions(
+    exceptions: RetryExceptions,
+) -> tuple[Type[Exception], ...]:
     """Validate and normalize retry exception inputs.
 
     Sonar and similar analyzers dislike ``except exceptions`` when the caught

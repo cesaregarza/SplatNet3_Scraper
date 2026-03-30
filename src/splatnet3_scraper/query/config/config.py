@@ -7,7 +7,7 @@ from typing import TypeVar, cast
 
 from splatnet3_scraper.auth.exceptions import FTokenException
 from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
-from splatnet3_scraper.constants import APP_VERSION_FALLBACK, TOKENS
+from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.config.config_option_handler import (
     ConfigOptionHandler,
 )
