@@ -10,8 +10,12 @@ from splatnet3_scraper.auth.exceptions import (
     NintendoException,
     SplatNetException,
 )
-from splatnet3_scraper.auth.nso import NSO
-from splatnet3_scraper.constants import APP_VERSION_FALLBACK, NXAPI_ZNCA_URL
+from splatnet3_scraper.auth.nso import NSO, FTokenResult
+from splatnet3_scraper.constants import (
+    APP_VERSION_FALLBACK,
+    NXAPI_DEFAULT_CLIENT_VERSION,
+    NXAPI_ZNCA_URL,
+)
 from tests.mock import MockResponse
 
 nso_path = "splatnet3_scraper.auth.nso.NSO"
@@ -19,7 +23,6 @@ nso_mangled = "splatnet3_scraper.auth.nso.NSO._NSO"
 
 
 class TestNSO:
-
     mock_user_data = {
         "language": "test_language",
         "country": "test_country",
@@ -81,6 +84,14 @@ class TestNSO:
         monkeypatch.setattr(requests.Session, "get", mock_get)
         version = nso.get_version()
         assert version == APP_VERSION_FALLBACK
+
+    def test_app_version_override(self) -> None:
+        nso = NSO.new_instance()
+        nso.set_app_version_override("9.9.9")
+        assert nso.version == "9.9.9"
+
+        nso.set_app_version_override(None)
+        assert nso.version == APP_VERSION_FALLBACK
 
     # def test_version_property(self, monkeypatch: pytest.MonkeyPatch):
     #     test_string = 'whats-new__latest__version">Version    5.0.0</span>'
@@ -222,6 +233,27 @@ class TestNSO:
         nso = NSO.new_instance()
         assert nso.generate_login_url() == "https://test.com/"
 
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "npf71b963c1b7b6d119://auth#session_token_code=test_code&state=abc",
+            "npf71b963c1b7b6d119://auth#state=abc&session_token_code=test_code",
+            "npf71b963c1b7b6d119://auth?session_token_code=test_code&state=abc",
+            (
+                "npf71b963c1b7b6d119://auth?foo=bar"
+                "#state=abc&session_token_code=test_code"
+            ),
+        ],
+    )
+    def test_parse_npf_uri(self, uri: str):
+        nso = self.get_new_nso()
+        assert nso.parse_npf_uri(uri) == "test_code"
+
+    def test_parse_npf_uri_missing(self):
+        nso = self.get_new_nso()
+        with pytest.raises(ValueError):
+            nso.parse_npf_uri("npf71b963c1b7b6d119://auth#state=abc")
+
     def test_get_session_token(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get(*args, **kwargs):
             return MockResponse(200, json={"session_token": "test"})
@@ -287,14 +319,159 @@ class TestNSO:
             with pytest.raises(ValueError):
                 nso.get_ftoken(*args)
         else:
-            ftoken, request_id, timestamp = nso.get_ftoken(*args)
-            assert ftoken == "test_f"
-            assert request_id == "test_request_id"
-            assert timestamp == "test_timestamp"
+            result = nso.get_ftoken(*args)
+            assert isinstance(result, FTokenResult)
+            assert result.f == "test_f"
+            assert result.request_id == "test_request_id"
+            assert result.timestamp == "test_timestamp"
+            assert result.encrypted_request is None
             monkeypatch.setattr(requests.Session, "post", mock_post_fail)
             # Fail on request
             with pytest.raises(FTokenException):
                 nso.get_ftoken(*args)
+
+    def test_get_ftoken_optional_fields(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Test that get_ftoken handles missing request_id/timestamp."""
+
+        def mock_post(*args, **kwargs):
+            return MockResponse(200, json={"f": "test_f"})
+
+        nso = self.get_new_nso()
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+        result = nso.get_ftoken("test", "test", 1, "test", None)
+        assert result.f == "test_f"
+        assert result.request_id is None
+        assert result.timestamp is None
+        assert result.encrypted_request is None
+
+    def test_get_ftoken_encrypted_token_request(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Test encrypt_token_request flow returns encrypted body."""
+        import base64
+
+        encrypted_data = b"\x00\x01\x02encrypted"
+        b64_data = base64.b64encode(encrypted_data).decode()
+
+        def mock_post(*args, **kwargs):
+            return MockResponse(
+                200,
+                json={
+                    "f": "test_f",
+                    "encrypted_token_request": b64_data,
+                },
+            )
+
+        nso = self.get_new_nso()
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+        result = nso.get_ftoken("test", "test", 1, "test", None)
+        assert result.f == "test_f"
+        assert result.request_id is None
+        assert result.timestamp is None
+        assert result.encrypted_request == encrypted_data
+
+    def test_get_ftoken_includes_client_version(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        captured_headers: dict[str, str] = {}
+
+        def mock_post(*args, **kwargs):
+            captured_headers.update(kwargs.get("headers", {}))
+            return MockResponse(
+                200,
+                json={
+                    "f": "test_f",
+                    "request_id": "test_request_id",
+                    "timestamp": "test_timestamp",
+                },
+            )
+
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        nso = self.get_new_nso()
+
+        class DummyNXAPIClient:
+            client_version = "2.3.4"
+
+            def build_request_headers(self):
+                return {
+                    "Authorization": "Bearer fake",
+                    "Client-Id": "client",
+                    "User-Agent": "custom/1.0",
+                    "X-znca-Client-Version": self.client_version,
+                }
+
+            def get_nso_version(self, config_url, cache_ttl):
+                return None
+
+        nso.set_nxapi_client(DummyNXAPIClient())
+
+        result = nso.get_ftoken(NXAPI_ZNCA_URL, "id", 1, "na", None)
+        assert isinstance(result, FTokenResult)
+        assert captured_headers["X-znca-Client-Version"] == "2.3.4"
+
+    def test_get_ftoken_retries_with_default_client_version(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        seen_versions: list[str] = []
+
+        def mock_post(*args, **kwargs):
+            seen_versions.append(kwargs["headers"]["X-znca-Client-Version"])
+            if len(seen_versions) == 1:
+                response = MockResponse(
+                    400,
+                    json={
+                        "error": "invalid_request",
+                        "error_description": (
+                            "Invalid X-znca-Client-Version header"
+                        ),
+                    },
+                )
+                response.headers = {"X-Trace-Id": "trace-1"}
+                return response
+            return MockResponse(
+                200,
+                json={
+                    "f": "test_f",
+                    "request_id": "test_request_id",
+                    "timestamp": "test_timestamp",
+                },
+            )
+
+        monkeypatch.setattr(requests.Session, "post", mock_post)
+
+        nso = self.get_new_nso()
+
+        class DummyNXAPIClient:
+            def __init__(self) -> None:
+                self.client_version = "stale-client-version"
+
+            def build_request_headers(self):
+                return {
+                    "Authorization": "Bearer fake",
+                    "Client-Id": "client",
+                    "User-Agent": "custom/1.0",
+                    "X-znca-Client-Version": self.client_version,
+                }
+
+            def get_nso_version(self, config_url, cache_ttl):
+                return None
+
+        client = DummyNXAPIClient()
+        nso.set_nxapi_client(client)
+
+        result = nso.get_ftoken(NXAPI_ZNCA_URL, "id", 1, "na", None)
+
+        assert isinstance(result, FTokenResult)
+        assert seen_versions == [
+            "stale-client-version",
+            NXAPI_DEFAULT_CLIENT_VERSION,
+        ]
+        assert client.client_version == NXAPI_DEFAULT_CLIENT_VERSION
 
     def test_get_web_service_access_token_pass(
         self, monkeypatch: pytest.MonkeyPatch
@@ -381,10 +558,10 @@ class TestNSO:
             patch.object(nso, "_f_token_function") as mock_f_token_function,
             patch(nso_path + ".get_web_service_access_token") as mock_get_wsat,
         ):
-            mock_f_token_function.return_value = (
-                "test_f_token",
-                "test_request_id",
-                "test_timestamp",
+            mock_f_token_function.return_value = FTokenResult(
+                f="test_f_token",
+                request_id="test_request_id",
+                timestamp="test_timestamp",
             )
             mock_get_wsat.return_value = "test_access_token"
             wsat = nso.g_token_generation_phase_1(
@@ -403,6 +580,7 @@ class TestNSO:
                 "test_f_token",
                 "test_request_id",
                 "test_timestamp",
+                encrypted_body=None,
             )
 
     def test_g_token_generation_phase_2(self):
@@ -412,10 +590,10 @@ class TestNSO:
             patch.object(nso, "_f_token_function") as mock_f_token_function,
             patch(nso_path + ".get_gtoken_request") as mock_get_gtoken,
         ):
-            mock_f_token_function.return_value = (
-                "test_f_token",
-                "test_request_id",
-                "test_timestamp",
+            mock_f_token_function.return_value = FTokenResult(
+                f="test_f_token",
+                request_id="test_request_id",
+                timestamp="test_timestamp",
             )
             mock_get_gtoken.return_value = "test_gtoken"
             wsat = nso.g_token_generation_phase_2(
@@ -434,6 +612,7 @@ class TestNSO:
                 "test_f_token",
                 "test_request_id",
                 "test_timestamp",
+                encrypted_body=None,
             )
 
     @pytest.mark.parametrize(

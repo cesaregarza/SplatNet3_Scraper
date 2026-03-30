@@ -106,6 +106,16 @@ class TestRetry:
         assert mock_logger.call_count == 1
         assert count == 2
 
+    def test_invalid_exception_type(self):
+        with pytest.raises(TypeError, match="exceptions must be"):
+            retry(times=1, exceptions="ValueError")
+
+    def test_empty_exception_tuple(self):
+        with pytest.raises(
+            ValueError, match="exceptions must contain at least one"
+        ):
+            retry(times=1, exceptions=())
+
 
 class TestLinearizeJSON:
     @pytest.mark.parametrize(

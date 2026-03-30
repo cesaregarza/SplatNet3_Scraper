@@ -80,7 +80,82 @@ class TestConfigOptionHandler:
         handler.assign_prefix_to_options(prefix)
         assert handler.prefix is None
         for option in handler.OPTIONS:
-            assert option.env_prefix == prefix
+            if option.apply_prefix:
+                assert option.env_prefix == prefix
+            else:
+                assert option.env_prefix is None
+
+    def test_app_version_override_reads_unprefixed_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("SPLATNET3_APP_VERSION", "9.9.9")
+
+        handler = ConfigOptionHandler(prefix="SN3S")
+        option = handler.get_option("app_version_override")
+
+        assert option.env_key == "SPLATNET3_APP_VERSION"
+        assert option.get_value() == "9.9.9"
+
+    def test_nxapi_client_version_reads_unprefixed_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("NXAPI_ZNCA_API_CLIENT_VERSION", "2.0.1")
+
+        handler = ConfigOptionHandler(prefix="SN3S")
+        option = handler.get_option("nxapi_client_version")
+
+        assert option.env_key == "NXAPI_ZNCA_API_CLIENT_VERSION"
+        assert option.get_value() == "2.0.1"
+
+    def test_nxapi_generated_assertion_fields_read_unprefixed_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(
+            "NXAPI_ZNCA_API_CLIENT_ASSERTION_PRIVATE_KEY_PATH",
+            "/tmp/private.pem",
+        )
+        monkeypatch.setenv(
+            "NXAPI_ZNCA_API_CLIENT_ASSERTION_JKU",
+            "https://example.com/.well-known/jwks.json",
+        )
+        monkeypatch.setenv("NXAPI_ZNCA_API_CLIENT_ASSERTION_KID", "kid-1")
+
+        handler = ConfigOptionHandler(prefix="SN3S")
+
+        assert (
+            handler.get_value("nxapi_client_assertion_private_key_path")
+            == "/tmp/private.pem"
+        )
+        assert (
+            handler.get_value("nxapi_client_assertion_jku")
+            == "https://example.com/.well-known/jwks.json"
+        )
+        assert handler.get_value("nxapi_client_assertion_kid") == "kid-1"
+
+    def test_nxapi_client_secret_reads_legacy_env_alias(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("NXAPI_SHARED_SECRET", "legacy-secret")
+
+        handler = ConfigOptionHandler(prefix="SN3S")
+        option = handler.get_option("nxapi_client_secret")
+
+        assert option.env_key == "NXAPI_ZNCA_API_CLIENT_SECRET"
+        assert option.env_alias_keys == [
+            "NXAPI_ZNCA_API_SHARED_SECRET",
+            "NXAPI_SHARED_SECRET",
+        ]
+        assert option.get_value() == "legacy-secret"
+
+    def test_nxapi_client_secret_prefers_canonical_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("NXAPI_ZNCA_API_CLIENT_SECRET", "canonical-secret")
+        monkeypatch.setenv("NXAPI_SHARED_SECRET", "legacy-secret")
+
+        handler = ConfigOptionHandler(prefix="SN3S")
+
+        assert handler.get_value("nxapi_client_secret") == "canonical-secret"
 
     def test_OPTIONS(self) -> None:
         options = (1, 2, 3)
@@ -267,6 +342,14 @@ class TestConfigOptionHandler:
             assert mock_set.call_count == len(mock_dict)
             for key, value in mock_dict.items():
                 mock_set.assert_any_call(key, value)
+
+    def test_read_from_dict_accepts_legacy_nxapi_secret_key(self) -> None:
+        handler = ConfigOptionHandler()
+
+        handler.read_from_dict({"nxapi_shared_secret": "legacy-secret"})
+
+        assert handler.get_value("nxapi_client_secret") == "legacy-secret"
+        assert handler.unknown_options == []
 
     def test_save_to_configparser(
         self,

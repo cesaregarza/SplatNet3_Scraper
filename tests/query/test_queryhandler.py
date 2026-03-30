@@ -2,7 +2,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from splatnet3_scraper.auth.exceptions import SplatNetException
+from splatnet3_scraper.auth.exceptions import (
+    AccountCooldownException,
+    RateLimitException,
+    SplatNetException,
+)
 from splatnet3_scraper.query.handler import QueryHandler
 
 base_handler_path = "splatnet3_scraper.query.handler"
@@ -47,6 +51,7 @@ class TestSplatNetQueryHandler:
                 gtoken=gtoken,
                 bullet_token=bullet_token,
                 prefix=prefix,
+                app_version=None,
             )
             assert handler.config == config
 
@@ -64,6 +69,7 @@ class TestSplatNetQueryHandler:
             mock_config.from_tokens.assert_called_once_with(
                 session_token=session_token,
                 prefix=prefix,
+                app_version=None,
             )
             config.regenerate_tokens.assert_called_once_with()
             assert handler.config == config
@@ -109,6 +115,8 @@ class TestSplatNetQueryHandler:
         handler = QueryHandler(config)
         getvalue_return = config.get_value.return_value
 
+        config.token_manager = None
+
         with patch(queries_path) as mock_queries:
             mock_queries.query.return_value = expected_return
             ret = handler.raw_query(
@@ -141,6 +149,8 @@ class TestSplatNetQueryHandler:
         variables = MagicMock()
         handler = QueryHandler(config)
         getvalue_return = config.get_value.return_value
+
+        config.token_manager = None
 
         with patch(queries_path) as mock_queries:
             mock_queries.query_hash.return_value = expected_return
@@ -184,6 +194,8 @@ class TestSplatNetQueryHandler:
             valid_response.json.return_value = {"errors": ["test"]}
 
         counter = 1 if response == "400" else 0
+
+        config.token_manager = None
 
         def raw_query_hash(*args, **kwargs):
             nonlocal counter
@@ -254,6 +266,8 @@ class TestSplatNetQueryHandler:
 
         counter = 1 if response == "400" else 0
 
+        config.token_manager = None
+
         def raw_query(*args, **kwargs):
             nonlocal counter
             if counter == 0:
@@ -292,3 +306,40 @@ class TestSplatNetQueryHandler:
             else:
                 assert mock_raw_query.call_count == 2
                 config.regenerate_tokens.assert_called_once_with()
+
+    def test_query_propagates_rate_limit(self) -> None:
+        config = MagicMock()
+        token_manager = MagicMock()
+        token_manager.cooldown_remaining.return_value = 12.0
+        config.token_manager = token_manager
+
+        rate_limited = MagicMock()
+        rate_limited.status_code = 429
+        rate_limited.headers = {"Retry-After": "30"}
+        rate_limited.json.return_value = {"data": {}}
+
+        with patch(handler_path + ".raw_query") as mock_raw_query:
+            mock_raw_query.return_value = rate_limited
+            handler = QueryHandler(config)
+
+            with pytest.raises(RateLimitException):
+                handler.query("TestQuery")
+
+        token_manager.ensure_tokens_valid.assert_called_once()
+        token_manager.record_response.assert_called_once_with(429)
+
+    def test_query_respects_account_cooldown(self) -> None:
+        config = MagicMock()
+        token_manager = MagicMock()
+        token_manager.ensure_tokens_valid.side_effect = (
+            AccountCooldownException("cooldown")
+        )
+        config.token_manager = token_manager
+
+        handler = QueryHandler(config)
+
+        with pytest.raises(RateLimitException):
+            handler.query("TestQuery")
+
+        token_manager.ensure_tokens_valid.assert_called_once()
+        token_manager.record_response.assert_not_called()

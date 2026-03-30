@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import configparser
 import json
+import logging
 from typing import TypeVar, cast
 
+from splatnet3_scraper.auth.exceptions import FTokenException
 from splatnet3_scraper.auth.tokens import TokenManager, TokenManagerConstructor
 from splatnet3_scraper.constants import TOKENS
 from splatnet3_scraper.query.config.config_option_handler import (
@@ -39,6 +41,44 @@ class Config:
         self._output_file_path = output_file_path
 
         self.handler = handler
+
+        if self._token_manager is not None:
+            self._configure_token_manager()
+
+    def __repr__(self) -> str:  # pragma: no cover - convenience method
+        def _maybe(option: str) -> str | None:
+            try:
+                return cast(str | None, self.handler.get_value(option))
+            except ValueError:
+                return None
+
+        tokens_state = {}
+        for token_name in (
+            TOKENS.SESSION_TOKEN,
+            TOKENS.GTOKEN,
+            TOKENS.BULLET_TOKEN,
+        ):
+            tokens_state[token_name] = bool(_maybe(token_name))
+
+        try:
+            scope = self.nxapi_scope
+        except ValueError:
+            scope = None
+
+        nxapi_user_agent = self.nxapi_user_agent
+        if nxapi_user_agent is None:
+            nxapi_user_agent = _maybe("user_agent")
+
+        representation = (
+            "Config("
+            f"path={self._output_file_path!r}, "
+            f"token_manager={'set' if self._token_manager else 'unset'}, "
+            f"tokens={tokens_state}, "
+            f"nxapi_scope={scope!r}, "
+            f"nxapi_client_id={_maybe('nxapi_client_id')!r}, "
+            f"nxapi_user_agent={nxapi_user_agent!r})"
+        )
+        return representation
 
     @property
     def token_manager(self) -> TokenManager:
@@ -109,6 +149,99 @@ class Config:
             TOKENS.BULLET_TOKEN: self.bullet_token,
         }
 
+    def nxapi_client_auth(self) -> dict[str, str | None]:
+        """NXAPI client authentication inputs.
+
+        Returns the client credentials or assertion values pulled from the
+        active configuration so downstream components can negotiate with
+        nxapi-auth as required by the October 2025 update.
+
+        Returns:
+            dict[str, str | None]: NXAPI client authentication fields.
+        """
+
+        def _optional(option: str) -> str | None:
+            try:
+                return cast(str | None, self.handler.get_value(option))
+            except ValueError:
+                return None
+
+        return {
+            "client_id": _optional("nxapi_client_id"),
+            "client_secret": _optional("nxapi_client_secret"),
+            "client_assertion": _optional("nxapi_client_assertion"),
+            "client_assertion_private_key_path": _optional(
+                "nxapi_client_assertion_private_key_path"
+            ),
+            "client_assertion_jku": _optional("nxapi_client_assertion_jku"),
+            "client_assertion_kid": _optional("nxapi_client_assertion_kid"),
+            "client_assertion_type": _optional("nxapi_client_assertion_type"),
+            "client_version": _optional("nxapi_client_version"),
+        }
+
+    @property
+    def nxapi_scope(self) -> str:
+        """The OAuth scope string required by nxapi-auth."""
+        return cast(str, self.handler.get_value("nxapi_scope"))
+
+    @property
+    def nxapi_user_agent(self) -> str | None:
+        """Optional NXAPI-specific user agent override."""
+        try:
+            return cast(str | None, self.handler.get_value("nxapi_user_agent"))
+        except ValueError:
+            return None
+
+    @property
+    def nxapi_token_url(self) -> str:
+        """Token endpoint used to negotiate nxapi-auth access tokens."""
+        return cast(str, self.handler.get_value("nxapi_token_url"))
+
+    @property
+    def app_version_override(self) -> str | None:
+        """Explicit NSO app version override sourced from configuration."""
+        try:
+            return cast(
+                str | None, self.handler.get_value("app_version_override")
+            )
+        except ValueError:
+            return None
+
+    def _apply_app_version_override(self) -> None:
+        if self._token_manager is None:
+            return
+        self._token_manager.nso.set_app_version_override(
+            self.app_version_override
+        )
+
+    def _configure_token_manager(self) -> None:
+        self._apply_app_version_override()
+        auth_inputs = self.nxapi_client_auth()
+        try:
+            self.token_manager.configure_nxapi(
+                token_url=self.nxapi_token_url,
+                scope=self.nxapi_scope,
+                client_id=auth_inputs["client_id"],
+                client_secret=auth_inputs["client_secret"],
+                client_assertion=auth_inputs["client_assertion"],
+                client_assertion_private_key_path=auth_inputs[
+                    "client_assertion_private_key_path"
+                ],
+                client_assertion_jku=auth_inputs["client_assertion_jku"],
+                client_assertion_kid=auth_inputs["client_assertion_kid"],
+                client_assertion_type=auth_inputs["client_assertion_type"],
+                user_agent=self.nxapi_user_agent,
+                client_version=auth_inputs["client_version"],
+            )
+        except FTokenException as exc:
+            if auth_inputs["client_id"]:
+                raise
+            logging.getLogger(__name__).debug(
+                "Skipping nxapi configuration because client credentials are"
+                " absent: %s",
+                exc,
+            )
+
     def get_value(
         self, option: str, default: T | None = None
     ) -> str | T | None:
@@ -145,6 +278,8 @@ class Config:
                     token,
                     option,
                 )
+        elif option == "app_version_override":
+            self._apply_app_version_override()
 
     @staticmethod
     def from_empty_handler(prefix: str = "") -> Config:
@@ -164,11 +299,16 @@ class Config:
         session_token = cast(str, handler.get_value(TOKENS.SESSION_TOKEN))
         gtoken = handler.get_value(TOKENS.GTOKEN)
         bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        try:
+            app_version = handler.get_value("app_version_override")
+        except ValueError:
+            app_version = None
         return Config.from_tokens(
             session_token=session_token,
             gtoken=gtoken,
             bullet_token=bullet_token,
             prefix=prefix,
+            app_version=cast(str | None, app_version),
         )
 
     @staticmethod
@@ -178,6 +318,7 @@ class Config:
         bullet_token: str | None = None,
         *,
         prefix: str = "",
+        app_version: str | None = None,
     ) -> Config:
         """Creates a ``Config`` object from a session token and other tokens.
 
@@ -189,6 +330,8 @@ class Config:
                 provided, a new bullet token will be generated.
             prefix (str): The prefix to use for the config options. Defaults to
                 "SN3S".
+            app_version (str | None): Optional NSO app version override to
+                inject into the token manager.
 
         Returns:
             Config: The ``Config`` object.
@@ -197,6 +340,7 @@ class Config:
             session_token=session_token,
             gtoken=gtoken,
             bullet_token=bullet_token,
+            app_version=app_version,
         )
 
         prefix = prefix or Config.DEFAULT_PREFIX
@@ -204,6 +348,7 @@ class Config:
         handler.set_value(TOKENS.SESSION_TOKEN, session_token)
         handler.set_value(TOKENS.GTOKEN, gtoken)
         handler.set_value(TOKENS.BULLET_TOKEN, bullet_token)
+        handler.set_value("app_version_override", app_version)
 
         return Config(
             handler,
@@ -230,17 +375,33 @@ class Config:
             Config: The ``Config`` object created from the
                 ``ConfigOptionHandler`` object.
         """
-        session_token = handler.get_value(TOKENS.SESSION_TOKEN)
-        gtoken = handler.get_value(TOKENS.GTOKEN)
-        bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        try:
+            session_token = handler.get_value(TOKENS.SESSION_TOKEN)
+        except ValueError:
+            session_token = None
+        try:
+            gtoken = handler.get_value(TOKENS.GTOKEN)
+        except ValueError:
+            gtoken = None
+        try:
+            bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
+        except ValueError:
+            bullet_token = None
+        try:
+            app_version = handler.get_value("app_version_override")
+        except ValueError:
+            app_version = None
         if session_token is None:
             raise ValueError("Session token not provided.")
 
-        token_manager = TokenManagerConstructor.from_tokens(
-            session_token=session_token,
-            gtoken=gtoken,
-            bullet_token=bullet_token,
+        token_manager = TokenManagerConstructor.from_session_token(
+            session_token,
+            app_version=cast(str | None, app_version),
         )
+        if gtoken is not None:
+            token_manager.add_token(gtoken, TOKENS.GTOKEN)
+        if bullet_token is not None:
+            token_manager.add_token(bullet_token, TOKENS.BULLET_TOKEN)
 
         return Config(
             handler,

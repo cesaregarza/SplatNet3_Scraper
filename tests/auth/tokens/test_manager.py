@@ -2,8 +2,16 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from splatnet3_scraper.auth.exceptions import (
+    AccountCooldownException,
+    FTokenException,
+)
 from splatnet3_scraper.auth.tokens.manager import ManagerOrigin, TokenManager
-from splatnet3_scraper.constants import TOKENS
+from splatnet3_scraper.constants import (
+    NXAPI_ZNCA_URL,
+    RATE_LIMIT_BASE_COOLDOWN,
+    TOKENS,
+)
 
 ftoken_urls = [
     "ftoken_url_1",
@@ -25,7 +33,12 @@ class TestTokenManager:
             patch(base_token_manager_path + ".TokenKeychain"),
             patch(base_token_manager_path + ".ManagerOrigin"),
         ):
-            return TokenManager()
+            manager = TokenManager()
+            token = MagicMock()
+            token.value = "token"
+            token.is_expired = False
+            manager.keychain.get.return_value = token
+            return manager
 
     @pytest.mark.parametrize(
         "with_nso",
@@ -189,6 +202,130 @@ class TestTokenManager:
         else:
             assert nso._session_token != token.value
 
+    def test_configure_nxapi_requires_credentials(self) -> None:
+        class DummyNSO:
+            def __init__(self) -> None:
+                self._session_token = "session"
+                self.session = MagicMock()
+                self._set_client = None
+
+            @property
+            def session_token(self) -> str:
+                return self._session_token
+
+            def set_nxapi_client(self, client):
+                self._set_client = client
+
+        manager = TokenManager(nso=DummyNSO(), f_token_url=[NXAPI_ZNCA_URL])
+
+        with pytest.raises(FTokenException):
+            manager.configure_nxapi(
+                token_url="https://nxapi-auth.fancy.org.uk/api/oauth/token",
+                scope="ca:gf",
+                client_id=None,
+                client_secret=None,
+                client_assertion=None,
+                client_assertion_type=None,
+                user_agent=None,
+                client_version="1.0.0",
+            )
+
+    def test_configure_nxapi_uses_default_client_version(
+        self,
+    ) -> None:
+        from splatnet3_scraper.constants import (
+            NXAPI_DEFAULT_CLIENT_VERSION,
+        )
+
+        class DummyNSO:
+            def __init__(self) -> None:
+                self._session_token = "session"
+                self.session = MagicMock()
+                self._set_client = None
+
+            @property
+            def session_token(self) -> str:
+                return self._session_token
+
+            def set_nxapi_client(self, client):
+                self._set_client = client
+
+        manager = TokenManager(nso=DummyNSO(), f_token_url=[NXAPI_ZNCA_URL])
+
+        # Should NOT raise — uses default client version
+        manager.configure_nxapi(
+            token_url=("https://nxapi-auth.fancy.org.uk/api/oauth/token"),
+            scope="ca:gf",
+            client_id="client-id",
+            client_secret=None,
+            client_assertion=None,
+            client_assertion_type=None,
+            user_agent=None,
+            client_version=None,
+        )
+        assert manager._nxapi_client is not None
+        assert (
+            manager._nxapi_client.client_version == NXAPI_DEFAULT_CLIENT_VERSION
+        )
+
+    def test_configure_nxapi_missing_credentials_non_nxapi(self) -> None:
+        class DummyNSO:
+            def __init__(self) -> None:
+                self._session_token = "session"
+                self.session = MagicMock()
+
+            @property
+            def session_token(self) -> str:
+                return self._session_token
+
+            def set_nxapi_client(self, client):
+                self._set_client = client
+
+        manager = TokenManager(
+            nso=DummyNSO(), f_token_url=["https://example.com/f"]
+        )
+
+        # Should quietly disable nxapi helper without raising
+        manager.configure_nxapi(
+            token_url="https://nxapi-auth.fancy.org.uk/api/oauth/token",
+            scope="ca:gf",
+            client_id=None,
+            client_secret=None,
+            client_assertion=None,
+            client_assertion_type=None,
+            user_agent=None,
+            client_version=None,
+        )
+
+    def test_configure_nxapi_rejects_partial_generated_assertion_inputs(
+        self,
+    ) -> None:
+        class DummyNSO:
+            def __init__(self) -> None:
+                self._session_token = "session"
+                self.session = MagicMock()
+                self._set_client = None
+
+            @property
+            def session_token(self) -> str:
+                return self._session_token
+
+            def set_nxapi_client(self, client):
+                self._set_client = client
+
+        manager = TokenManager(nso=DummyNSO(), f_token_url=[NXAPI_ZNCA_URL])
+
+        with pytest.raises(FTokenException, match="nxapi_client_assertion_kid"):
+            manager.configure_nxapi(
+                token_url="https://nxapi-auth.fancy.org.uk/api/oauth/token",
+                scope="ca:gf",
+                client_id="client-id",
+                client_assertion_private_key_path="/tmp/private.pem",
+                client_assertion_jku=(
+                    "https://example.com/.well-known/jwks.json"
+                ),
+            )
+
     @pytest.mark.parametrize(
         "raise_exception",
         [True, False],
@@ -233,3 +370,57 @@ class TestTokenManager:
                 mock_token_manager.nso, mock_token_manager.f_token_url
             )
             assert mock_add_token.call_count == 15
+
+    def test_record_response_rate_limit_sets_cooldown(
+        self, mock_token_manager: TokenManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            f"{base_token_manager_path}.time.time", lambda: 1000.0
+        )
+        monkeypatch.setattr(
+            f"{base_token_manager_path}.random.uniform", lambda a, b: 1.0
+        )
+
+        mock_token_manager.record_response(429)
+
+        assert mock_token_manager.error_count == 1
+        assert mock_token_manager.cooldown_remaining() == pytest.approx(
+            RATE_LIMIT_BASE_COOLDOWN
+        )
+
+    def test_ensure_tokens_valid_respects_cooldown(
+        self, mock_token_manager: TokenManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            f"{base_token_manager_path}.time.time", lambda: 50.0
+        )
+        mock_token_manager.next_available_at = 60.0
+
+        with pytest.raises(AccountCooldownException):
+            mock_token_manager.ensure_tokens_valid()
+
+    def test_ensure_tokens_valid_refreshes_expired_tokens(
+        self, mock_token_manager: TokenManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        tokens = {
+            TOKENS.GTOKEN: MagicMock(is_expired=True, value="gtoken"),
+            TOKENS.BULLET_TOKEN: MagicMock(is_expired=False, value="bullet"),
+        }
+
+        def get_token(name: str, *, full_token: bool = True):
+            return tokens[name]
+
+        mock_token_manager.keychain.get.side_effect = get_token
+        mock_token_manager.generate_gtoken = MagicMock()
+        mock_token_manager.generate_bullet_token = MagicMock()
+        mock_token_manager.regenerate_tokens = MagicMock()
+        mock_token_manager._id_token_expires_at = 400.0
+
+        monkeypatch.setattr(
+            f"{base_token_manager_path}.time.time", lambda: 500.0
+        )
+
+        mock_token_manager.ensure_tokens_valid()
+
+        mock_token_manager.generate_gtoken.assert_called_once()
+        mock_token_manager.regenerate_tokens.assert_called_once()

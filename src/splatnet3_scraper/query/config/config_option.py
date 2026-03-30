@@ -28,7 +28,10 @@ class ConfigOption(Generic[T]):
         save_callback: Callable[[T | None], str] | None = None,
         section: str = "Options",
         env_var: str | None = None,
+        env_var_aliases: list[str] | str | None = None,
         env_prefix: str | None = None,
+        *,
+        apply_prefix: bool = True,
     ) -> None:
         """Initializes the class.
 
@@ -69,8 +72,16 @@ class ConfigOption(Generic[T]):
                 environment variable, so if the name of the set prefix is
                 "PREFIX", the environment variable will be "PREFIX_TEST".
                 Defaults to None.
+            env_var_aliases (list[str] | str | None): Additional environment
+                variable names to check when the canonical ``env_var`` is not
+                set. These aliases preserve backwards compatibility for renamed
+                variables. Defaults to None.
             env_prefix (str | None): The prefix to use for the environment
                 variable. If None, no prefix will be used. Defaults to None.
+            apply_prefix (bool): Whether the configured prefix should be
+                prepended to the environment variable name. Set this to False
+                for options that rely on globally-scoped environment variables.
+                Defaults to True.
         """
         self.name = name
         self.default = default
@@ -80,7 +91,9 @@ class ConfigOption(Generic[T]):
         self.save_callback = save_callback
         self.section = section
         self.env_var = env_var
+        self.env_var_aliases = env_var_aliases
         self.env_prefix = env_prefix
+        self.apply_prefix = apply_prefix
         self.value: T | None = None
 
     @property
@@ -95,10 +108,27 @@ class ConfigOption(Generic[T]):
         """
         if self.env_var is None:
             return None
-        elif self.env_prefix is None:
+        elif not self.apply_prefix or self.env_prefix is None:
             return self.env_var
         else:
             return f"{self.env_prefix}_{self.env_var}"
+
+    @property
+    def env_alias_keys(self) -> list[str]:
+        """Additional environment variable keys that can provide this value."""
+        if self.env_var_aliases is None:
+            return []
+
+        aliases = (
+            [self.env_var_aliases]
+            if isinstance(self.env_var_aliases, str)
+            else list(self.env_var_aliases)
+        )
+
+        if not self.apply_prefix or self.env_prefix is None:
+            return aliases
+
+        return [f"{self.env_prefix}_{alias}" for alias in aliases]
 
     def set_value(self, value: str | None) -> None:
         """Sets the value of the option.
@@ -142,7 +172,12 @@ class ConfigOption(Generic[T]):
         elif self.env_key is not None and (value := os.getenv(self.env_key)):
             self.set_value(value)
             return self.value
-        elif self.default is not None:
+        else:
+            for env_key in self.env_alias_keys:
+                if value := os.getenv(env_key):
+                    self.set_value(value)
+                    return self.value
+        if self.default is not None:
             return self.default
         else:
             raise ValueError("No value set for option")
@@ -153,7 +188,8 @@ class ConfigOption(Generic[T]):
         Args:
             prefix (str): The prefix to use for the environment variable.
         """
-        self.env_prefix = prefix
+        if self.apply_prefix:
+            self.env_prefix = prefix
 
     def convert(self) -> str:
         """Converts the option to a string. It converts the value of the option

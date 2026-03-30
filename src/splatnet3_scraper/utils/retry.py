@@ -6,11 +6,41 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 Backoff: TypeAlias = Literal["fixed", "exponential", "fibonacci"]
+RetryExceptions: TypeAlias = tuple[Type[Exception], ...] | Type[Exception]
+
+
+def _normalize_exceptions(
+    exceptions: RetryExceptions,
+) -> tuple[Type[Exception], ...]:
+    """Validate and normalize retry exception inputs.
+
+    Sonar and similar analyzers dislike ``except exceptions`` when the caught
+    type is supplied dynamically. Normalizing to a validated tuple keeps the
+    dynamic API while making the caught exception types explicit and safe.
+    """
+    normalized = exceptions if isinstance(exceptions, tuple) else (exceptions,)
+
+    if not normalized:
+        raise ValueError("exceptions must contain at least one exception type")
+
+    invalid = [
+        exception
+        for exception in normalized
+        if not isinstance(exception, type)
+        or not issubclass(exception, Exception)
+    ]
+    if invalid:
+        raise TypeError(
+            "exceptions must be an exception type or a tuple of exception "
+            "types"
+        )
+
+    return normalized
 
 
 def retry(
     times: int,
-    exceptions: tuple[Type[Exception], ...] | Type[Exception] = Exception,
+    exceptions: RetryExceptions = Exception,
     call_on_fail: Callable[[], None] | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that retries a function a specified number of times if it
@@ -28,6 +58,7 @@ def retry(
         Callable[[Callable[P, T]], Callable[P, T]]: The decorated function,
             which will retry the function if it raises an exception.
     """
+    caught_exceptions = _normalize_exceptions(exceptions)
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
@@ -35,7 +66,7 @@ def retry(
             for i in range(times):
                 try:
                     return func(*args, **kwargs)
-                except exceptions:
+                except caught_exceptions:
                     logging.warning(
                         "%s failed on attempt %d of %d, retrying.",
                         func.__name__,
