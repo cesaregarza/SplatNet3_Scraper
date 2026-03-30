@@ -93,7 +93,6 @@ class GraphQLQueries:
         Returns:
             dict[str, str]: The headers for the GraphQL queries.
         """
-
         if user_agent is None:
             user_agent = DEFAULT_USER_AGENT
 
