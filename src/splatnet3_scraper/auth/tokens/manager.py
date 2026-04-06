@@ -269,8 +269,7 @@ class TokenManager:
         return now < self._web_service_token_expires_at
 
     def ensure_tokens_valid(self) -> None:
-        now = time.time()
-        if now < self.next_available_at:
+        if time.time() < self.next_available_at:
             raise AccountCooldownException(
                 "Account is cooling down for another"
                 f" {self.cooldown_remaining():.1f} seconds."
@@ -293,9 +292,6 @@ class TokenManager:
         else:
             if bullet_token.is_expired:
                 self.generate_bullet_token()
-
-        if now >= self._id_token_expires_at:
-            self.regenerate_tokens()
 
     def record_response(self, status_code: int) -> None:
         self.last_status_code = status_code

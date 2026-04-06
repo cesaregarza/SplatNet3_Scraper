@@ -423,4 +423,31 @@ class TestTokenManager:
         mock_token_manager.ensure_tokens_valid()
 
         mock_token_manager.generate_gtoken.assert_called_once()
-        mock_token_manager.regenerate_tokens.assert_called_once()
+        mock_token_manager.regenerate_tokens.assert_not_called()
+
+    def test_ensure_tokens_valid_does_not_force_full_refresh_for_stale_app_timer(
+        self, mock_token_manager: TokenManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        tokens = {
+            TOKENS.GTOKEN: MagicMock(is_expired=False, value="gtoken"),
+            TOKENS.BULLET_TOKEN: MagicMock(is_expired=False, value="bullet"),
+        }
+
+        def get_token(name: str, *, full_token: bool = True):
+            return tokens[name]
+
+        mock_token_manager.keychain.get.side_effect = get_token
+        mock_token_manager.generate_gtoken = MagicMock()
+        mock_token_manager.generate_bullet_token = MagicMock()
+        mock_token_manager.regenerate_tokens = MagicMock()
+        mock_token_manager._id_token_expires_at = 400.0
+
+        monkeypatch.setattr(
+            f"{base_token_manager_path}.time.time", lambda: 500.0
+        )
+
+        mock_token_manager.ensure_tokens_valid()
+
+        mock_token_manager.generate_gtoken.assert_not_called()
+        mock_token_manager.generate_bullet_token.assert_not_called()
+        mock_token_manager.regenerate_tokens.assert_not_called()

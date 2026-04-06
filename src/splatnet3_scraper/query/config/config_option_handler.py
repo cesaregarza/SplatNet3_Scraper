@@ -65,6 +65,20 @@ class ConfigOptionHandler:
             deprecated_names=["bullettoken"],
             env_var="BULLET_TOKEN",
         ),
+        ConfigOption[float](
+            name="gtoken_timestamp",
+            default=None,
+            section="tokens",
+            callback=float,
+            save_callback=lambda value: str(value),
+        ),
+        ConfigOption[float](
+            name="bullet_token_timestamp",
+            default=None,
+            section="tokens",
+            callback=float,
+            save_callback=lambda value: str(value),
+        ),
         ConfigOption[str](
             name="user_agent",
             default=DEFAULT_USER_AGENT,
