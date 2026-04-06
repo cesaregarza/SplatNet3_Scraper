@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from splatnet3_scraper.auth.exceptions import (
     AccountCooldownException,
     FTokenException,
+    SplatNetException,
 )
 from splatnet3_scraper.auth.nso import NSO
 from splatnet3_scraper.auth.tokens.environment_manager import (
@@ -385,7 +386,19 @@ class TokenManager:
         added to the keychain.
         """
         logger.info("Generating bullet token")
-        token = TokenRegenerator.generate_bullet_token(
-            self.nso, self.f_token_url, DEFAULT_USER_AGENT
-        )
+        try:
+            token = TokenRegenerator.generate_bullet_token(
+                self.nso, self.f_token_url, DEFAULT_USER_AGENT
+            )
+        except SplatNetException as exc:
+            if "Invalid Game Web Token" not in str(exc):
+                raise
+            logger.info(
+                "Cached gtoken was rejected while generating a bullet token; "
+                "regenerating gtoken and retrying."
+            )
+            self.generate_gtoken()
+            token = TokenRegenerator.generate_bullet_token(
+                self.nso, self.f_token_url, DEFAULT_USER_AGENT
+            )
         self.add_token(token)

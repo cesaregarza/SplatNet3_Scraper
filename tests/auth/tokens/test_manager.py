@@ -5,6 +5,7 @@ import pytest
 from splatnet3_scraper.auth.exceptions import (
     AccountCooldownException,
     FTokenException,
+    SplatNetException,
 )
 from splatnet3_scraper.auth.tokens.manager import ManagerOrigin, TokenManager
 from splatnet3_scraper.constants import (
@@ -267,6 +268,50 @@ class TestTokenManager:
         assert (
             manager._nxapi_client.client_version == NXAPI_DEFAULT_CLIENT_VERSION
         )
+
+    def test_generate_bullet_token_refreshes_invalid_gtoken(
+        self,
+        mock_token_manager: TokenManager,
+    ) -> None:
+        token = MagicMock()
+        token.name = TOKENS.BULLET_TOKEN
+
+        with patch(
+            base_token_manager_path
+            + ".TokenRegenerator.generate_bullet_token"
+        ) as mock_generate_bullet:
+            mock_generate_bullet.side_effect = [
+                SplatNetException(
+                    "Error 401: Invalid Game Web Token (gtoken)"
+                ),
+                token,
+            ]
+            mock_token_manager.generate_gtoken = MagicMock()
+            mock_token_manager.add_token = MagicMock()
+
+            mock_token_manager.generate_bullet_token()
+
+            mock_token_manager.generate_gtoken.assert_called_once_with()
+            assert mock_generate_bullet.call_count == 2
+            mock_token_manager.add_token.assert_called_once_with(token)
+
+    def test_generate_bullet_token_reraises_other_splatnet_errors(
+        self,
+        mock_token_manager: TokenManager,
+    ) -> None:
+        with patch(
+            base_token_manager_path
+            + ".TokenRegenerator.generate_bullet_token"
+        ) as mock_generate_bullet:
+            mock_generate_bullet.side_effect = SplatNetException(
+                "Error 403: Outdated Version"
+            )
+            mock_token_manager.generate_gtoken = MagicMock()
+
+            with pytest.raises(SplatNetException, match="Outdated Version"):
+                mock_token_manager.generate_bullet_token()
+
+            mock_token_manager.generate_gtoken.assert_not_called()
 
     def test_configure_nxapi_missing_credentials_non_nxapi(self) -> None:
         class DummyNSO:
