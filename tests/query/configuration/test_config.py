@@ -43,14 +43,24 @@ class TestConfig:
     def test_regenerate_tokens(self) -> None:
         mock_token_manager = MagicMock()
         mock_handler = MagicMock()
+        mock_token_manager.get_token.side_effect = lambda token_name: {
+            TOKENS.SESSION_TOKEN: MagicMock(value="session", timestamp=1.0),
+            TOKENS.GTOKEN: MagicMock(value="gtoken", timestamp=2.0),
+            TOKENS.BULLET_TOKEN: MagicMock(value="bullet", timestamp=3.0),
+        }[token_name]
         config = Config(mock_handler, token_manager=mock_token_manager)
         config.regenerate_tokens()
         mock_token_manager.regenerate_tokens.assert_called_once_with()
-        assert mock_handler.set_value.call_count == 3
+        assert mock_handler.set_value.call_count == 5
 
     def test_regenerate_tokens_saves_file_backed_config(self) -> None:
         mock_token_manager = MagicMock()
         mock_handler = MagicMock()
+        mock_token_manager.get_token.side_effect = lambda token_name: {
+            TOKENS.SESSION_TOKEN: MagicMock(value="session", timestamp=1.0),
+            TOKENS.GTOKEN: MagicMock(value="gtoken", timestamp=2.0),
+            TOKENS.BULLET_TOKEN: MagicMock(value="bullet", timestamp=3.0),
+        }[token_name]
         config = Config(
             mock_handler,
             token_manager=mock_token_manager,
@@ -61,12 +71,17 @@ class TestConfig:
         config.regenerate_tokens()
 
         mock_token_manager.regenerate_tokens.assert_called_once_with()
-        assert mock_handler.set_value.call_count == 3
+        assert mock_handler.set_value.call_count == 5
         config.save_to_file.assert_called_once_with()
 
     def test_regenerate_tokens_ignores_save_file_errors(self) -> None:
         mock_token_manager = MagicMock()
         mock_handler = MagicMock()
+        mock_token_manager.get_token.side_effect = lambda token_name: {
+            TOKENS.SESSION_TOKEN: MagicMock(value="session", timestamp=1.0),
+            TOKENS.GTOKEN: MagicMock(value="gtoken", timestamp=2.0),
+            TOKENS.BULLET_TOKEN: MagicMock(value="bullet", timestamp=3.0),
+        }[token_name]
         config = Config(
             mock_handler,
             token_manager=mock_token_manager,
@@ -77,7 +92,7 @@ class TestConfig:
         config.regenerate_tokens()
 
         mock_token_manager.regenerate_tokens.assert_called_once_with()
-        assert mock_handler.set_value.call_count == 3
+        assert mock_handler.set_value.call_count == 5
         config.save_to_file.assert_called_once_with()
 
     def test_regenerate_tokens_does_not_save_without_file_path(self) -> None:
@@ -154,13 +169,17 @@ class TestConfig:
     def test_set_value(self, option: str) -> None:
         mock_handler = MagicMock()
         mock_token_manager = MagicMock()
-        config = Config(mock_handler, token_manager=mock_token_manager)
+        mock_handler.get_value.side_effect = ValueError("missing")
+        mock_token_manager.get_token.return_value.timestamp = 123.0
+        with patch.object(Config, "_configure_token_manager"):
+            config = Config(mock_handler, token_manager=mock_token_manager)
         config.set_value(option, "test")
         mock_handler.set_value.assert_called_once_with(option, "test")
         if option == TOKENS.SESSION_TOKEN:
             mock_token_manager.add_token.assert_called_once_with(
                 mock_handler.tokens[option],
                 option,
+                timestamp=None,
             )
 
     def test_set_value_app_version_override(self) -> None:
@@ -173,6 +192,32 @@ class TestConfig:
             "app_version_override", "4.5.6"
         )
         config._apply_app_version_override.assert_called_once_with()
+
+    def test_set_value_token_uses_saved_timestamp_when_present(self) -> None:
+        mock_handler = MagicMock()
+        mock_token_manager = MagicMock()
+
+        def get_value_side_effect(key: str):
+            if key == "gtoken_timestamp":
+                return 123.0
+            raise ValueError("missing")
+
+        mock_handler.get_value.side_effect = get_value_side_effect
+        mock_handler.tokens = {
+            TOKENS.SESSION_TOKEN: None,
+            TOKENS.GTOKEN: "test_gtoken",
+            TOKENS.BULLET_TOKEN: None,
+        }
+
+        with patch.object(Config, "_configure_token_manager"):
+            config = Config(mock_handler, token_manager=mock_token_manager)
+        config.set_value(TOKENS.GTOKEN, "test_gtoken")
+
+        mock_token_manager.add_token.assert_called_once_with(
+            "test_gtoken",
+            TOKENS.GTOKEN,
+            timestamp=123.0,
+        )
 
     def test_config_configures_nxapi_with_client_version(self) -> None:
         handler = ConfigOptionHandler()
@@ -284,6 +329,14 @@ class TestConfig:
         gtoken = MagicMock()
         bullet_token = MagicMock()
         mock_token_manager = MagicMock()
+        mock_token_manager.get_token.side_effect = lambda token_name: {
+            TOKENS.SESSION_TOKEN: MagicMock(value=session_token),
+            TOKENS.GTOKEN: MagicMock(value=gtoken, timestamp=123.0),
+            TOKENS.BULLET_TOKEN: MagicMock(
+                value=bullet_token,
+                timestamp=456.0,
+            ),
+        }[token_name]
 
         with (
             patch(base_config_path + ".ConfigOptionHandler") as mock_handler,
@@ -306,9 +359,15 @@ class TestConfig:
             )
             expected_prefix = prefix or "SN3S"
             mock_handler.assert_called_once_with(prefix=expected_prefix)
-            assert mock_handler.return_value.set_value.call_count == 4
+            assert mock_handler.return_value.set_value.call_count == 6
             mock_handler.return_value.set_value.assert_any_call(
                 "app_version_override", None
+            )
+            mock_handler.return_value.set_value.assert_any_call(
+                "gtoken_timestamp", "123.0"
+            )
+            mock_handler.return_value.set_value.assert_any_call(
+                "bullet_token_timestamp", "456.0"
             )
             mock_config.assert_called_once_with(
                 mock_handler.return_value,
@@ -334,13 +393,17 @@ class TestConfig:
         mock_session = "session_token_value"
         mock_gtoken = "gtoken_value"
         mock_bullet = "bullet_token_value"
+        mock_gtoken_timestamp = 123.0
+        mock_bullet_timestamp = 456.0
         mock_app_version = "3.2.1"
 
         def get_value_side_effect(key: str):
             return {
                 "session_token": mock_session,
                 "gtoken": mock_gtoken,
+                "gtoken_timestamp": mock_gtoken_timestamp,
                 "bullet_token": mock_bullet,
+                "bullet_token_timestamp": mock_bullet_timestamp,
                 "app_version_override": mock_app_version,
             }[key]
 
@@ -361,9 +424,15 @@ class TestConfig:
                 mock_session,
                 app_version=mock_app_version,
             )
-            mock_token_manager.add_token.assert_any_call(mock_gtoken, "gtoken")
             mock_token_manager.add_token.assert_any_call(
-                mock_bullet, "bullet_token"
+                mock_gtoken,
+                "gtoken",
+                timestamp=mock_gtoken_timestamp,
+            )
+            mock_token_manager.add_token.assert_any_call(
+                mock_bullet,
+                "bullet_token",
+                timestamp=mock_bullet_timestamp,
             )
             mock_token_manager.mark_tokens_fresh.assert_called_once_with()
             mock_config.assert_called_once_with(
@@ -371,7 +440,7 @@ class TestConfig:
                 token_manager=mock_token_manager,
                 output_file_path=expected_file_path,
             )
-            assert mock_handler.get_value.call_count == 4
+            assert mock_handler.get_value.call_count == 6
 
     @pytest.mark.parametrize(
         ("gtoken", "bullet_token"),
@@ -398,7 +467,9 @@ class TestConfig:
             values = {
                 "session_token": "session_token_value",
                 "gtoken": gtoken,
+                "gtoken_timestamp": None,
                 "bullet_token": bullet_token,
+                "bullet_token_timestamp": None,
                 "app_version_override": None,
             }
             if values[key] is None and key != "app_version_override":
@@ -421,7 +492,11 @@ class TestConfig:
         mock_token_manager = MagicMock()
 
         def get_value_side_effect(key: str):
-            if key == "app_version_override":
+            if key in {
+                "app_version_override",
+                "gtoken_timestamp",
+                "bullet_token_timestamp",
+            }:
                 raise ValueError("missing")
             return {
                 "session_token": "session_token_value",

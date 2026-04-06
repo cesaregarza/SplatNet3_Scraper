@@ -13,6 +13,10 @@ from splatnet3_scraper.query.config.config_option_handler import (
 )
 
 T = TypeVar("T")
+TOKEN_TIMESTAMP_OPTIONS = {
+    TOKENS.GTOKEN: "gtoken_timestamp",
+    TOKENS.BULLET_TOKEN: "bullet_token_timestamp",
+}
 
 
 class Config:
@@ -104,10 +108,7 @@ class Config:
             TOKENS.GTOKEN,
             TOKENS.BULLET_TOKEN,
         ]:
-            self.handler.set_value(
-                token,
-                self.token_manager.get_token(token).value,
-            )
+            self._sync_token_to_handler(token)
         if self._output_file_path is not None:
             try:
                 self.save_to_file()
@@ -251,6 +252,25 @@ class Config:
                 exc,
             )
 
+    @staticmethod
+    def _timestamp_option_for_token(token_name: str) -> str | None:
+        return TOKEN_TIMESTAMP_OPTIONS.get(token_name)
+
+    def _sync_token_to_handler(self, token_name: str) -> None:
+        token = self.token_manager.get_token(token_name)
+        self.handler.set_value(token_name, token.value)
+        if timestamp_option := self._timestamp_option_for_token(token_name):
+            self.handler.set_value(timestamp_option, str(token.timestamp))
+
+    def _get_token_timestamp(self, token_name: str) -> float | None:
+        timestamp_option = self._timestamp_option_for_token(token_name)
+        if timestamp_option is None:
+            return None
+        try:
+            return cast(float | None, self.handler.get_value(timestamp_option))
+        except ValueError:
+            return None
+
     def get_value(
         self, option: str, default: T | None = None
     ) -> str | T | None:
@@ -282,10 +302,29 @@ class Config:
             TOKENS.GTOKEN,
             TOKENS.BULLET_TOKEN,
         ]:
+            timestamp = self._get_token_timestamp(option)
             if (token := self.handler.tokens[option]) is not None:
                 self.token_manager.add_token(
                     token,
                     option,
+                    timestamp=timestamp,
+                )
+                if (
+                    timestamp is None
+                    and self._timestamp_option_for_token(option) is not None
+                ):
+                    self._sync_token_to_handler(option)
+        elif option in TOKEN_TIMESTAMP_OPTIONS.values():
+            token_name = next(
+                name
+                for name, timestamp_option in TOKEN_TIMESTAMP_OPTIONS.items()
+                if timestamp_option == option
+            )
+            if (token := self.handler.tokens[token_name]) is not None:
+                self.token_manager.add_token(
+                    token,
+                    token_name,
+                    timestamp=self._get_token_timestamp(token_name),
                 )
         elif option == "app_version_override":
             self._apply_app_version_override()
@@ -354,9 +393,17 @@ class Config:
 
         prefix = prefix or Config.DEFAULT_PREFIX
         handler = ConfigOptionHandler(prefix=prefix)
-        handler.set_value(TOKENS.SESSION_TOKEN, session_token)
-        handler.set_value(TOKENS.GTOKEN, gtoken)
-        handler.set_value(TOKENS.BULLET_TOKEN, bullet_token)
+        handler.set_value(
+            TOKENS.SESSION_TOKEN,
+            token_manager.get_token(TOKENS.SESSION_TOKEN).value,
+        )
+        for token_name in (TOKENS.GTOKEN, TOKENS.BULLET_TOKEN):
+            token = token_manager.get_token(token_name)
+            handler.set_value(token_name, token.value)
+            handler.set_value(
+                cast(str, TOKEN_TIMESTAMP_OPTIONS[token_name]),
+                str(token.timestamp),
+            )
         handler.set_value("app_version_override", app_version)
 
         return Config(
@@ -393,9 +440,21 @@ class Config:
         except ValueError:
             gtoken = None
         try:
+            gtoken_timestamp = cast(
+                float | None, handler.get_value("gtoken_timestamp")
+            )
+        except ValueError:
+            gtoken_timestamp = None
+        try:
             bullet_token = handler.get_value(TOKENS.BULLET_TOKEN)
         except ValueError:
             bullet_token = None
+        try:
+            bullet_token_timestamp = cast(
+                float | None, handler.get_value("bullet_token_timestamp")
+            )
+        except ValueError:
+            bullet_token_timestamp = None
         try:
             app_version = handler.get_value("app_version_override")
         except ValueError:
@@ -408,9 +467,17 @@ class Config:
             app_version=cast(str | None, app_version),
         )
         if gtoken is not None:
-            token_manager.add_token(gtoken, TOKENS.GTOKEN)
+            token_manager.add_token(
+                gtoken,
+                TOKENS.GTOKEN,
+                timestamp=gtoken_timestamp,
+            )
         if bullet_token is not None:
-            token_manager.add_token(bullet_token, TOKENS.BULLET_TOKEN)
+            token_manager.add_token(
+                bullet_token,
+                TOKENS.BULLET_TOKEN,
+                timestamp=bullet_token_timestamp,
+            )
         if gtoken is not None and bullet_token is not None:
             token_manager.mark_tokens_fresh()
 
