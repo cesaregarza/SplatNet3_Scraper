@@ -109,7 +109,14 @@ class Config:
                 self.token_manager.get_token(token).value,
             )
         if self._output_file_path is not None:
-            self.save_to_file()
+            try:
+                self.save_to_file()
+            except OSError as exc:
+                logging.getLogger(__name__).warning(
+                    "Failed to persist refreshed tokens to %s: %s",
+                    self._output_file_path,
+                    exc,
+                )
 
     @property
     def session_token(self) -> str:
@@ -404,6 +411,8 @@ class Config:
             token_manager.add_token(gtoken, TOKENS.GTOKEN)
         if bullet_token is not None:
             token_manager.add_token(bullet_token, TOKENS.BULLET_TOKEN)
+        if gtoken is not None and bullet_token is not None:
+            token_manager.mark_tokens_fresh()
 
         return Config(
             handler,

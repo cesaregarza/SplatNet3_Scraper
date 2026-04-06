@@ -64,6 +64,22 @@ class TestConfig:
         assert mock_handler.set_value.call_count == 3
         config.save_to_file.assert_called_once_with()
 
+    def test_regenerate_tokens_ignores_save_file_errors(self) -> None:
+        mock_token_manager = MagicMock()
+        mock_handler = MagicMock()
+        config = Config(
+            mock_handler,
+            token_manager=mock_token_manager,
+            output_file_path="test.ini",
+        )
+        config.save_to_file = MagicMock(side_effect=OSError("read only"))
+
+        config.regenerate_tokens()
+
+        mock_token_manager.regenerate_tokens.assert_called_once_with()
+        assert mock_handler.set_value.call_count == 3
+        config.save_to_file.assert_called_once_with()
+
     def test_regenerate_tokens_does_not_save_without_file_path(self) -> None:
         mock_token_manager = MagicMock()
         mock_handler = MagicMock()
@@ -349,12 +365,56 @@ class TestConfig:
             mock_token_manager.add_token.assert_any_call(
                 mock_bullet, "bullet_token"
             )
+            mock_token_manager.mark_tokens_fresh.assert_called_once_with()
             mock_config.assert_called_once_with(
                 mock_handler,
                 token_manager=mock_token_manager,
                 output_file_path=expected_file_path,
             )
             assert mock_handler.get_value.call_count == 4
+
+    @pytest.mark.parametrize(
+        ("gtoken", "bullet_token"),
+        [
+            ("gtoken_value", None),
+            (None, "bullet_token_value"),
+            (None, None),
+        ],
+        ids=[
+            "missing bullet token",
+            "missing gtoken",
+            "missing both runtime tokens",
+        ],
+    )
+    def test_from_config_handler_marks_tokens_fresh_only_with_both_tokens(
+        self,
+        gtoken: str | None,
+        bullet_token: str | None,
+    ) -> None:
+        mock_handler = MagicMock()
+        mock_token_manager = MagicMock()
+
+        def get_value_side_effect(key: str):
+            values = {
+                "session_token": "session_token_value",
+                "gtoken": gtoken,
+                "bullet_token": bullet_token,
+                "app_version_override": None,
+            }
+            if values[key] is None and key != "app_version_override":
+                raise ValueError("missing")
+            return values[key]
+
+        mock_handler.get_value.side_effect = get_value_side_effect
+
+        with (
+            patch(config_path) as mock_config,
+            patch(base_config_path + ".TokenManagerConstructor") as mock_tmc,
+        ):
+            mock_tmc.from_session_token.return_value = mock_token_manager
+            Config.from_config_handler(mock_handler)
+
+        mock_token_manager.mark_tokens_fresh.assert_not_called()
 
     def test_from_config_handler_without_app_version_uses_none(self) -> None:
         mock_handler = MagicMock()
